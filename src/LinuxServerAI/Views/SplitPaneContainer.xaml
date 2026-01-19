@@ -1,0 +1,77 @@
+<UserControl x:Class="Nebula.Views.SplitPaneContainer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:local="clr-namespace:Nebula.Views"
+             xmlns:vm="clr-namespace:Nebula.ViewModels">
+
+    <UserControl.Resources>
+        <!-- SSH 세션용 DataTemplate -->
+        <DataTemplate x:Key="SshPaneTemplate" DataType="{x:Type vm:ServerSessionViewModel}">
+            <local:ServerSessionView DataContext="{Binding}"/>
+        </DataTemplate>
+
+        <!-- 로컬 터미널용 DataTemplate -->
+        <DataTemplate x:Key="LocalPaneTemplate" DataType="{x:Type vm:LocalTerminalViewModel}">
+            <local:LocalTerminalView DataContext="{Binding}"/>
+        </DataTemplate>
+
+        <local:SessionDataTemplateSelector x:Key="PaneTemplateSelector"
+                                           SshSessionTemplate="{StaticResource SshPaneTemplate}"
+                                           LocalSessionTemplate="{StaticResource LocalPaneTemplate}"/>
+    </UserControl.Resources>
+
+    <Grid x:Name="MainGrid">
+        <!-- 단일 패널 (기본) -->
+        <ContentControl x:Name="SinglePane"
+                        Content="{Binding PrimarySession}"
+                        ContentTemplateSelector="{StaticResource PaneTemplateSelector}"
+                        Visibility="Visible"/>
+
+        <!-- 수평 분할 (좌/우) -->
+        <Grid x:Name="HorizontalSplit" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="200"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*" MinWidth="200"/>
+            </Grid.ColumnDefinitions>
+
+            <ContentControl Grid.Column="0"
+                            Content="{Binding PrimarySession}"
+                            ContentTemplateSelector="{StaticResource PaneTemplateSelector}"/>
+
+            <GridSplitter Grid.Column="1"
+                          Width="5"
+                          HorizontalAlignment="Stretch"
+                          Background="#E0E0E0"
+                          Cursor="SizeWE"/>
+
+            <ContentControl Grid.Column="2"
+                            Content="{Binding SecondarySession}"
+                            ContentTemplateSelector="{StaticResource PaneTemplateSelector}"/>
+        </Grid>
+
+        <!-- 수직 분할 (상/하) -->
+        <Grid x:Name="VerticalSplit" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="150"/>
+                <RowDefinition Height="5"/>
+                <RowDefinition Height="*" MinHeight="150"/>
+            </Grid.RowDefinitions>
+
+            <ContentControl Grid.Row="0"
+                            Content="{Binding PrimarySession}"
+                            ContentTemplateSelector="{StaticResource PaneTemplateSelector}"/>
+
+            <GridSplitter Grid.Row="1"
+                          Height="5"
+                          HorizontalAlignment="Stretch"
+                          Background="#E0E0E0"
+                          Cursor="SizeNS"/>
+
+            <ContentControl Grid.Row="2"
+                            Content="{Binding SecondarySession}"
+                            ContentTemplateSelector="{StaticResource PaneTemplateSelector}"/>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,62 @@
+{
+  "AIProvider": "Gemini",
+  "AIModels": [
+    {
+      "Provider": "Gemini",
+      "ModelName": "gemini-2.0-flash-exp",
+      "ApiKey": "YOUR_GEMINI_API_KEY_HERE",
+      "IsDefault": true
+    },
+    {
+      "Provider": "OpenAI",
+      "ModelName": "gpt-4",
+      "ApiKey": "YOUR_OPENAI_API_KEY_HERE",
+      "IsDefault": false
+    },
+    {
+      "Provider": "Claude",
+      "ModelName": "claude-3-5-sonnet-20241022",
+      "ApiKey": "YOUR_ANTHROPIC_API_KEY_HERE",
+      "IsDefault": false
+    },
+    {
+      "Provider": "Grok",
+      "ModelName": "grok-beta",
+      "ApiKey": "YOUR_XAI_API_KEY_HERE",
+      "IsDefault": false
+    }
+  ],
+  "ServerProfiles": [
+    {
+      "Name": "Example Server",
+      "Host": "example.com",
+      "Port": 22,
+      "Username": "your-username",
+      "AuthType": "Password",
+      "Password": "YOUR_ENCRYPTED_PASSWORD",
+      "PrivateKeyPath": "",
+      "Memo": "This is an example server profile"
+    }
+  ],
+  "CommandSnippets": [
+    {
+      "Name": "System Update",
+      "Command": "sudo apt update && sudo apt upgrade -y",
+      "Category": "System",
+      "UseCount": 0
+    },
+    {
+      "Name": "Check Disk Usage",
+      "Command": "df -h",
+      "Category": "Monitoring",
+      "UseCount": 0
+    }
+  ],
+  "QAEntries": [],
+  "Theme": "Dark",
+  "AutoSaveHistory": true,
+  "MaxHistoryCount": 1000,
+  "EnableNotifications": true,
+  "UseLocalEmbedding": true,
+  "EmbeddingModel": "all-MiniLM-L6-v2"
+}

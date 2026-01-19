@@ -1,0 +1,168 @@
+<Window x:Class="Nebula.Views.ProfileEditorDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="서버 프로필 편집"
+        Height="550" Width="450"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceBrush}"
+        ResizeMode="NoResize">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 제목 -->
+        <TextBlock Grid.Row="0"
+                   x:Name="TitleText"
+                   Text="새 서버 프로필"
+                   FontSize="20"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimaryBrush}"
+                   Margin="0,0,0,20"/>
+
+        <!-- 입력 폼 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- 프로필 이름 -->
+                <TextBlock Text="프로필 이름" 
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+                <TextBox x:Name="ProfileNameBox"
+                         Style="{DynamicResource ThemedTextBox}"
+                         Margin="0,0,0,16"/>
+
+                <!-- 호스트 -->
+                <TextBlock Text="호스트 (IP 또는 도메인)" 
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+                <TextBox x:Name="HostBox"
+                         Style="{DynamicResource ThemedTextBox}"
+                         Margin="0,0,0,16"/>
+
+                <!-- 포트 -->
+                <TextBlock Text="포트" 
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+                <TextBox x:Name="PortBox"
+                         Text="22"
+                         Style="{DynamicResource ThemedTextBox}"
+                         Width="100"
+                         HorizontalAlignment="Left"
+                         Margin="0,0,0,16"/>
+
+                <!-- 사용자 이름 -->
+                <TextBlock Text="사용자 이름" 
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+                <TextBox x:Name="UsernameBox"
+                         Style="{DynamicResource ThemedTextBox}"
+                         Margin="0,0,0,16"/>
+
+                <!-- 인증 방식 -->
+                <TextBlock Text="인증 방식" 
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                    <RadioButton x:Name="PasswordAuthRadio"
+                                 Content="비밀번호"
+                                 GroupName="AuthType"
+                                 IsChecked="True"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 Margin="0,0,24,0"
+                                 Checked="AuthType_Changed"/>
+                    <RadioButton x:Name="KeyAuthRadio"
+                                 Content="SSH 키"
+                                 GroupName="AuthType"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 Checked="AuthType_Changed"/>
+                </StackPanel>
+
+                <!-- 비밀번호 (비밀번호 인증 시) -->
+                <StackPanel x:Name="PasswordPanel">
+                    <TextBlock Text="비밀번호" 
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+                    <PasswordBox x:Name="PasswordBox"
+                                 Style="{DynamicResource ThemedPasswordBox}"
+                                 Margin="0,0,0,16"/>
+                </StackPanel>
+
+                <!-- SSH 키 (키 인증 시) -->
+                <StackPanel x:Name="KeyPanel" Visibility="Collapsed">
+                    <TextBlock Text="SSH 키 경로" 
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="KeyPathBox"
+                                 Grid.Column="0"
+                                 Style="{DynamicResource ThemedTextBox}"/>
+                        <Button Grid.Column="1"
+                                Content="찾아보기"
+                                Click="BrowseKey_Click"
+                                Margin="8,0,0,0"
+                                Padding="12,8"/>
+                    </Grid>
+
+                    <TextBlock Text="Passphrase (선택사항)" 
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+                    <PasswordBox x:Name="PassphraseBox"
+                                 Style="{DynamicResource ThemedPasswordBox}"
+                                 Margin="0,0,0,16"/>
+                </StackPanel>
+
+                <!-- 즐겨찾기 -->
+                <CheckBox x:Name="FavoriteCheckBox"
+                          Content="즐겨찾기에 추가"
+                          Foreground="{DynamicResource TextPrimaryBrush}"
+                          Margin="0,0,0,16"/>
+
+                <!-- 메모 -->
+                <TextBlock Text="메모 (선택사항)" 
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+                <TextBox x:Name="NotesBox"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         Height="80"
+                         Style="{DynamicResource ThemedTextBox}"
+                         VerticalScrollBarVisibility="Auto"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 버튼 -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,20,0,0">
+            <Button Content="저장"
+                    Click="Save_Click"
+                    Margin="0,0,12,0"
+                    Padding="24,12"
+                    Height="40"
+                    Style="{StaticResource MaterialDesignRaisedButton}"/>
+            <Button Content="취소"
+                    Click="Cancel_Click"
+                    Padding="24,12"
+                    Height="40"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"/>
+        </StackPanel>
+    </Grid>
+</Window>

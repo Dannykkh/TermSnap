@@ -1,0 +1,118 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <!-- Light Theme Colors -->
+    <Color x:Key="PrimaryColor">#1976D2</Color>
+    <Color x:Key="PrimaryLightColor">#BBDEFB</Color>
+    <Color x:Key="PrimaryDarkColor">#0D47A1</Color>
+    <Color x:Key="AccentColor">#FF4081</Color>
+    
+    <Color x:Key="BackgroundColor">#FFFFFF</Color>
+    <Color x:Key="SurfaceColor">#FAFAFA</Color>
+    <Color x:Key="CardColor">#FFFFFF</Color>
+    
+    <Color x:Key="TextPrimaryColor">#212121</Color>
+    <Color x:Key="TextSecondaryColor">#757575</Color>
+    <Color x:Key="TextDisabledColor">#9E9E9E</Color>
+    
+    <Color x:Key="BorderColor">#E0E0E0</Color>
+    <Color x:Key="DividerColor">#EEEEEE</Color>
+    
+    <Color x:Key="SuccessColor">#4CAF50</Color>
+    <Color x:Key="WarningColor">#FF9800</Color>
+    <Color x:Key="ErrorColor">#F44336</Color>
+    <Color x:Key="InfoColor">#2196F3</Color>
+    
+    <!-- Terminal Colors -->
+    <Color x:Key="TerminalBackgroundColor">#263238</Color>
+    <Color x:Key="TerminalTextColor">#ECEFF1</Color>
+    <Color x:Key="TerminalPromptColor">#4CAF50</Color>
+    
+    <!-- Brushes -->
+    <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
+    <SolidColorBrush x:Key="PrimaryLightBrush" Color="{StaticResource PrimaryLightColor}"/>
+    <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{StaticResource PrimaryDarkColor}"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+    
+    <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
+    <SolidColorBrush x:Key="CardBrush" Color="{StaticResource CardColor}"/>
+    
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}"/>
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="{StaticResource TextDisabledColor}"/>
+    
+    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
+    <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource DividerColor}"/>
+    
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
+    <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}"/>
+    
+    <SolidColorBrush x:Key="TerminalBackgroundBrush" Color="{StaticResource TerminalBackgroundColor}"/>
+    <SolidColorBrush x:Key="TerminalTextBrush" Color="{StaticResource TerminalTextColor}"/>
+    <SolidColorBrush x:Key="TerminalPromptBrush" Color="{StaticResource TerminalPromptColor}"/>
+    
+    <!-- Message Type Colors -->
+    <SolidColorBrush x:Key="UserMessageBrush" Color="#E3F2FD"/>
+    <SolidColorBrush x:Key="CommandMessageBrush" Color="#FFF9C4"/>
+    <SolidColorBrush x:Key="SuccessMessageBrush" Color="#C8E6C9"/>
+    <SolidColorBrush x:Key="ErrorMessageBrush" Color="#FFCDD2"/>
+    <SolidColorBrush x:Key="InfoMessageBrush" Color="#E1F5FE"/>
+    <SolidColorBrush x:Key="WarningMessageBrush" Color="#FFF3E0"/>
+    
+    <!-- Block UI Colors -->
+    <SolidColorBrush x:Key="BlockHeaderBrush" Color="#F5F5F5"/>
+    <SolidColorBrush x:Key="BlockExplanationBrush" Color="#FFFDE7"/>
+    <SolidColorBrush x:Key="BlockFooterBrush" Color="#FAFAFA"/>
+    <SolidColorBrush x:Key="BlockErrorBrush" Color="#FFEBEE"/>
+    <SolidColorBrush x:Key="CacheBadgeBrush" Color="#E8F5E9"/>
+    
+    <!-- Side Panel Colors -->
+    <SolidColorBrush x:Key="SidePanelBrush" Color="#FAFAFA"/>
+    <SolidColorBrush x:Key="SidePanelHeaderBrush" Color="#E3F2FD"/>
+
+    <!-- Themed TextBox Style -->
+    <Style x:Key="ThemedTextBox" TargetType="TextBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+
+    <!-- Themed PasswordBox Style -->
+    <Style x:Key="ThemedPasswordBox" TargetType="PasswordBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+
+    <!-- Themed ComboBox Style -->
+    <Style x:Key="ThemedComboBox" TargetType="ComboBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    </Style>
+
+    <!-- Themed RadioButton Style -->
+    <Style x:Key="ThemedRadioButton" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
+    <!-- Themed CheckBox Style -->
+    <Style x:Key="ThemedCheckBox" TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
+    <!-- Themed Label Style -->
+    <Style x:Key="ThemedLabel" TargetType="Label">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
+</ResourceDictionary>
