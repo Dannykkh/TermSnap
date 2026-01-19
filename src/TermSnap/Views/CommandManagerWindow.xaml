@@ -1,0 +1,362 @@
+<Window x:Class="TermSnap.Views.CommandManagerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="명령어 관리"
+        Height="550"
+        Width="700"
+        MinHeight="450"
+        MinWidth="550"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip"
+        Background="{DynamicResource SurfaceBrush}">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 제목 -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+            <materialDesign:PackIcon x:Name="TitleIcon"
+                                     Kind="Magnify"
+                                     Width="24" Height="24"
+                                     VerticalAlignment="Center"
+                                     Foreground="{DynamicResource PrimaryBrush}"/>
+            <TextBlock x:Name="TitleText"
+                       Text="명령어 검색"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
+                       VerticalAlignment="Center"
+                       Margin="10,0,0,0"/>
+        </StackPanel>
+
+        <!-- 검색 입력 (검색 모드) -->
+        <Grid x:Name="SearchPanel" Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:Name="SearchTextBox"
+                     Grid.Column="0"
+                     FontSize="14"
+                     Padding="12,10"
+                     Background="{DynamicResource CardBrush}"
+                     Foreground="{DynamicResource TextPrimaryBrush}"
+                     CaretBrush="{DynamicResource TextPrimaryBrush}"
+                     BorderBrush="{DynamicResource BorderBrush}"
+                     BorderThickness="1"
+                     materialDesign:HintAssist.Hint="검색어를 입력하세요..."
+                     KeyDown="SearchTextBox_KeyDown"
+                     TextChanged="SearchTextBox_TextChanged"/>
+
+            <Button Grid.Column="1"
+                    Content="검색"
+                    Width="80"
+                    Height="40"
+                    Margin="10,0,0,0"
+                    Click="SearchButton_Click"
+                    Style="{StaticResource MaterialDesignRaisedButton}"/>
+        </Grid>
+
+        <!-- 메인 컨텐츠 영역 -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource CardBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+            <Grid>
+                <!-- 검색 결과 목록 (검색 모드) -->
+                <ListBox x:Name="ResultsListBox"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         MouseDoubleClick="ResultsListBox_MouseDoubleClick"
+                         SelectionChanged="ResultsListBox_SelectionChanged">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="12,8"/>
+                            <Setter Property="Margin" Value="4"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{DynamicResource BorderBrush}"
+                                                BorderThickness="0,0,0,1"
+                                                Padding="{TemplateBinding Padding}"
+                                                CornerRadius="4">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PrimaryLightBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PrimaryLightBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- 설명 -->
+                                <TextBlock Grid.Row="0"
+                                           Text="{Binding Description}"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                           TextWrapping="Wrap"/>
+
+                                <!-- 명령어 -->
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding Command}"
+                                           FontFamily="Consolas"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource PrimaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,4,0,0"/>
+
+                                <!-- 메타 정보 -->
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,4,0,0">
+                                    <materialDesign:PackIcon Kind="Replay"
+                                                             Width="12" Height="12"
+                                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                                             VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding TotalUseCount, StringFormat='{}{0}회 사용'}"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="4,0,0,0"/>
+                                    <TextBlock Text="•"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Margin="8,0"/>
+                                    <TextBlock Text="{Binding LastUsed, StringFormat='마지막: {0:MM/dd HH:mm}'}"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- 상세 보기/편집 패널 -->
+                <Grid x:Name="DetailPanel" Visibility="Collapsed" Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 설명 -->
+                    <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="설명"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <Button Grid.Column="1"
+                                    Content="AI 설명 생성"
+                                    Click="GenerateAIDescription_Click"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Height="28"
+                                    FontSize="11"
+                                    Padding="8,0"/>
+                        </Grid>
+                        <TextBox x:Name="DetailDescription"
+                                 FontSize="14"
+                                 Padding="12,10"
+                                 Margin="0,6,0,0"
+                                 Background="{DynamicResource SurfaceBrush}"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 CaretBrush="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}"
+                                 BorderThickness="1"
+                                 materialDesign:HintAssist.Hint="명령어 설명..."/>
+                    </StackPanel>
+
+                    <!-- 명령어 -->
+                    <StackPanel Grid.Row="1" Margin="0,0,0,16">
+                        <TextBlock Text="명령어"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="0,0,0,6"/>
+                        <TextBox x:Name="DetailCommand"
+                                 FontSize="14"
+                                 FontFamily="Consolas"
+                                 Padding="12,10"
+                                 Background="{DynamicResource SurfaceBrush}"
+                                 Foreground="{DynamicResource PrimaryBrush}"
+                                 CaretBrush="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}"
+                                 BorderThickness="1"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 MinHeight="60"
+                                 materialDesign:HintAssist.Hint="리눅스 명령어..."/>
+                    </StackPanel>
+
+                    <!-- 사용 통계 (읽기 전용) -->
+                    <Border Grid.Row="2"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="12"
+                            Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="사용 통계"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Replay"
+                                                         Width="16" Height="16"
+                                                         Foreground="{DynamicResource TextSecondaryBrush}"
+                                                         VerticalAlignment="Center"/>
+                                <TextBlock x:Name="DetailUseCount"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <materialDesign:PackIcon Kind="ClockOutline"
+                                                         Width="16" Height="16"
+                                                         Foreground="{DynamicResource TextSecondaryBrush}"
+                                                         VerticalAlignment="Center"/>
+                                <TextBlock x:Name="DetailLastUsed"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- 결과 없음 메시지 -->
+                <StackPanel x:Name="NoResultsPanel"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Visibility="Collapsed">
+                    <materialDesign:PackIcon Kind="MagnifyClose"
+                                             Width="48" Height="48"
+                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                             HorizontalAlignment="Center"/>
+                    <TextBlock Text="검색 결과가 없습니다"
+                               FontSize="14"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="0,12,0,0"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- 안내 메시지 (초기 상태) -->
+                <StackPanel x:Name="InitialPanel"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Visibility="Visible">
+                    <materialDesign:PackIcon Kind="History"
+                                             Width="48" Height="48"
+                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                             HorizontalAlignment="Center"/>
+                    <TextBlock Text="검색어를 입력하면 명령어 기록에서 검색합니다"
+                               FontSize="13"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="0,12,0,0"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="더블클릭하면 명령어가 입력창에 복사됩니다"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="0,4,0,0"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 하단 정보 및 버튼 -->
+        <Grid Grid.Row="3" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock x:Name="ResultCountText"
+                       Grid.Column="0"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       VerticalAlignment="Center"/>
+
+            <!-- 검색 모드 버튼 -->
+            <StackPanel x:Name="SearchButtons" Grid.Column="1" Orientation="Horizontal">
+                <Button Content="사용"
+                        Width="80"
+                        Height="36"
+                        Margin="0,0,8,0"
+                        Click="UseButton_Click"
+                        Style="{StaticResource MaterialDesignRaisedButton}"/>
+                <Button Content="닫기"
+                        Width="80"
+                        Height="36"
+                        Click="CloseButton_Click"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"/>
+            </StackPanel>
+
+            <!-- 상세 모드 버튼 -->
+            <StackPanel x:Name="DetailButtons" Grid.Column="1" Orientation="Horizontal" Visibility="Collapsed">
+                <Button x:Name="BackToSearchButton"
+                        Content="목록"
+                        Width="80"
+                        Height="36"
+                        Margin="0,0,8,0"
+                        Click="BackToSearch_Click"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"/>
+                <Button Content="저장"
+                        Width="80"
+                        Height="36"
+                        Margin="0,0,8,0"
+                        Click="SaveButton_Click"
+                        Style="{StaticResource MaterialDesignRaisedButton}"/>
+                <Button Content="삭제"
+                        Width="80"
+                        Height="36"
+                        Margin="0,0,8,0"
+                        Click="DeleteButton_Click"
+                        Foreground="{DynamicResource ErrorBrush}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"/>
+                <Button Content="사용"
+                        Width="80"
+                        Height="36"
+                        Click="UseButton_Click"
+                        Style="{StaticResource MaterialDesignRaisedButton}"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

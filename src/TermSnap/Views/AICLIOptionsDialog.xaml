@@ -1,0 +1,281 @@
+<Window x:Class="TermSnap.Views.AICLIOptionsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="AI CLI 실행 옵션"
+        Height="550" Width="500"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        FontFamily="{materialDesign:MaterialDesignFont}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 헤더 -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="AI CLI 실행 옵션"
+                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"/>
+            <TextBlock Text="사용할 AI CLI와 실행 옵션을 선택하세요"
+                       Foreground="{DynamicResource MaterialDesignBodyLight}"
+                       FontSize="12"
+                       Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- 옵션 목록 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <!-- AI CLI 선택 -->
+                <TextBlock Text="AI CLI 선택"
+                           FontWeight="SemiBold"
+                           FontSize="13"
+                           Margin="0,0,0,8"/>
+                <ComboBox x:Name="CLICombo"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          Margin="0,0,0,8"
+                          SelectionChanged="OnCLIChanged">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="{Binding IconKind}"
+                                                         Width="18" Height="18"
+                                                         VerticalAlignment="Center"
+                                                         Margin="0,0,8,0"/>
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock x:Name="CLIDescriptionText"
+                           FontSize="11"
+                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                           Margin="0,0,0,16"
+                           TextWrapping="Wrap"/>
+
+                <!-- 커스텀 명령어 (custom 선택 시만 표시) -->
+                <StackPanel x:Name="CustomCommandPanel" Visibility="Collapsed" Margin="0,0,0,16">
+                    <TextBlock Text="커스텀 명령어"
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               Margin="0,0,0,8"/>
+                    <TextBox x:Name="CustomCommandTextBox"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="예: my-ai-cli --option"
+                             TextChanged="OnOptionChanged"/>
+                </StackPanel>
+
+                <!-- 실행 모드 -->
+                <TextBlock Text="실행 모드"
+                           FontWeight="SemiBold"
+                           FontSize="13"
+                           Margin="0,0,0,8"/>
+
+                <CheckBox x:Name="AutoModeCheck"
+                          Margin="0,0,0,4"
+                          Click="OnOptionChanged">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="자동 모드"/>
+                        <TextBlock x:Name="AutoModeFlagText"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                   FontSize="11"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </CheckBox>
+                <TextBlock Text="권한 확인 없이 자동으로 작업을 수행합니다 (주의 필요)"
+                           FontSize="11"
+                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                           Margin="24,0,0,16"/>
+
+                <!-- Claude 전용 옵션 -->
+                <StackPanel x:Name="ClaudeOptionsPanel" Margin="0,0,0,16">
+                    <TextBlock Text="Claude Code 옵션"
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               Margin="0,0,0,8"/>
+
+                    <CheckBox x:Name="PrintCheck"
+                              Content="출력만 (--print) - 대화형 모드 없이 결과만 출력"
+                              Margin="0,0,0,8"
+                              Click="OnOptionChanged"/>
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="출력 형식:"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <ComboBox x:Name="OutputFormatCombo"
+                                  Grid.Column="1"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  SelectionChanged="OnComboChanged">
+                            <ComboBoxItem Content="기본 (대화형)" Tag="" IsSelected="True"/>
+                            <ComboBoxItem Content="텍스트" Tag="--output-format text"/>
+                            <ComboBoxItem Content="JSON" Tag="--output-format json"/>
+                            <ComboBoxItem Content="스트림 JSON" Tag="--output-format stream-json"/>
+                        </ComboBox>
+                    </Grid>
+
+                    <CheckBox x:Name="VerboseCheck"
+                              Content="상세 출력 (--verbose)"
+                              Margin="0,0,0,8"
+                              Click="OnOptionChanged"/>
+
+                    <CheckBox x:Name="ResumeCheck"
+                              Content="이전 대화 이어하기 (--resume)"
+                              Margin="0,0,0,8"
+                              Click="OnOptionChanged"/>
+
+                    <CheckBox x:Name="ContinueCheck"
+                              Content="가장 최근 대화 계속 (--continue)"
+                              Margin="0,0,0,8"
+                              Click="OnOptionChanged"/>
+                </StackPanel>
+
+                <!-- Codex 전용 옵션 -->
+                <StackPanel x:Name="CodexOptionsPanel" Visibility="Collapsed" Margin="0,0,0,16">
+                    <TextBlock Text="Codex CLI 옵션"
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               Margin="0,0,0,8"/>
+
+                    <CheckBox x:Name="CodexQuietCheck"
+                              Content="조용한 모드 (--quiet)"
+                              Margin="0,0,0,8"
+                              Click="OnOptionChanged"/>
+                </StackPanel>
+
+                <!-- Gemini 전용 옵션 -->
+                <StackPanel x:Name="GeminiOptionsPanel" Visibility="Collapsed" Margin="0,0,0,16">
+                    <TextBlock Text="Gemini CLI 옵션"
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               Margin="0,0,0,8"/>
+
+                    <CheckBox x:Name="GeminiYoloCheck"
+                              Content="YOLO 모드 (-y) - 모든 확인 스킵"
+                              Margin="0,0,0,8"
+                              Click="OnOptionChanged"/>
+                </StackPanel>
+
+                <!-- Aider 전용 옵션 -->
+                <StackPanel x:Name="AiderOptionsPanel" Visibility="Collapsed" Margin="0,0,0,16">
+                    <TextBlock Text="Aider 옵션"
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               Margin="0,0,0,8"/>
+
+                    <CheckBox x:Name="AiderAutoCommitCheck"
+                              Content="자동 커밋 (--auto-commits)"
+                              Margin="0,0,0,8"
+                              Click="OnOptionChanged"/>
+
+                    <CheckBox x:Name="AiderNoPrettyCheck"
+                              Content="포맷팅 없음 (--no-pretty)"
+                              Margin="0,0,0,8"
+                              Click="OnOptionChanged"/>
+                </StackPanel>
+
+                <!-- 추가 플래그 입력 -->
+                <TextBlock Text="추가 플래그 (선택사항)"
+                           FontWeight="SemiBold"
+                           FontSize="13"
+                           Margin="0,0,0,8"/>
+                <TextBox x:Name="AdditionalFlagsTextBox"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="예: --max-turns 10 --no-config"
+                         Margin="0,0,0,16"
+                         TextChanged="OnOptionChanged"/>
+
+                <!-- 초기 프롬프트 -->
+                <TextBlock Text="초기 프롬프트 (선택사항)"
+                           FontWeight="SemiBold"
+                           FontSize="13"
+                           Margin="0,0,0,8"/>
+                <TextBox x:Name="InitialPromptTextBox"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="실행 시 바로 전달할 프롬프트..."
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         Height="60"
+                         VerticalScrollBarVisibility="Auto"
+                         Margin="0,0,0,8"
+                         TextChanged="OnOptionChanged"/>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 생성된 명령어 미리보기 (편집 가능) -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource MaterialDesignToolBarBackground}"
+                CornerRadius="4"
+                Padding="12"
+                Margin="0,16,0,16">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <TextBlock Text="실행 명령어"
+                               FontWeight="SemiBold"
+                               FontSize="11"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}"/>
+                    <TextBlock Text="(직접 편집 가능)"
+                               FontSize="10"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}"
+                               Margin="8,0,0,0"
+                               Opacity="0.7"/>
+                </StackPanel>
+                <TextBox x:Name="CommandPreviewTextBox"
+                         Grid.Row="1"
+                         FontFamily="Consolas"
+                         FontSize="12"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         TextWrapping="Wrap"
+                         Text="claude"
+                         TextChanged="CommandPreviewTextBox_TextChanged"/>
+            </Grid>
+        </Border>
+
+        <!-- 버튼 -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0"
+                    Content="복사"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Click="CopyCommand_Click"
+                    ToolTip="명령어를 클립보드에 복사"/>
+
+            <Button Grid.Column="2"
+                    Content="취소"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    IsCancel="True"
+                    Click="Cancel_Click"
+                    Margin="0,0,8,0"/>
+
+            <Button Grid.Column="3"
+                    Content="확인"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    IsDefault="True"
+                    Click="Run_Click"/>
+        </Grid>
+    </Grid>
+</Window>
