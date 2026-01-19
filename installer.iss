@@ -1,35 +1,33 @@
-#define MyAppName "Nebula Terminal"
+; TermSnap Installer Script
+; Inno Setup 6.0 or higher required
+
+#define MyAppName "TermSnap"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "Nebula Terminal Team"
-#define MyAppURL "https://github.com/Dannykkh/nebula-terminal"
-#define MyAppExeName "Nebula.exe"
+#define MyAppPublisher "Dannykkh"
+#define MyAppURL "https://github.com/Dannykkh/TermSnap"
+#define MyAppExeName "TermSnap.exe"
 
 [Setup]
-; 앱 기본 정보
-AppId={{A7B8C9D0-E1F2-4A5B-8C9D-0E1F2A3B4C5D}
+; NOTE: The value of AppId uniquely identifies this application.
+AppId={{7F8E9A1B-2C3D-4E5F-6A7B-8C9D0E1F2A3B}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
-AppSupportURL={#MyAppURL}
-AppUpdatesURL={#MyAppURL}
+AppSupportURL={#MyAppURL}/issues
+AppUpdatesURL={#MyAppURL}/releases
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=LICENSE
-; 아이콘 설정 (변환 후 주석 해제)
-; SetupIconFile=assets\icon.ico
-OutputDir=installer_output
-OutputBaseFilename=Nebula-Terminal-Setup-v{#MyAppVersion}
+OutputDir=installer
+OutputBaseFilename=TermSnap-Setup-v{#MyAppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
-
-; 권한 설정
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 
 [Languages]
 Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
@@ -40,9 +38,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 6.1; Check: not IsAdminInstallMode
 
 [Files]
-; 메인 실행 파일 및 DLL
-Source: "src\LinuxServerAI\bin\Release\net8.0-windows\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+Source: "publish\win-x64\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -53,19 +52,21 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
-[UninstallDelete]
-Type: filesandordirs; Name: "{userappdata}\Nebula"
+[Registry]
+Root: HKCU; Subkey: "Software\{#MyAppPublisher}\{#MyAppName}"; Flags: uninsdeletekeyifempty
+Root: HKCU; Subkey: "Software\{#MyAppPublisher}\{#MyAppName}\Settings"; Flags: uninsdeletekey
 
 [Code]
 function InitializeSetup(): Boolean;
+var
+  Version: TWindowsVersion;
 begin
-  Result := True;
-end;
-
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-  if CurStep = ssPostInstall then
+  GetWindowsVersionEx(Version);
+  if Version.Major < 10 then
   begin
-    // 설치 후 추가 작업이 필요한 경우 여기에 작성
-  end;
+    MsgBox('TermSnap requires Windows 10 or higher.', mbError, MB_OK);
+    Result := False;
+  end
+  else
+    Result := True;
 end;

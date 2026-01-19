@@ -8,6 +8,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>TermSnap</AssemblyName>
     <RootNamespace>TermSnap</RootNamespace>
+    <!-- Version Information -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>TermSnap</Product>
+    <Company>Dannykkh</Company>
+    <Copyright>Copyright © 2026 Dannykkh</Copyright>
+    <Description>AI-powered terminal assistant for SSH and local development</Description>
     <!-- MCP 서버 모드를 위한 커스텀 Main 사용 -->
     <StartupObject>TermSnap.Program</StartupObject>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
