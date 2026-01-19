@@ -16,6 +16,11 @@
     <Company>Dannykkh</Company>
     <Copyright>Copyright © 2026 Dannykkh</Copyright>
     <Description>AI-powered terminal assistant for SSH and local development</Description>
+    <!-- License & Repository -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Dannykkh/TermSnap</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/Dannykkh/TermSnap</PackageProjectUrl>
     <!-- MCP 서버 모드를 위한 커스텀 Main 사용 -->
     <StartupObject>TermSnap.Program</StartupObject>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>

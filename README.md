@@ -4,7 +4,7 @@
 
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)
 ![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows)
-![License](https://img.shields.io/badge/License-Proprietary-orange)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 ## 프로젝트 개요
 
@@ -357,25 +357,30 @@ pip install aider-chat
 
 ## 라이선스
 
-**TermSnap Proprietary License**
+**MIT License**
 
-### 무료 사용 가능 (개인 & 비영리)
-- ✅ 개인이 집에서 서버 관리용으로 사용
-- ✅ 학생이 학습 및 과제용으로 사용
-- ✅ 오픈소스 프로젝트 개발용으로 사용
-- ✅ 비영리 단체에서 사용
+TermSnap은 MIT 라이센스 하에 배포되는 오픈소스 프로젝트입니다.
 
-### 상업적 라이센스 필요 (유료)
-- ❌ IT 회사에서 고객 서버 관리용으로 사용
-- ❌ 프리랜서가 유료 컨설팅 업무용으로 사용
-- ❌ 스타트업에서 인프라 관리용으로 사용
-- ❌ 직장에서 회사 서버 관리용으로 사용
-- ❌ 유료 제품/서비스에 통합
+```
+Copyright (c) 2026 Dannykkh
 
-### 상업적 라이센스 문의
-상업적 사용을 원하시면 라이센스 구매를 문의해주세요:
-- 📧 Email: happyguy81@gmail.com
-- 💬 [GitHub Issues](https://github.com/Dannykkh/TermSnap/issues)
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+```
+
+### MIT 라이센스란?
+- ✅ **상업적 사용 가능**: 회사에서 자유롭게 사용 가능
+- ✅ **수정 가능**: 코드를 자유롭게 수정 및 개선 가능
+- ✅ **배포 가능**: 수정한 버전을 자유롭게 배포 가능
+- ✅ **사유 소프트웨어 통합 가능**: 사유 제품에 포함 가능
+- ⚠️ **라이센스 고지 필수**: 저작권 표시와 라이센스 사본 포함 필요
 
 자세한 내용은 [LICENSE](LICENSE) 파일을 참고하세요.
 

@@ -1,132 +1,21 @@
-TermSnap License Agreement
+MIT License
+
 Copyright (c) 2026 Dannykkh
 
-==============================================================================
-TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
-==============================================================================
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. DEFINITIONS
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-   "Personal Use" means use by an individual for personal, non-commercial
-   purposes that does not generate revenue or provide commercial advantage
-   or monetary compensation.
-
-   "Non-Commercial Use" means use by non-profit organizations, educational
-   institutions, or open-source projects that do not generate revenue or
-   provide commercial advantage or monetary compensation.
-
-   "Commercial Use" means:
-   - Use by a for-profit organization or company
-   - Use that generates revenue or provides commercial advantage
-   - Use in a product or service that is sold or licensed
-   - Use by individuals in the course of their employment by a commercial entity
-   - Use by contractors or consultants providing services to commercial entities
-
-   "Software" means the TermSnap application and all associated
-   documentation, source code, and binary distributions.
-
-2. LICENSE GRANT
-
-   2.1 Personal and Non-Commercial Use (Free)
-
-   Subject to the terms and conditions of this License, you are granted a
-   free, worldwide, non-exclusive license to:
-   - Download, install, and use the Software for Personal Use
-   - Use the Software for Non-Commercial Use
-   - Modify the Software for your personal use (modifications must remain private)
-   - Study the source code for educational purposes
-
-   2.2 Commercial Use (License Required)
-
-   Commercial Use of the Software requires a separate commercial license.
-   To obtain a commercial license, please contact: happyguy81@gmail.com
-
-   Without a valid commercial license, you may NOT:
-   - Use the Software in any commercial environment or for commercial purposes
-   - Redistribute the Software or any derivative works commercially
-   - Include the Software in any commercial product or service
-   - Use the Software to provide services to commercial entities
-
-3. RESTRICTIONS
-
-   You may NOT:
-   - Remove or alter any copyright notices, trademarks, or license information
-   - Reverse engineer, decompile, or disassemble the Software (except as
-     permitted by applicable law)
-   - Redistribute the Software or derivative works without explicit written
-     permission
-   - Sublicense, sell, rent, lease, or transfer the Software
-   - Use the Software in any way that violates applicable laws or regulations
-   - Claim ownership of the Software or any derivative works
-   - Use the Software's name, logo, or trademarks without permission
-
-4. DISTRIBUTION
-
-   - Source code distribution is permitted for non-commercial purposes only
-   - Binary distribution requires explicit written permission
-   - Modified versions must be clearly marked as such and cannot use the
-     "TermSnap" name without permission
-   - All distributions must include this license file
-
-5. CONTRIBUTIONS
-
-   By submitting contributions (code, documentation, etc.) to this project:
-   - You grant the copyright holder a perpetual, worldwide, non-exclusive,
-     royalty-free license to use, modify, and distribute your contributions
-   - You represent that you have the right to submit the contributions
-   - Your contributions will be subject to this same license
-
-6. DISCLAIMER OF WARRANTY
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   THE SOFTWARE.
-
-7. LIMITATION OF LIABILITY
-
-   IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY SPECIAL, INCIDENTAL,
-   INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION,
-   DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
-   INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR
-   INABILITY TO USE THE SOFTWARE, EVEN IF THE COPYRIGHT HOLDER HAS BEEN ADVISED
-   OF THE POSSIBILITY OF SUCH DAMAGES.
-
-8. TERMINATION
-
-   This license is effective until terminated. Your rights under this license
-   will terminate automatically without notice if you fail to comply with any
-   of its terms. Upon termination, you must immediately cease all use of the
-   Software and destroy all copies.
-
-9. GOVERNING LAW
-
-   This License shall be governed by and construed in accordance with the laws
-   of Republic of Korea, without regard to its conflict of law provisions.
-
-10. CONTACT INFORMATION
-
-    For commercial licensing inquiries or questions about this license:
-    Email: happyguy81@gmail.com
-    GitHub: https://github.com/Dannykkh/TermSnap
-
-==============================================================================
-
-EXAMPLES OF ALLOWED USE:
-- ✅ Individual using it at home for server management
-- ✅ Student using it for learning or coursework
-- ✅ Open-source project using it for development
-- ✅ Non-profit organization using it for their operations
-
-EXAMPLES OF COMMERCIAL USE (LICENSE REQUIRED):
-- ❌ IT company using it to manage client servers
-- ❌ Freelancer using it for paid consulting work
-- ❌ Startup using it for their infrastructure
-- ❌ Employee using it at work for company servers
-- ❌ Integrating it into a paid product or service
-
-If you're unsure whether your use case qualifies as Commercial Use,
-please contact us for clarification.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
