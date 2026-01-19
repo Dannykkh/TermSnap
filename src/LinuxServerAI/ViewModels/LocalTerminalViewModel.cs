@@ -52,6 +52,13 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     private string _aicliElapsedTime = string.Empty;
     private string _aicliProgramName = string.Empty;
 
+    // 리소스 모니터링
+    private DispatcherTimer? _resourceMonitorTimer;
+    private DateTime _lastCpuTime = DateTime.MinValue;
+    private TimeSpan _lastTotalProcessorTime = TimeSpan.Zero;
+    private double _cpuUsage = 0;
+    private long _memoryUsageMB = 0;
+
     // 인터랙티브 모드 원시 출력 이벤트 (터미널 컨트롤용)
     public event Action<string>? RawOutputReceived;
 
@@ -209,6 +216,24 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     }
 
     /// <summary>
+    /// CPU 사용률 (%)
+    /// </summary>
+    public double CpuUsage
+    {
+        get => _cpuUsage;
+        private set { _cpuUsage = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// 메모리 사용량 (MB)
+    /// </summary>
+    public long MemoryUsageMB
+    {
+        get => _memoryUsageMB;
+        private set { _memoryUsageMB = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
     /// 로컬 터미널 스니펫 목록
     /// </summary>
     public ObservableCollection<CommandSnippet> LocalSnippets { get; } = new();
@@ -301,6 +326,9 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             _shellType = _selectedShell.ShellType;
             _tabHeader = _selectedShell.DisplayName;
         }
+
+        // 리소스 모니터링 타이머 시작
+        StartResourceMonitoring();
 
         AddMessage("로컬 터미널이 준비되었습니다.", false, MessageType.Info);
     }
@@ -1117,6 +1145,8 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     {
         StopFlushTimer();
         StopElapsedTimer();
+        _resourceMonitorTimer?.Stop();
+        _resourceMonitorTimer = null;
         Disconnect();
     }
 
@@ -1169,4 +1199,70 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
 
         return null;
     }
+
+    #region 리소스 모니터링
+
+    /// <summary>
+    /// 리소스 모니터링 타이머 시작
+    /// </summary>
+    private void StartResourceMonitoring()
+    {
+        _resourceMonitorTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1) // 1초마다 업데이트
+        };
+        _resourceMonitorTimer.Tick += OnResourceMonitorTimerTick;
+        _resourceMonitorTimer.Start();
+
+        // 초기값 설정
+        UpdateResourceUsage();
+    }
+
+    /// <summary>
+    /// 리소스 모니터링 타이머 틱
+    /// </summary>
+    private void OnResourceMonitorTimerTick(object? sender, EventArgs e)
+    {
+        UpdateResourceUsage();
+    }
+
+    /// <summary>
+    /// 리소스 사용량 업데이트
+    /// </summary>
+    private void UpdateResourceUsage()
+    {
+        try
+        {
+            using var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+
+            // 메모리 사용량 (MB)
+            MemoryUsageMB = currentProcess.WorkingSet64 / 1024 / 1024;
+
+            // CPU 사용률 계산
+            var currentTime = DateTime.UtcNow;
+            var currentTotalProcessorTime = currentProcess.TotalProcessorTime;
+
+            if (_lastCpuTime != DateTime.MinValue)
+            {
+                var timeDiff = (currentTime - _lastCpuTime).TotalMilliseconds;
+                var cpuDiff = (currentTotalProcessorTime - _lastTotalProcessorTime).TotalMilliseconds;
+
+                if (timeDiff > 0)
+                {
+                    // CPU 사용률 = (프로세스 CPU 시간 증가량 / 실제 시간 증가량) / 코어 수 * 100
+                    var cpuPercentage = (cpuDiff / timeDiff / Environment.ProcessorCount) * 100;
+                    CpuUsage = Math.Round(Math.Min(100, Math.Max(0, cpuPercentage)), 1);
+                }
+            }
+
+            _lastCpuTime = currentTime;
+            _lastTotalProcessorTime = currentTotalProcessorTime;
+        }
+        catch
+        {
+            // 리소스 정보를 가져오는 중 오류 발생 시 무시
+        }
+    }
+
+    #endregion
 }

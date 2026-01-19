@@ -18,6 +18,7 @@ public class TerminalBuffer
     private bool _isAlternateScreen = false;
     private int _savedCursorX;
     private int _savedCursorY;
+    private bool _lineNeedsClearAfterCR = false; // 캐리지 리턴 후 줄 정리 필요
 
     public int Columns { get; private set; }
     public int Rows { get; private set; }
@@ -135,6 +136,19 @@ public class TerminalBuffer
     /// </summary>
     public void WriteChar(char c)
     {
+        // 캐리지 리턴 후 첫 번째 쓰기: 커서부터 줄 끝까지 지우기
+        if (_lineNeedsClearAfterCR)
+        {
+            for (int x = CursorX; x < Columns; x++)
+            {
+                if (CursorY >= 0 && CursorY < Rows)
+                {
+                    _cells[CursorY, x] = CreateEmptyCell();
+                }
+            }
+            _lineNeedsClearAfterCR = false;
+        }
+
         bool isWide = CharWidthHelper.IsWideChar(c);
         int charWidth = isWide ? 2 : 1;
 
@@ -197,6 +211,7 @@ public class TerminalBuffer
     /// </summary>
     public void LineFeed()
     {
+        _lineNeedsClearAfterCR = false; // 새 줄로 이동하므로 플래그 리셋
         CursorY++;
         if (CursorY >= Rows)
         {
@@ -212,6 +227,8 @@ public class TerminalBuffer
     public void CarriageReturn()
     {
         CursorX = 0;
+        // 다음 쓰기 작업 전에 줄의 나머지 부분을 지워야 함
+        _lineNeedsClearAfterCR = true;
         BufferChanged?.Invoke();
     }
 
@@ -301,6 +318,7 @@ public class TerminalBuffer
     /// </summary>
     public void EraseToEndOfLine()
     {
+        _lineNeedsClearAfterCR = false; // 명시적 지우기이므로 플래그 리셋
         for (int x = CursorX; x < Columns; x++)
         {
             _cells[CursorY, x] = CreateEmptyCell();
@@ -313,6 +331,7 @@ public class TerminalBuffer
     /// </summary>
     public void EraseToStartOfLine()
     {
+        _lineNeedsClearAfterCR = false; // 명시적 지우기이므로 플래그 리셋
         for (int x = 0; x <= CursorX && x < Columns; x++)
         {
             _cells[CursorY, x] = CreateEmptyCell();
@@ -325,6 +344,7 @@ public class TerminalBuffer
     /// </summary>
     public void EraseLine()
     {
+        _lineNeedsClearAfterCR = false; // 명시적 지우기이므로 플래그 리셋
         for (int x = 0; x < Columns; x++)
         {
             _cells[CursorY, x] = CreateEmptyCell();

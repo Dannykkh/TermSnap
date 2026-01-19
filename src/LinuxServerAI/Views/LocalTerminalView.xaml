@@ -566,12 +566,15 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Grid.Column="2"
-                                   Text="출력 영역 클릭 후 키 입력 또는 아래 텍스트 입력"
-                                   FontSize="11"
-                                   Foreground="#90CAF9"
-                                   VerticalAlignment="Center"
-                                   Margin="8,0"/>
+                        <StackPanel Grid.Column="2" Orientation="Vertical" Margin="8,0">
+                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#4FC3F7" Margin="0,0,0,2">
+                                <Run Text="✅ 터미널 화면을 클릭하여 입력"/>
+                                <Run Text=" (영문, /명령어, 방향키)" Foreground="#90CAF9"/>
+                            </TextBlock>
+                            <TextBlock FontSize="10" Foreground="#81D4FA">
+                                <Run Text="📝 한글/긴 문장은 아래 입력창 사용"/>
+                            </TextBlock>
+                        </StackPanel>
 
                         <Button Grid.Column="3"
                                 Content="종료"
@@ -583,16 +586,24 @@
                                 Height="28"/>
                     </Grid>
 
-                    <!-- 하단: 텍스트 입력 (한글 등) -->
+                    <!-- 하단: 보조 입력창 (한글/이미지 등) -->
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBox Grid.Column="0"
+                        <TextBlock Grid.Column="0"
+                                   Text="📝"
+                                   FontSize="16"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
+                                   ToolTip="한글/이미지 등 복잡한 입력용"/>
+
+                        <TextBox Grid.Column="1"
                                  x:Name="InteractiveInputTextBox"
-                                 FontSize="14"
+                                 FontSize="13"
                                  FontFamily="Consolas"
                                  Padding="8,6"
                                  Background="#0D47A1"
@@ -602,24 +613,21 @@
                                  BorderThickness="1"
                                  AcceptsReturn="False"
                                  TextWrapping="Wrap"
-                                 MinHeight="36"
-                                 MaxHeight="100"
+                                 Height="32"
                                  VerticalContentAlignment="Center"
-                                 VerticalScrollBarVisibility="Auto"
                                  PreviewKeyDown="InteractiveInputTextBox_PreviewKeyDown"
-                                 materialDesign:HintAssist.Hint="Enter=전송, Shift/Ctrl+Enter=줄바꿈, Ctrl+V=이미지"
+                                 materialDesign:HintAssist.Hint="[보조 입력] 한글/긴 문장 입력 (Enter=전송, Shift+Enter=줄바꿈)"
                                  materialDesign:HintAssist.Foreground="#64B5F6"/>
 
-                        <Button Grid.Column="1"
+                        <Button Grid.Column="2"
                                 Content="전송"
                                 Click="SendInteractiveInput_Click"
                                 Background="#2196F3"
                                 Foreground="White"
-                                Padding="15,8"
+                                Padding="12,6"
                                 Margin="8,0,0,0"
                                 BorderThickness="0"
-                                VerticalAlignment="Stretch"
-                                MinHeight="36"/>
+                                Height="32"/>
                     </Grid>
                 </Grid>
             </Border>
@@ -634,6 +642,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
@@ -702,7 +711,37 @@
                     </Button>
                 </StackPanel>
 
-                <ProgressBar Grid.Column="3"
+                <!-- 리소스 사용량 -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="10,0">
+                    <materialDesign:PackIcon Kind="Memory"
+                                             Width="16" Height="16"
+                                             VerticalAlignment="Center"
+                                             Foreground="#64B5F6"
+                                             Margin="0,0,4,0"
+                                             ToolTip="메모리 사용량"/>
+                    <TextBlock VerticalAlignment="Center"
+                               FontFamily="Consolas"
+                               FontSize="12"
+                               Margin="0,0,12,0">
+                        <Run Text="{Binding MemoryUsageMB, Mode=OneWay, StringFormat='{}{0:N0}'}"/>
+                        <Run Text="MB" Foreground="#90CAF9"/>
+                    </TextBlock>
+
+                    <materialDesign:PackIcon Kind="Cpu64Bit"
+                                             Width="16" Height="16"
+                                             VerticalAlignment="Center"
+                                             Foreground="#81C784"
+                                             Margin="0,0,4,0"
+                                             ToolTip="CPU 사용률"/>
+                    <TextBlock VerticalAlignment="Center"
+                               FontFamily="Consolas"
+                               FontSize="12">
+                        <Run Text="{Binding CpuUsage, Mode=OneWay, StringFormat='{}{0:F1}'}"/>
+                        <Run Text="%" Foreground="#A5D6A7"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <ProgressBar Grid.Column="4"
                              Width="100"
                              IsIndeterminate="True"
                              Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>

@@ -28,6 +28,10 @@ public partial class FileTreePanel : UserControl, INotifyPropertyChanged
     private SftpClient? _sftpClient;
     private SftpService? _sftpService;
 
+    // 클립보드 (복사/잘라내기)
+    private FileTreeItem? _clipboardItem;
+    private bool _isCutOperation; // true = 잘라내기, false = 복사
+
     // FileSystemWatcher for auto-refresh
     private FileSystemWatcher? _fileWatcher;
     private readonly DispatcherTimer _watcherDebounceTimer;
@@ -409,6 +413,45 @@ public partial class FileTreePanel : UserControl, INotifyPropertyChanged
     }
 
     /// <summary>
+    /// 키보드 단축키 처리
+    /// </summary>
+    private void FileTree_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (FileTree.SelectedItem is not FileTreeItem item) return;
+
+        // F2: 이름 변경
+        if (e.Key == Key.F2)
+        {
+            ContextMenu_Rename_Click(sender, e);
+            e.Handled = true;
+        }
+        // Delete: 삭제
+        else if (e.Key == Key.Delete)
+        {
+            ContextMenu_Delete_Click(sender, e);
+            e.Handled = true;
+        }
+        // Ctrl+C: 복사
+        else if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            ContextMenu_Copy_Click(sender, e);
+            e.Handled = true;
+        }
+        // Ctrl+X: 잘라내기
+        else if (e.Key == Key.X && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            ContextMenu_Cut_Click(sender, e);
+            e.Handled = true;
+        }
+        // Ctrl+V: 붙여넣기
+        else if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            ContextMenu_Paste_Click(sender, e);
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
     /// 상위 폴더로 이동
     /// </summary>
     private async void GoUpButton_Click(object sender, RoutedEventArgs e)
@@ -701,6 +744,165 @@ public partial class FileTreePanel : UserControl, INotifyPropertyChanged
         if (FileTree.SelectedItem is FileTreeItem item)
         {
             Clipboard.SetText(item.FullPath);
+        }
+    }
+
+    /// <summary>
+    /// 파일/폴더 복사 (Ctrl+C)
+    /// </summary>
+    private void ContextMenu_Copy_Click(object sender, RoutedEventArgs e)
+    {
+        if (FileTree.SelectedItem is FileTreeItem item)
+        {
+            _clipboardItem = item;
+            _isCutOperation = false;
+        }
+    }
+
+    /// <summary>
+    /// 파일/폴더 잘라내기 (Ctrl+X)
+    /// </summary>
+    private void ContextMenu_Cut_Click(object sender, RoutedEventArgs e)
+    {
+        if (FileTree.SelectedItem is FileTreeItem item)
+        {
+            _clipboardItem = item;
+            _isCutOperation = true;
+        }
+    }
+
+    /// <summary>
+    /// 파일/폴더 붙여넣기 (Ctrl+V)
+    /// </summary>
+    private async void ContextMenu_Paste_Click(object sender, RoutedEventArgs e)
+    {
+        if (_clipboardItem == null) return;
+
+        var targetPath = CurrentPath;
+        var sourcePath = _clipboardItem.FullPath;
+        var fileName = _isLocal
+            ? Path.GetFileName(sourcePath)
+            : sourcePath.Substring(sourcePath.LastIndexOf('/') + 1);
+
+        var destinationPath = _isLocal
+            ? Path.Combine(targetPath, fileName)
+            : targetPath.TrimEnd('/') + "/" + fileName;
+
+        try
+        {
+            if (_isLocal)
+            {
+                // 로컬 복사/이동
+                if (_clipboardItem.IsDirectory)
+                {
+                    if (_isCutOperation)
+                        Directory.Move(sourcePath, destinationPath);
+                    else
+                        CopyDirectory(sourcePath, destinationPath);
+                }
+                else
+                {
+                    if (_isCutOperation)
+                        File.Move(sourcePath, destinationPath);
+                    else
+                        File.Copy(sourcePath, destinationPath);
+                }
+            }
+            else if (_sftpClient != null)
+            {
+                // 원격 복사/이동
+                if (_clipboardItem.IsDirectory)
+                {
+                    if (_isCutOperation)
+                    {
+                        // SFTP에는 Move가 없으므로 Rename 사용
+                        _sftpClient.RenameFile(sourcePath, destinationPath);
+                    }
+                    else
+                    {
+                        // 디렉토리 복사 (재귀적)
+                        CopyDirectoryRemote(sourcePath, destinationPath);
+                    }
+                }
+                else
+                {
+                    if (_isCutOperation)
+                    {
+                        _sftpClient.RenameFile(sourcePath, destinationPath);
+                    }
+                    else
+                    {
+                        // 파일 복사
+                        using var sourceStream = _sftpClient.OpenRead(sourcePath);
+                        using var destStream = _sftpClient.Create(destinationPath);
+                        sourceStream.CopyTo(destStream);
+                    }
+                }
+            }
+
+            // 잘라내기 작업 후 클립보드 비우기
+            if (_isCutOperation)
+            {
+                _clipboardItem = null;
+            }
+
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"붙여넣기 실패: {ex.Message}", "오류",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// 로컬 디렉토리 복사 (재귀적)
+    /// </summary>
+    private void CopyDirectory(string sourceDir, string destDir)
+    {
+        Directory.CreateDirectory(destDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var fileName = Path.GetFileName(file);
+            var destFile = Path.Combine(destDir, fileName);
+            File.Copy(file, destFile);
+        }
+
+        foreach (var dir in Directory.GetDirectories(sourceDir))
+        {
+            var dirName = Path.GetFileName(dir);
+            var destSubDir = Path.Combine(destDir, dirName);
+            CopyDirectory(dir, destSubDir);
+        }
+    }
+
+    /// <summary>
+    /// 원격 디렉토리 복사 (재귀적)
+    /// </summary>
+    private void CopyDirectoryRemote(string sourceDir, string destDir)
+    {
+        if (_sftpClient == null) return;
+
+        _sftpClient.CreateDirectory(destDir);
+
+        foreach (var file in _sftpClient.ListDirectory(sourceDir))
+        {
+            if (file.Name == "." || file.Name == "..") continue;
+
+            var sourcePath = sourceDir.TrimEnd('/') + "/" + file.Name;
+            var destPath = destDir.TrimEnd('/') + "/" + file.Name;
+
+            if (file.IsDirectory)
+            {
+                CopyDirectoryRemote(sourcePath, destPath);
+            }
+            else
+            {
+                using var sourceStream = _sftpClient.OpenRead(sourcePath);
+                using var destStream = _sftpClient.Create(destPath);
+                sourceStream.CopyTo(destStream);
+            }
         }
     }
 

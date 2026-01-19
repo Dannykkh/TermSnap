@@ -1,10 +1,10 @@
-# Nebula Terminal
+# TermSnap
 
 > **"PuTTY를 더 편하게"** - AI 기반 AI 기반 터미널 도우미
 
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)
 ![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows)
-![License](https://img.shields.io/badge/License-MIT-green)
+![License](https://img.shields.io/badge/License-Proprietary-orange)
 
 ## 프로젝트 개요
 
@@ -19,7 +19,7 @@
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
-│                         Nebula Terminal                                   │
+│                         TermSnap                                   │
 ├───────────────────────────────────────────────────────────────────────┤
 │  [탭 1]  [탭 2]  [탭 3]  [+]                                            │
 ├───────────────────────────────────────────────────────────────────────┤
@@ -156,7 +156,7 @@ MCP(Model Context Protocol) 기반 멀티 에이전트 실행 기능:
 ### 설치 방법
 
 #### 방법 1: 설치 파일 사용 (권장)
-1. [Releases](https://github.com/Dannykkh/nebula-terminal/releases) 페이지에서 최신 `.exe` 다운로드
+1. [Releases](https://github.com/Dannykkh/TermSnap/releases) 페이지에서 최신 `.exe` 다운로드
 2. 설치 마법사 실행
 3. 프로그램 실행
 4. 설정창에서 AI API 키 입력
@@ -164,24 +164,24 @@ MCP(Model Context Protocol) 기반 멀티 에이전트 실행 기능:
 #### 방법 2: 소스코드 빌드
 ```bash
 # 1. 저장소 클론
-git clone https://github.com/Dannykkh/nebula-terminal.git
-cd nebula-terminal
+git clone https://github.com/Dannykkh/TermSnap.git
+cd TermSnap
 
 # 2. 빌드
 dotnet build
 
 # 3. 실행
-dotnet run --project src/Nebula Terminal/Nebula Terminal.csproj
+dotnet run --project src/TermSnap/TermSnap.csproj
 
 # 4. (선택) 릴리스 빌드
-dotnet publish src/Nebula Terminal/Nebula Terminal.csproj -c Release -r win-x64 --self-contained
+dotnet publish src/TermSnap/TermSnap.csproj -c Release -r win-x64 --self-contained
 ```
 
 ### 빠른 시작 (5분 안에)
 
 1. **프로그램 실행**
    ```
-   Nebula Terminal.exe 실행
+   TermSnap.exe 실행
    ```
 
 2. **AI API 키 설정**
@@ -205,7 +205,7 @@ dotnet publish src/Nebula Terminal/Nebula Terminal.csproj -c Release -r win-x64 
 
 프로그램 실행 시 자동으로 생성되는 설정 파일 위치:
 ```
-%APPDATA%\Nebula Terminal\config.json
+%APPDATA%\TermSnap\config.json
 ```
 
 설정 파일 예제는 [`config.example.json`](config.example.json) 참고
@@ -237,7 +237,7 @@ AI: df -h | awk '$5 > 80 {print}'
 
 ## 설정
 
-설정 파일: `%APPDATA%/Nebula Terminal/config.json`
+설정 파일: `%APPDATA%/TermSnap/config.json`
 
 ```json
 {
@@ -262,7 +262,7 @@ AI: df -h | awk '$5 > 80 {print}'
 
 ## AI CLI 설치
 
-Nebula Terminal에서 AI CLI를 사용하려면 먼저 해당 CLI를 설치해야 합니다.
+TermSnap에서 AI CLI를 사용하려면 먼저 해당 CLI를 설치해야 합니다.
 앱에서 설치 상태를 자동으로 감지하며, 설치 버튼을 클릭하면 터미널에서 설치를 진행합니다.
 
 ### Claude Code
@@ -297,8 +297,8 @@ pip install aider-chat
 
 이 프로젝트에 기여하고 싶으신가요? 환영합니다! 🎉
 
-1. **버그 리포트**: [Issues](https://github.com/Dannykkh/nebula-terminal/issues)에서 버그 보고
-2. **기능 제안**: [Issues](https://github.com/Dannykkh/nebula-terminal/issues)에서 새 기능 제안
+1. **버그 리포트**: [Issues](https://github.com/Dannykkh/TermSnap/issues)에서 버그 보고
+2. **기능 제안**: [Issues](https://github.com/Dannykkh/TermSnap/issues)에서 새 기능 제안
 3. **코드 기여**:
    ```bash
    # Fork → Clone → Branch → Commit → Push → Pull Request
@@ -357,7 +357,27 @@ pip install aider-chat
 
 ## 라이선스
 
-MIT License - 자세한 내용은 [LICENSE](LICENSE) 참고
+**TermSnap Proprietary License**
+
+### 무료 사용 가능 (개인 & 비영리)
+- ✅ 개인이 집에서 서버 관리용으로 사용
+- ✅ 학생이 학습 및 과제용으로 사용
+- ✅ 오픈소스 프로젝트 개발용으로 사용
+- ✅ 비영리 단체에서 사용
+
+### 상업적 라이센스 필요 (유료)
+- ❌ IT 회사에서 고객 서버 관리용으로 사용
+- ❌ 프리랜서가 유료 컨설팅 업무용으로 사용
+- ❌ 스타트업에서 인프라 관리용으로 사용
+- ❌ 직장에서 회사 서버 관리용으로 사용
+- ❌ 유료 제품/서비스에 통합
+
+### 상업적 라이센스 문의
+상업적 사용을 원하시면 라이센스 구매를 문의해주세요:
+- 📧 Email: happyguy81@gmail.com
+- 💬 [GitHub Issues](https://github.com/Dannykkh/TermSnap/issues)
+
+자세한 내용은 [LICENSE](LICENSE) 파일을 참고하세요.
 
 ## 감사의 말
 
@@ -374,9 +394,9 @@ MIT License - 자세한 내용은 [LICENSE](LICENSE) 참고
 
 ## 지원 및 문의
 
-- 🐛 버그 리포트: [Issues](https://github.com/Dannykkh/nebula-terminal/issues)
-- 💡 기능 제안: [Issues](https://github.com/Dannykkh/nebula-terminal/issues)
-- 💬 토론: [Discussions](https://github.com/Dannykkh/nebula-terminal/discussions)
+- 🐛 버그 리포트: [Issues](https://github.com/Dannykkh/TermSnap/issues)
+- 💡 기능 제안: [Issues](https://github.com/Dannykkh/TermSnap/issues)
+- 💬 토론: [Discussions](https://github.com/Dannykkh/TermSnap/discussions)
 
 ---
 

@@ -66,7 +66,8 @@
                                          Kind="File"
                                          Width="20" Height="20"
                                          VerticalAlignment="Center"
-                                         Margin="0,0,8,0"/>
+                                         Margin="0,0,8,0"
+                                         Foreground="{DynamicResource PrimaryHueMidBrush}"/>
 
                 <!-- 파일명 -->
                 <TextBlock Grid.Column="1"
@@ -76,6 +77,7 @@
                            FontWeight="Medium"
                            VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource MaterialDesignBody}"
                            ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
 
                 <!-- 버튼들 -->
@@ -86,7 +88,8 @@
                             Click="OpenExternal_Click"
                             ToolTip="기본 프로그램으로 열기"
                             Margin="4,0">
-                        <materialDesign:PackIcon Kind="OpenInNew" Width="18" Height="18"/>
+                        <materialDesign:PackIcon Kind="OpenInNew" Width="18" Height="18"
+                                                 Foreground="{DynamicResource PrimaryHueMidBrush}"/>
                     </Button>
 
                     <!-- 닫기 -->
@@ -94,7 +97,8 @@
                             Style="{StaticResource MaterialDesignToolButton}"
                             Click="Close_Click"
                             ToolTip="닫기">
-                        <materialDesign:PackIcon Kind="Close" Width="18" Height="18"/>
+                        <materialDesign:PackIcon Kind="Close" Width="18" Height="18"
+                                                 Foreground="{DynamicResource MaterialDesignBody}"/>
                     </Button>
                 </StackPanel>
             </Grid>
@@ -127,6 +131,7 @@
                          FontFamily="Consolas"
                          FontSize="13"
                          Background="Transparent"
+                         Foreground="{DynamicResource MaterialDesignBody}"
                          BorderThickness="0"
                          TextWrapping="NoWrap"
                          AcceptsReturn="True"
@@ -141,6 +146,7 @@
                 <RichTextBox x:Name="MarkdownContent"
                              IsReadOnly="True"
                              Background="Transparent"
+                             Foreground="{DynamicResource MaterialDesignBody}"
                              BorderThickness="0"
                              FontSize="14"/>
             </ScrollViewer>

@@ -21,6 +21,7 @@
                    x:Name="PromptTextBlock"
                    Text="입력하세요:"
                    FontSize="14"
+                   Foreground="{DynamicResource MaterialDesignBody}"
                    Margin="0,0,0,15"/>
 
         <!-- 입력 -->
@@ -29,6 +30,8 @@
                  materialDesign:HintAssist.Hint="입력"
                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                  FontSize="14"
+                 Foreground="{DynamicResource MaterialDesignBody}"
+                 CaretBrush="{DynamicResource PrimaryHueMidBrush}"
                  VerticalAlignment="Top">
             <TextBox.InputBindings>
                 <KeyBinding Key="Return" Command="{Binding OkCommand}"/>

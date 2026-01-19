@@ -155,7 +155,8 @@
                   TreeViewItem.Expanded="FileTree_Expanded"
                   SelectedItemChanged="FileTree_SelectedItemChanged"
                   MouseDoubleClick="FileTree_MouseDoubleClick"
-                  PreviewMouseRightButtonDown="FileTree_PreviewMouseRightButtonDown">
+                  PreviewMouseRightButtonDown="FileTree_PreviewMouseRightButtonDown"
+                  PreviewKeyDown="FileTree_PreviewKeyDown">
 
             <TreeView.ContextMenu>
                 <ContextMenu>
@@ -187,20 +188,36 @@
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
-                    <MenuItem Header="이름 변경" Click="ContextMenu_Rename_Click">
+                    <MenuItem Header="이름 변경 (F2)" Click="ContextMenu_Rename_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="RenameBox"/>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Header="삭제" Click="ContextMenu_Delete_Click" Foreground="{DynamicResource ErrorBrush}">
+                    <MenuItem Header="삭제 (Delete)" Click="ContextMenu_Delete_Click" Foreground="{DynamicResource ErrorBrush}">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="Delete" Foreground="{DynamicResource ErrorBrush}"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
-                    <MenuItem Header="경로 복사" Click="ContextMenu_CopyPath_Click">
+                    <MenuItem Header="복사 (Ctrl+C)" Click="ContextMenu_Copy_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="ContentCopy"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="잘라내기 (Ctrl+X)" Click="ContextMenu_Cut_Click">
+                        <MenuItem.Icon>
+                            <materialDesign:PackIcon Kind="ContentCut"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="붙여넣기 (Ctrl+V)" Click="ContextMenu_Paste_Click" x:Name="PasteMenuItem">
+                        <MenuItem.Icon>
+                            <materialDesign:PackIcon Kind="ContentPaste"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="경로 복사" Click="ContextMenu_CopyPath_Click">
+                        <MenuItem.Icon>
+                            <materialDesign:PackIcon Kind="ClipboardText"/>
                         </MenuItem.Icon>
                     </MenuItem>
                 </ContextMenu>

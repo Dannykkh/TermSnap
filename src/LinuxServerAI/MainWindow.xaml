@@ -4,7 +4,7 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:views="clr-namespace:Nebula.Views"
         xmlns:vm="clr-namespace:Nebula.ViewModels"
-        Title="Linux Server AI"
+        Title="TermSnap"
         Height="750" Width="1100"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource BackgroundBrush}">
@@ -167,15 +167,6 @@
                                        VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
-                    
-                    <Button Command="{Binding NewLocalTerminalCommand}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="8,6"
-                            Cursor="Hand"
-                            ToolTip="로컬 터미널 (Ctrl+`)">
-                        <materialDesign:PackIcon Kind="Console" Width="18" Height="18" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                    </Button>
 
                     <Button Command="{Binding OpenHistoryCommand}"
                             Background="Transparent"
@@ -193,15 +184,6 @@
                             Cursor="Hand"
                             ToolTip="Q&amp;A 지식베이스">
                         <materialDesign:PackIcon Kind="Database" Width="18" Height="18" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                    </Button>
-
-                    <Button Command="{Binding OpenOrchestratorCommand}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="8,6"
-                            Cursor="Hand"
-                            ToolTip="Claude Code Orchestrator (병렬 처리)">
-                        <materialDesign:PackIcon Kind="AccountGroup" Width="18" Height="18" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
 
                     <Button Command="{Binding OpenSettingsCommand}"
@@ -265,7 +247,6 @@
     <Window.InputBindings>
         <KeyBinding Key="T" Modifiers="Control" Command="{Binding NewTabCommand}"/>
         <KeyBinding Key="W" Modifiers="Control" Command="{Binding CloseTabCommand}" CommandParameter="{Binding SelectedSession}"/>
-        <KeyBinding Key="OemTilde" Modifiers="Control" Command="{Binding NewLocalTerminalCommand}"/>
         <KeyBinding Key="Tab" Modifiers="Control" Command="{Binding NextTabCommand}"/>
         <KeyBinding Key="Tab" Modifiers="Control+Shift" Command="{Binding PrevTabCommand}"/>
         <KeyBinding Key="D1" Modifiers="Control" Command="{Binding GoToTabCommand}" CommandParameter="0"/>

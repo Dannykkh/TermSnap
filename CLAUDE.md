@@ -9,13 +9,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 dotnet build
 
 # 실행
-dotnet run --project src/Nebula Terminal/Nebula Terminal.csproj
+dotnet run --project src/TermSnap/TermSnap.csproj
 
 # 릴리스 빌드
 dotnet build -c Release
 
 # 게시 (Windows 단일 파일)
-dotnet publish src/Nebula Terminal/Nebula Terminal.csproj -c Release -r win-x64 --self-contained
+dotnet publish src/TermSnap/TermSnap.csproj -c Release -r win-x64 --self-contained
 ```
 
 ## Project Vision
@@ -134,7 +134,7 @@ WPF (.NET 8.0) 기반, MVVM 패턴 사용.
 ## Development Notes
 
 - UI 프레임워크: WPF + MaterialDesignThemes
-- 설정 파일: `%APPDATA%/Nebula Terminal/config.json`
+- 설정 파일: `%APPDATA%/TermSnap/config.json`
 - 비밀번호/API 키는 Windows DPAPI로 암호화 저장
 - 위험한 명령어 (rm -rf /, dd 등) 자동 차단 (`ErrorHandler.IsDangerousCommand`)
 - SSH 키: .ppk (PuTTY), .pem (OpenSSH) 모두 지원

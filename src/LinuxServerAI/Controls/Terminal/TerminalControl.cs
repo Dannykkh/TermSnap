@@ -19,9 +19,11 @@ public class TerminalControl : FrameworkElement
     private readonly AnsiParser _parser;
     private readonly DispatcherTimer _cursorTimer;
     private readonly DispatcherTimer _resizeDebounceTimer;
+    private readonly DispatcherTimer _renderThrottleTimer;
     private bool _cursorBlinkState = true;
     private int _pendingResizeCols;
     private int _pendingResizeRows;
+    private bool _renderPending = false;
 
     // 폰트 설정
     private Typeface _typeface = new Typeface("Consolas");
@@ -112,8 +114,15 @@ public class TerminalControl : FrameworkElement
         };
         _resizeDebounceTimer.Tick += OnResizeDebounceTimerTick;
 
-        // 버퍼 변경 시 다시 그리기
-        _buffer.BufferChanged += () => Dispatcher.BeginInvoke(InvalidateVisual);
+        // 렌더링 쓰로틀 타이머 (16ms = 약 60fps)
+        _renderThrottleTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(16)
+        };
+        _renderThrottleTimer.Tick += OnRenderThrottleTimerTick;
+
+        // 버퍼 변경 시 렌더링 요청 (쓰로틀링 적용)
+        _buffer.BufferChanged += RequestRender;
 
         // IME 지원
         InputMethod.SetIsInputMethodEnabled(this, true);
@@ -214,6 +223,40 @@ public class TerminalControl : FrameworkElement
         // 버퍼 리사이즈 및 이벤트 발생
         _buffer.Resize(_pendingResizeCols, _pendingResizeRows);
         TerminalSizeChanged?.Invoke(_pendingResizeCols, _pendingResizeRows);
+    }
+
+    /// <summary>
+    /// 렌더링 요청 (쓰로틀링)
+    /// </summary>
+    private void RequestRender()
+    {
+        if (!_renderPending)
+        {
+            _renderPending = true;
+
+            // 타이머가 실행 중이 아니면 시작
+            if (!_renderThrottleTimer.IsEnabled)
+            {
+                _renderThrottleTimer.Start();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 렌더링 쓰로틀 타이머 만료 시 실제 렌더링 수행
+    /// </summary>
+    private void OnRenderThrottleTimerTick(object? sender, EventArgs e)
+    {
+        if (_renderPending)
+        {
+            _renderPending = false;
+            Dispatcher.BeginInvoke(InvalidateVisual, System.Windows.Threading.DispatcherPriority.Render);
+        }
+        else
+        {
+            // 더 이상 렌더링 요청이 없으면 타이머 중지
+            _renderThrottleTimer.Stop();
+        }
     }
 
     /// <summary>
@@ -1112,6 +1155,7 @@ public class TerminalControl : FrameworkElement
     {
         _cursorTimer.Stop();
         _resizeDebounceTimer.Stop();
+        _renderThrottleTimer.Stop();
     }
 }
 

@@ -489,10 +489,26 @@ public partial class LocalTerminalView : UserControl
     /// <summary>
     /// ViewModel 활성화 시 파일 워처 활성화 및 UI 상태 복원
     /// </summary>
-    private void OnViewModelActivated(object? sender, EventArgs e)
+    private async void OnViewModelActivated(object? sender, EventArgs e)
     {
         // UI 상태 복원 (Visibility)
         RestoreUIState();
+
+        // 파일 트리 경로 복원 (탭마다 독립적)
+        if (DataContext is LocalTerminalViewModel vm &&
+            vm.IsFileTreeVisible &&
+            !string.IsNullOrEmpty(vm.FileTreeCurrentPath) &&
+            _isFileTreeInitialized)
+        {
+            try
+            {
+                await FileTreePanelControl.NavigateToAsync(vm.FileTreeCurrentPath);
+            }
+            catch
+            {
+                // 경로 이동 실패 시 무시 (경로가 삭제되었을 수 있음)
+            }
+        }
 
         // 파일 워처 활성화
         ActivateFileWatcher();
