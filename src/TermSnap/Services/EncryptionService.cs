@@ -10,7 +10,7 @@ namespace TermSnap.Services;
 public static class EncryptionService
 {
     // DPAPI는 Windows 사용자 계정에 종속되어 안전하게 암호화/복호화
-    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("Nebula_v1.0_SecureKey");
+    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("TermSnap_v1.1.0_SecureKey");
 
     /// <summary>
     /// 문자열을 암호화 (Windows DPAPI 사용)
