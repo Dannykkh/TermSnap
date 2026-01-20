@@ -16,7 +16,7 @@ namespace TermSnap.Mcp;
 /// </summary>
 public class IpcService : IDisposable
 {
-    private const string PipeName = "Nebula_MCP";
+    private const string PipeName = "TermSnap_MCP";
     private CancellationTokenSource? _cts;
     private Task? _serverTask;
     private bool _isRunning;

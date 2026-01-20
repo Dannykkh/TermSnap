@@ -31,7 +31,7 @@ public class LocalEmbeddingService : IEmbeddingService
     // 모델 파일 경로
     private static readonly string ModelDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Nebula", "models", MODEL_NAME
+        "TermSnap", "models", MODEL_NAME
     );
 
     private static readonly string ModelPath = Path.Combine(ModelDirectory, "model.onnx");

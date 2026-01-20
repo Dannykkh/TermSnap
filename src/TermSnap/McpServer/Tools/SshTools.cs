@@ -20,7 +20,7 @@ public static class SshTools
         var response = await ipcClient.ListProfilesAsync();
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";
@@ -32,7 +32,7 @@ public static class SshTools
     /// SSH 서버에 연결
     /// </summary>
     [McpServerTool(Name = "ssh_connect")]
-    [Description("Connect to an SSH server using a saved profile. Opens a new SSH tab in Nebula Terminal UI. Returns session ID for subsequent commands.")]
+    [Description("Connect to an SSH server using a saved profile. Opens a new SSH tab in TermSnap UI. Returns session ID for subsequent commands.")]
     public static async Task<string> Connect(
         IpcClient ipcClient,
         [Description("Name of the saved server profile to connect to")] string profileName)
@@ -43,7 +43,7 @@ public static class SshTools
         var response = await ipcClient.ConnectSshAsync(profileName);
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";
@@ -55,7 +55,7 @@ public static class SshTools
     /// SSH 연결 해제
     /// </summary>
     [McpServerTool(Name = "ssh_disconnect")]
-    [Description("Disconnect from an SSH session and close the tab in Nebula Terminal UI.")]
+    [Description("Disconnect from an SSH session and close the tab in TermSnap UI.")]
     public static async Task<string> Disconnect(
         IpcClient ipcClient,
         [Description("Session ID returned from ssh_connect")] string sessionId)
@@ -66,7 +66,7 @@ public static class SshTools
         var response = await ipcClient.DisconnectSshAsync(sessionId);
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";
@@ -89,7 +89,7 @@ public static class SshTools
         var response = await ipcClient.GetStatusAsync(sessionId);
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";
@@ -101,7 +101,7 @@ public static class SshTools
     /// SSH 명령어 실행
     /// </summary>
     [McpServerTool(Name = "ssh_execute")]
-    [Description("Execute a command on the connected SSH server. The command and result are displayed in Nebula Terminal UI.")]
+    [Description("Execute a command on the connected SSH server. The command and result are displayed in TermSnap UI.")]
     public static async Task<string> Execute(
         IpcClient ipcClient,
         [Description("Session ID returned from ssh_connect")] string sessionId,
@@ -116,7 +116,7 @@ public static class SshTools
         var response = await ipcClient.ExecuteAsync(sessionId, command);
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";
@@ -134,7 +134,7 @@ public static class SshTools
         var response = await ipcClient.GetSessionsAsync();
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";
@@ -157,7 +157,7 @@ public static class SshTools
         var response = await ipcClient.GetServerStatsAsync(sessionId);
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";
@@ -181,7 +181,7 @@ public static class SshTools
         var response = await ipcClient.SftpListAsync(sessionId, path);
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";
@@ -212,7 +212,7 @@ public static class SshTools
         var response = await ipcClient.SftpDownloadAsync(sessionId, remotePath, localPath);
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";
@@ -243,7 +243,7 @@ public static class SshTools
         var response = await ipcClient.SftpUploadAsync(sessionId, localPath, remotePath);
 
         if (response == null)
-            return "Error: Could not connect to Nebula Terminal app";
+            return "Error: Could not connect to TermSnap app";
 
         if (!response.Success)
             return $"Error: {response.Error}";

@@ -33,7 +33,7 @@ public partial class SettingsWindow : Window
 
     private static readonly string DebugLogPath = System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Nebula", "debug.log"
+        "TermSnap", "debug.log"
     );
 
     private static void LogDebug(string message)

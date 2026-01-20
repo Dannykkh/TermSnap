@@ -124,9 +124,34 @@ public partial class App : Application
 
     private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
+        // 상세 오류 정보 수집
+        var errorDetails = $"오류 유형: {e.Exception.GetType().Name}\n\n";
+        errorDetails += $"메시지: {e.Exception.Message}\n\n";
+
+        if (e.Exception.InnerException != null)
+        {
+            errorDetails += $"내부 오류: {e.Exception.InnerException.Message}\n\n";
+        }
+
+        errorDetails += $"스택 추적:\n{e.Exception.StackTrace}";
+
+        // 로그 파일에 기록
+        try
+        {
+            var logPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "TermSnap",
+                "error.log");
+
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(logPath)!);
+            System.IO.File.AppendAllText(logPath,
+                $"\n[{DateTime.Now:yyyy-MM-dd HH:mm:ss}]\n{errorDetails}\n{new string('=', 80)}\n");
+        }
+        catch { }
+
         MessageBox.Show(
-            $"오류가 발생했습니다:\n{e.Exception.Message}",
-            "오류",
+            errorDetails,
+            "오류 발생",
             MessageBoxButton.OK,
             MessageBoxImage.Error);
 

@@ -12,7 +12,7 @@ public static class ClipboardService
 {
     private static readonly string ImageCacheFolder = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Nebula", "ClipboardImages");
+        "TermSnap", "ClipboardImages");
 
     /// <summary>
     /// 클립보드에 이미지가 있는지 확인

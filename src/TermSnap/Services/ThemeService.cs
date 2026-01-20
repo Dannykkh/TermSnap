@@ -99,8 +99,8 @@ public class ThemeService
 
         // 새 테마 리소스 추가
         var themePath = _isDarkMode
-            ? "pack://application:,,,/Nebula;component/Themes/DarkTheme.xaml"
-            : "pack://application:,,,/Nebula;component/Themes/LightTheme.xaml";
+            ? "pack://application:,,,/TermSnap;component/Themes/DarkTheme.xaml"
+            : "pack://application:,,,/TermSnap;component/Themes/LightTheme.xaml";
 
         try
         {

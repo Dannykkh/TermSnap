@@ -17,7 +17,7 @@ public static class McpServerHost
     /// </summary>
     public static async Task RunAsync(string[] args)
     {
-        Console.Error.WriteLine("[MCP Server] Starting Nebula Terminal MCP Server...");
+        Console.Error.WriteLine("[MCP Server] Starting TermSnap MCP Server...");
 
         try
         {
@@ -47,11 +47,11 @@ public static class McpServerHost
 
             if (!connected)
             {
-                Console.Error.WriteLine("[MCP Server] Warning: Could not connect to Nebula Terminal app. Make sure the app is running.");
+                Console.Error.WriteLine("[MCP Server] Warning: Could not connect to TermSnap app. Make sure the app is running.");
             }
             else
             {
-                Console.Error.WriteLine("[MCP Server] Connected to Nebula Terminal app via IPC.");
+                Console.Error.WriteLine("[MCP Server] Connected to TermSnap app via IPC.");
             }
 
             Console.Error.WriteLine("[MCP Server] Server started. Waiting for requests...");

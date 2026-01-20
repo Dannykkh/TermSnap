@@ -17,7 +17,7 @@ public static class Program
         // --mcp 플래그가 있으면 MCP 서버 모드로 실행 (별도 스레드)
         if (args.Contains("--mcp") || args.Contains("-mcp"))
         {
-            Console.Error.WriteLine("[Nebula Terminal] Starting in MCP server mode...");
+            Console.Error.WriteLine("[TermSnap] Starting in MCP server mode...");
             // MCP 서버는 STA가 필요 없으므로 동기적으로 실행
             return RunMcpServerAsync(args).GetAwaiter().GetResult();
         }

@@ -430,7 +430,7 @@ public class SshService : IDisposable
         {
             var debugPath = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Nebula", "debug_output.txt");
+                "TermSnap", "debug_output.txt");
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(debugPath)!);
             System.IO.File.WriteAllText(debugPath, $"Command: {command}\n\nRaw Output:\n{output}");
         }

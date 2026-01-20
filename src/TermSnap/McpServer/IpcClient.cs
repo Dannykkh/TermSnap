@@ -13,7 +13,7 @@ namespace TermSnap.McpServer;
 /// </summary>
 public class IpcClient : IDisposable
 {
-    private const string PipeName = "Nebula_MCP";
+    private const string PipeName = "TermSnap_MCP";
     private const int ConnectionTimeoutMs = 5000;
     private const int ReadTimeoutMs = 30000;
 
@@ -58,7 +58,7 @@ public class IpcClient : IDisposable
         }
         catch (TimeoutException)
         {
-            Console.Error.WriteLine("[IPC Client] Connection timeout - is Nebula Terminal app running?");
+            Console.Error.WriteLine("[IPC Client] Connection timeout - is TermSnap app running?");
             return false;
         }
         catch (Exception ex)
