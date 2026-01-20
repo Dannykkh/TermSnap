@@ -17,7 +17,7 @@ public class QADatabaseService : IDisposable
 {
     private static readonly string DatabaseDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Nebula"
+        "TermSnap"
     );
 
     private static readonly string DatabasePath = Path.Combine(DatabaseDirectory, "qa_knowledge.db");

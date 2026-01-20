@@ -14,7 +14,7 @@ public class ConfigService
 {
     private static readonly string ConfigDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Nebula"
+        "TermSnap"
     );
 
     private static readonly string ConfigFilePath = Path.Combine(ConfigDirectory, "config.json");
