@@ -8,6 +8,7 @@ using System.Windows.Input;
 using TermSnap.Models;
 using TermSnap.Services;
 using Microsoft.Win32;
+using WinForms = System.Windows.Forms;  // FolderBrowserDialog용 (KeyEventArgs 충돌 방지)
 
 namespace TermSnap.Views;
 
@@ -186,28 +187,65 @@ public partial class FileTransferWindow : Window
         {
             Title = "업로드할 파일 선택",
             Filter = "모든 파일 (*.*)|*.*",
-            Multiselect = false
+            Multiselect = true  // ⭐ 다중 파일 선택 가능
         };
 
         if (dialog.ShowDialog() != true)
             return;
 
-        var localPath = dialog.FileName;
-        var fileName = Path.GetFileName(localPath);
-        var remotePath = _currentPath.TrimEnd('/') + "/" + fileName;
+        var fileNames = dialog.FileNames;
+        if (fileNames.Length == 0)
+            return;
 
         try
         {
             IsTransferring = true;
             TransferProgressBar.Value = 0;
 
-            await _sftpService.UploadFileAsync(localPath, remotePath);
+            // 단일 파일이면 기존 방식 (진행률 표시 유지)
+            if (fileNames.Length == 1)
+            {
+                var localPath = fileNames[0];
+                var fileName = Path.GetFileName(localPath);
+                var remotePath = _currentPath.TrimEnd('/') + "/" + fileName;
 
-            MessageBox.Show(
-                $"파일 업로드 완료:\n{fileName}",
-                "업로드 성공",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                await _sftpService.UploadFileAsync(localPath, remotePath);
+
+                MessageBox.Show(
+                    $"파일 업로드 완료:\n{fileName}",
+                    "업로드 성공",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            // 다중 파일이면 병렬 업로드 (4개씩 동시 전송)
+            else
+            {
+                var files = fileNames.Select(localPath =>
+                {
+                    var fileName = Path.GetFileName(localPath);
+                    var remotePath = _currentPath.TrimEnd('/') + "/" + fileName;
+                    return (localPath, remotePath);
+                }).ToList();
+
+                // 전체 파일 진행률 표시
+                var progress = new Progress<int>(percent =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        TransferProgressBar.Value = percent;
+                        TransferStatusText.Text = $"업로드 중: {fileNames.Length}개 파일";
+                        TransferDetailsText.Text = $"{percent}% 완료";
+                    });
+                });
+
+                await _sftpService.UploadMultipleAsync(files, maxParallel: 4, progress);
+
+                MessageBox.Show(
+                    $"파일 업로드 완료:\n{fileNames.Length}개 파일",
+                    "업로드 성공",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
 
             await LoadDirectoryAsync(_currentPath);
         }
@@ -227,42 +265,86 @@ public partial class FileTransferWindow : Window
 
     private async void DownloadButton_Click(object sender, RoutedEventArgs e)
     {
-        if (FilesDataGrid.SelectedItem is not RemoteFileInfo selected)
+        // 선택된 파일들 가져오기 (디렉토리 제외)
+        var selectedFiles = FilesDataGrid.SelectedItems
+            .Cast<RemoteFileInfo>()
+            .Where(f => !f.IsDirectory)
+            .ToList();
+
+        if (selectedFiles.Count == 0)
         {
-            MessageBox.Show("다운로드할 파일을 선택해주세요.", "선택 필요", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("다운로드할 파일을 선택해주세요.\n(디렉토리는 다운로드할 수 없습니다)", "선택 필요", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-
-        if (selected.IsDirectory)
-        {
-            MessageBox.Show("디렉토리는 다운로드할 수 없습니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        var dialog = new SaveFileDialog
-        {
-            Title = "다운로드 위치 선택",
-            FileName = selected.Name,
-            Filter = "모든 파일 (*.*)|*.*"
-        };
-
-        if (dialog.ShowDialog() != true)
-            return;
-
-        var localPath = dialog.FileName;
 
         try
         {
             IsTransferring = true;
             TransferProgressBar.Value = 0;
 
-            await _sftpService.DownloadFileAsync(selected.FullPath, localPath);
+            // 단일 파일이면 SaveFileDialog 사용 (기존 방식)
+            if (selectedFiles.Count == 1)
+            {
+                var selected = selectedFiles[0];
+                var dialog = new SaveFileDialog
+                {
+                    Title = "다운로드 위치 선택",
+                    FileName = selected.Name,
+                    Filter = "모든 파일 (*.*)|*.*"
+                };
 
-            MessageBox.Show(
-                $"파일 다운로드 완료:\n{selected.Name}",
-                "다운로드 성공",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                if (dialog.ShowDialog() != true)
+                    return;
+
+                var localPath = dialog.FileName;
+
+                await _sftpService.DownloadFileAsync(selected.FullPath, localPath);
+
+                MessageBox.Show(
+                    $"파일 다운로드 완료:\n{selected.Name}",
+                    "다운로드 성공",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            // 다중 파일이면 폴더 선택 후 병렬 다운로드
+            else
+            {
+                using var folderDialog = new WinForms.FolderBrowserDialog
+                {
+                    Description = $"다운로드할 폴더 선택 ({selectedFiles.Count}개 파일)",
+                    ShowNewFolderButton = true
+                };
+
+                if (folderDialog.ShowDialog() != WinForms.DialogResult.OK)
+                    return;
+
+                var targetFolder = folderDialog.SelectedPath;
+
+                var files = selectedFiles.Select(f =>
+                {
+                    var localPath = Path.Combine(targetFolder, f.Name);
+                    return (f.FullPath, localPath);
+                }).ToList();
+
+                // 전체 파일 진행률 표시
+                var progress = new Progress<int>(percent =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        TransferProgressBar.Value = percent;
+                        TransferStatusText.Text = $"다운로드 중: {selectedFiles.Count}개 파일";
+                        TransferDetailsText.Text = $"{percent}% 완료";
+                    });
+                });
+
+                await _sftpService.DownloadMultipleAsync(files, maxParallel: 4, progress);
+
+                MessageBox.Show(
+                    $"파일 다운로드 완료:\n{selectedFiles.Count}개 파일 → {targetFolder}",
+                    "다운로드 성공",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
         }
         catch (Exception ex)
         {
