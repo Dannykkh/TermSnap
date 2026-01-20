@@ -192,6 +192,7 @@
                             <ComboBox x:Name="AICLICombo"
                                       Grid.Column="1"
                                       Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
                                       SelectionChanged="AICLICombo_SelectionChanged">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
@@ -292,10 +293,12 @@
                                          Content="일반 모드"
                                          IsChecked="True"
                                          Margin="0,0,16,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"
                                          Style="{StaticResource MaterialDesignRadioButton}"/>
                             <RadioButton x:Name="ModeAutoRadio"
                                          Content="자동 모드"
                                          Margin="0,0,16,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"
                                          Style="{StaticResource MaterialDesignRadioButton}"/>
                             <Button x:Name="AdvancedOptionsButton"
                                     Content="고급..."
