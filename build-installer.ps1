@@ -1,25 +1,25 @@
-# Nebula Terminal 설치 파일 빌드 스크립트
+# TermSnap 설치 파일 빌드 스크립트
 # Inno Setup이 설치되어 있어야 합니다
 
 param(
     [string]$Configuration = "Release",
-    [string]$Version = "1.0.0"
+    [string]$Version = "1.1.0"
 )
 
 $ErrorActionPreference = "Stop"
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Nebula Terminal 설치 파일 빌드" -ForegroundColor Cyan
+Write-Host "TermSnap 설치 파일 빌드" -ForegroundColor Cyan
 Write-Host "버전: $Version" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # 프로젝트 루트 디렉토리
 $ProjectRoot = $PSScriptRoot
-$ProjectFile = Join-Path $ProjectRoot "src\LinuxServerAI\Nebula.csproj"
-$PublishDir = Join-Path $ProjectRoot "src\LinuxServerAI\bin\Release\net8.0-windows\win-x64\publish"
+$ProjectFile = Join-Path $ProjectRoot "src\TermSnap\TermSnap.csproj"
+$PublishDir = Join-Path $ProjectRoot "src\TermSnap\bin\Release\net8.0-windows\win-x64\publish"
 $InstallerScript = Join-Path $ProjectRoot "installer.iss"
-$OutputDir = Join-Path $ProjectRoot "installer_output"
+$OutputDir = Join-Path $ProjectRoot "installer"
 
 # 1. 이전 빌드 정리
 Write-Host "[1/4] 이전 빌드 정리 중..." -ForegroundColor Yellow
@@ -75,7 +75,7 @@ if (-not (Test-Path $PublishDir)) {
     exit 1
 }
 
-$exePath = Join-Path $PublishDir "Nebula.exe"
+$exePath = Join-Path $PublishDir "TermSnap.exe"
 if (-not (Test-Path $exePath)) {
     Write-Host "  ✗ 실행 파일을 찾을 수 없습니다: $exePath" -ForegroundColor Red
     exit 1
@@ -84,7 +84,7 @@ if (-not (Test-Path $exePath)) {
 $fileCount = (Get-ChildItem -Path $PublishDir -Recurse -File).Count
 $dirSize = [math]::Round((Get-ChildItem -Path $PublishDir -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
 
-Write-Host "  ✓ 실행 파일: Nebula.exe" -ForegroundColor Green
+Write-Host "  ✓ 실행 파일: TermSnap.exe" -ForegroundColor Green
 Write-Host "  ✓ 파일 수: $fileCount" -ForegroundColor Green
 Write-Host "  ✓ 총 크기: $dirSize MB" -ForegroundColor Green
 
@@ -163,6 +163,6 @@ if (Test-Path $OutputDir) {
 
 Write-Host ""
 Write-Host "설치 파일을 테스트하려면:" -ForegroundColor Yellow
-Write-Host "  1. installer_output 폴더에서 .exe 파일 실행" -ForegroundColor Gray
+Write-Host "  1. installer 폴더에서 .exe 파일 실행" -ForegroundColor Gray
 Write-Host "  2. 설치 마법사 따라 진행" -ForegroundColor Gray
 Write-Host ""
