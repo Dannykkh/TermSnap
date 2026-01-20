@@ -1,6 +1,6 @@
 # 기여 가이드
 
-Nebula Terminal Assistant 프로젝트에 관심을 가져주셔서 감사합니다!
+TermSnap 프로젝트에 관심을 가져주셔서 감사합니다!
 
 ## 기여 방법
 
@@ -210,7 +210,7 @@ Closes #42
 dotnet build
 
 # 실행
-dotnet run --project src/Nebula Terminal/Nebula Terminal.csproj
+dotnet run --project src/TermSnap/TermSnap.csproj
 
 # 테스트
 dotnet test
@@ -220,7 +220,7 @@ dotnet test
 
 ```
 nebula-terminal/
-├── src/Nebula Terminal/
+├── src/TermSnap/
 │   ├── Models/          # 데이터 모델
 │   ├── Services/        # 비즈니스 로직
 │   ├── ViewModels/      # MVVM 뷰모델
