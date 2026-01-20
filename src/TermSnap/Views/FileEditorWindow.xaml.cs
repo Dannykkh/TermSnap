@@ -17,6 +17,7 @@ public partial class FileEditorWindow : Window
     private readonly string _remotePath;
     private string _originalContent = string.Empty;
     private bool _isModified = false;
+    private bool _isEditMode = false;  // ⭐ 편집 모드 플래그
     private Encoding _currentEncoding = Encoding.UTF8;
 
     public FileEditorWindow(SftpService sftpService, string remotePath)
@@ -82,6 +83,9 @@ public partial class FileEditorWindow : Window
             TextEditor.Text = content;
             _isModified = false;
             UpdateModifiedIndicator();
+
+            // ⭐ 기본은 뷰어 모드 (읽기 전용)
+            SetViewerMode();
 
             Title = $"파일 편집기 - {Path.GetFileName(_remotePath)}";
         }
@@ -154,9 +158,6 @@ public partial class FileEditorWindow : Window
 
             _originalContent = TextEditor.Text;
             _isModified = false;
-            UpdateModifiedIndicator();
-
-            Title = $"파일 편집기 - {Path.GetFileName(_remotePath)}";
 
             // 파일 크기 업데이트
             var fileInfo = await _sftpService.GetFileInfoAsync(_remotePath);
@@ -164,6 +165,15 @@ public partial class FileEditorWindow : Window
             {
                 FileSizeText.Text = fileInfo.SizeFormatted;
             }
+
+            // ⭐ 저장 후 뷰어 모드로 전환
+            SetViewerMode();
+
+            MessageBox.Show(
+                "파일이 저장되었습니다.",
+                "저장 완료",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -246,9 +256,82 @@ public partial class FileEditorWindow : Window
     private void UpdateModifiedIndicator()
     {
         ModifiedIndicator.Visibility = _isModified ? Visibility.Visible : Visibility.Collapsed;
-        Title = _isModified
-            ? $"* 파일 편집기 - {Path.GetFileName(_remotePath)}"
-            : $"파일 편집기 - {Path.GetFileName(_remotePath)}";
+
+        var modePrefix = _isEditMode ? "[편집 모드] " : "[뷰어 모드] ";
+        var modifiedPrefix = _isModified ? "* " : "";
+        Title = $"{modifiedPrefix}{modePrefix}파일 편집기 - {Path.GetFileName(_remotePath)}";
+    }
+
+    /// <summary>
+    /// 뷰어 모드로 전환 (읽기 전용)
+    /// </summary>
+    private void SetViewerMode()
+    {
+        _isEditMode = false;
+        TextEditor.IsReadOnly = true;
+        TextEditor.Background = System.Windows.Media.Brushes.WhiteSmoke;
+
+        // 버튼 상태 업데이트
+        EditButton.Visibility = Visibility.Visible;
+        SaveButton.Visibility = Visibility.Collapsed;
+        CancelEditButton.Visibility = Visibility.Collapsed;
+        UndoButton.IsEnabled = false;
+        RedoButton.IsEnabled = false;
+
+        UpdateModifiedIndicator();
+    }
+
+    /// <summary>
+    /// 편집 모드로 전환
+    /// </summary>
+    private void EnterEditMode()
+    {
+        _isEditMode = true;
+        TextEditor.IsReadOnly = false;
+        TextEditor.Background = System.Windows.Media.Brushes.White;
+
+        // 버튼 상태 업데이트
+        EditButton.Visibility = Visibility.Collapsed;
+        SaveButton.Visibility = Visibility.Visible;
+        CancelEditButton.Visibility = Visibility.Visible;
+        UndoButton.IsEnabled = true;
+        RedoButton.IsEnabled = true;
+
+        UpdateModifiedIndicator();
+
+        // 에디터에 포커스
+        TextEditor.Focus();
+    }
+
+    /// <summary>
+    /// 편집 버튼 클릭
+    /// </summary>
+    private void EditButton_Click(object sender, RoutedEventArgs e)
+    {
+        EnterEditMode();
+    }
+
+    /// <summary>
+    /// 편집 취소 버튼 클릭
+    /// </summary>
+    private void CancelEditButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isModified)
+        {
+            var result = MessageBox.Show(
+                "변경 사항을 취소하시겠습니까?\n저장되지 않은 내용은 모두 사라집니다.",
+                "편집 취소 확인",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+        }
+
+        // 원본 내용으로 복원
+        TextEditor.Text = _originalContent;
+        _isModified = false;
+        SetViewerMode();
     }
 
     /// <summary>

@@ -15,17 +15,34 @@
 
         <!-- 툴바 -->
         <ToolBar Grid.Row="0" Background="#F5F5F5">
-            <Button x:Name="SaveButton" Click="SaveButton_Click" ToolTip="저장 (Ctrl+S)" Padding="8,4">
+            <!-- ⭐ 편집 버튼 (뷰어 모드에서만 표시) -->
+            <Button x:Name="EditButton" Click="EditButton_Click" ToolTip="편집 모드로 전환" Padding="8,4">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="✏️" Margin="0,0,5,0"/>
+                    <TextBlock Text="편집"/>
+                </StackPanel>
+            </Button>
+
+            <!-- ⭐ 저장 버튼 (편집 모드에서만 표시) -->
+            <Button x:Name="SaveButton" Click="SaveButton_Click" ToolTip="저장 (Ctrl+S)" Padding="8,4" Visibility="Collapsed">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="💾" Margin="0,0,5,0"/>
                     <TextBlock Text="저장"/>
                 </StackPanel>
             </Button>
+
+            <!-- ⭐ 취소 버튼 (편집 모드에서만 표시) -->
+            <Button x:Name="CancelEditButton" Click="CancelEditButton_Click" ToolTip="편집 취소" Padding="8,4" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="❌" Margin="0,0,5,0"/>
+                    <TextBlock Text="취소"/>
+                </StackPanel>
+            </Button>
             <Separator/>
-            <Button x:Name="UndoButton" Click="UndoButton_Click" ToolTip="실행 취소 (Ctrl+Z)" Padding="8,4">
+            <Button x:Name="UndoButton" Click="UndoButton_Click" ToolTip="실행 취소 (Ctrl+Z)" Padding="8,4" IsEnabled="False">
                 <TextBlock Text="↩️ 실행 취소"/>
             </Button>
-            <Button x:Name="RedoButton" Click="RedoButton_Click" ToolTip="다시 실행 (Ctrl+Y)" Padding="8,4">
+            <Button x:Name="RedoButton" Click="RedoButton_Click" ToolTip="다시 실행 (Ctrl+Y)" Padding="8,4" IsEnabled="False">
                 <TextBlock Text="↪️ 다시 실행"/>
             </Button>
             <Separator/>
@@ -65,6 +82,8 @@
                                FontFamily="Consolas, D2Coding, Courier New"
                                FontSize="14"
                                ShowLineNumbers="True"
+                               IsReadOnly="True"
+                               Background="WhiteSmoke"
                                HorizontalScrollBarVisibility="Auto"
                                VerticalScrollBarVisibility="Auto"
                                TextChanged="TextEditor_TextChanged"/>
