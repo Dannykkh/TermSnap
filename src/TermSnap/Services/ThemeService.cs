@@ -12,7 +12,7 @@ public class ThemeService
     private static ThemeService? _instance;
     public static ThemeService Instance => _instance ??= new ThemeService();
 
-    private bool _isDarkMode = false;
+    private bool _isDarkMode = true;
     
     /// <summary>
     /// 현재 다크 모드 여부
@@ -42,11 +42,12 @@ public class ThemeService
         try
         {
             var config = ConfigService.Load();
-            _isDarkMode = config.Theme?.ToLower() == "dark";
+            // 기본값: 다크 모드 (Theme이 "light"가 아니면 다크 모드)
+            _isDarkMode = config.Theme?.ToLower() != "light";
         }
         catch
         {
-            _isDarkMode = false;
+            _isDarkMode = true; // 기본값: 다크 모드
         }
     }
 
