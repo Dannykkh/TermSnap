@@ -133,12 +133,6 @@ rename_project.py
 fix_namespace.py
 update_docs.py
 
-# Release notes (included in GitHub Releases only)
-RELEASE_NOTES_*.md
-
-# Build documentation (too detailed for repo)
-BUILD_INSTALLER_README.md
-
 # Internal development documents
 DESIGN.md
 PROJECT_STATUS.md
