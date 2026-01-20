@@ -94,7 +94,16 @@ public class SftpService : IDisposable
                 }
 
                 _sftpClient = new SftpClient(connectionInfo);
+
+                // ⭐ 성능 최적화: 버퍼 크기 증가 (32KB → 64KB)
+                _sftpClient.BufferSize = 64 * 1024;
+                _sftpClient.OperationTimeout = TimeSpan.FromSeconds(30);
+
                 _sftpClient.Connect();
+
+                // ⭐ 연결 후 성능 최적화 적용
+                OptimizeSftpPerformance(_sftpClient);
+
                 _isConnected = true;
             }
             catch (Exception ex)
@@ -266,6 +275,64 @@ public class SftpService : IDisposable
     }
 
     /// <summary>
+    /// SFTP 성능 최적화 (SSH.NET PR #866 기반)
+    /// maxPendingReads를 10 → 100으로 증가하여 고속 네트워크에서 3~5배 성능 향상
+    /// </summary>
+    private void OptimizeSftpPerformance(SftpClient client)
+    {
+        try
+        {
+            // Reflection으로 내부 필드 접근
+            var type = client.GetType();
+
+            // 1. maxPendingReads를 10 → 100으로 증가 (3.2MB in-flight data)
+            // 기본값 10 = 320KB (10 × 32KB)
+            // 최적값 100 = 3.2MB (100 × 32KB) → 1Gbps 네트워크에 적합
+            var maxPendingReadsField = type.GetField("_maxPendingReads",
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Instance);
+
+            if (maxPendingReadsField != null)
+            {
+                maxPendingReadsField.SetValue(client, 100);
+            }
+
+            // 2. 소켓 버퍼 크기 증가
+            var sessionProperty = type.GetProperty("Session",
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Instance);
+
+            var sessionObj = sessionProperty?.GetValue(client);
+            if (sessionObj != null)
+            {
+                try
+                {
+                    var sessionType = sessionObj.GetType();
+                    var socketField = sessionType.GetField("_socket",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance);
+
+                    if (socketField?.GetValue(sessionObj) is System.Net.Sockets.Socket socket)
+                    {
+                        // 소켓 송수신 버퍼 증가 (64KB → 256KB)
+                        socket.SendBufferSize = 256 * 1024;
+                        socket.ReceiveBufferSize = 256 * 1024;
+                    }
+                }
+                catch
+                {
+                    // 소켓 최적화 실패해도 maxPendingReads만으로 효과 있음
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Reflection 실패 시 무시 (기본 성능으로 동작)
+            System.Diagnostics.Debug.WriteLine($"SFTP 성능 최적화 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// 파일 이름 변경
     /// </summary>
     public async Task RenameAsync(string oldPath, string newPath)
@@ -377,6 +444,150 @@ public class SftpService : IDisposable
 
         var ext = Path.GetExtension(fileName);
         return textExtensions.Contains(ext);
+    }
+
+    #endregion
+
+    #region 병렬 전송 (다중 파일)
+
+    /// <summary>
+    /// 여러 파일을 병렬로 업로드 (최대 4개 동시 전송)
+    /// FileZilla 방식: 각 파일을 별도 연결로 동시 전송하여 속도 향상
+    /// </summary>
+    /// <param name="files">업로드할 파일 목록 (로컬경로, 원격경로)</param>
+    /// <param name="maxParallel">최대 동시 전송 파일 수 (기본 4, FileZilla 권장)</param>
+    /// <param name="overallProgress">전체 진행률 콜백 (0-100)</param>
+    public async Task UploadMultipleAsync(
+        IEnumerable<(string localPath, string remotePath)> files,
+        int maxParallel = 4,
+        IProgress<int>? overallProgress = null)
+    {
+        if (!IsConnected)
+            throw new InvalidOperationException("SFTP가 연결되지 않았습니다.");
+
+        var fileList = files.ToList();
+        if (fileList.Count == 0)
+            return;
+
+        // 병렬 전송 제한 (Semaphore)
+        using var semaphore = new SemaphoreSlim(maxParallel);
+        var totalFiles = fileList.Count;
+        var completedFiles = 0;
+        var lockObject = new object();
+
+        var tasks = fileList.Select(async file =>
+        {
+            await semaphore.WaitAsync();
+            try
+            {
+                // 각 파일마다 새로운 SFTP 연결 생성 (병렬 처리)
+                var newClient = CreateOptimizedClient();
+                try
+                {
+                    await Task.Run(() =>
+                    {
+                        using var fileStream = File.OpenRead(file.localPath);
+                        newClient.UploadFile(fileStream, file.remotePath);
+                    });
+
+                    // 진행률 업데이트
+                    lock (lockObject)
+                    {
+                        completedFiles++;
+                        var progress = (int)((completedFiles / (double)totalFiles) * 100);
+                        overallProgress?.Report(progress);
+                    }
+                }
+                finally
+                {
+                    newClient.Disconnect();
+                    newClient.Dispose();
+                }
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+    }
+
+    /// <summary>
+    /// 여러 파일을 병렬로 다운로드 (최대 4개 동시 전송)
+    /// </summary>
+    /// <param name="files">다운로드할 파일 목록 (원격경로, 로컬경로)</param>
+    /// <param name="maxParallel">최대 동시 전송 파일 수 (기본 4)</param>
+    /// <param name="overallProgress">전체 진행률 콜백 (0-100)</param>
+    public async Task DownloadMultipleAsync(
+        IEnumerable<(string remotePath, string localPath)> files,
+        int maxParallel = 4,
+        IProgress<int>? overallProgress = null)
+    {
+        if (!IsConnected)
+            throw new InvalidOperationException("SFTP가 연결되지 않았습니다.");
+
+        var fileList = files.ToList();
+        if (fileList.Count == 0)
+            return;
+
+        using var semaphore = new SemaphoreSlim(maxParallel);
+        var totalFiles = fileList.Count;
+        var completedFiles = 0;
+        var lockObject = new object();
+
+        var tasks = fileList.Select(async file =>
+        {
+            await semaphore.WaitAsync();
+            try
+            {
+                // 각 파일마다 새로운 SFTP 연결 생성
+                var newClient = CreateOptimizedClient();
+                try
+                {
+                    await Task.Run(() =>
+                    {
+                        using var fileStream = File.Create(file.localPath);
+                        newClient.DownloadFile(file.remotePath, fileStream);
+                    });
+
+                    // 진행률 업데이트
+                    lock (lockObject)
+                    {
+                        completedFiles++;
+                        var progress = (int)((completedFiles / (double)totalFiles) * 100);
+                        overallProgress?.Report(progress);
+                    }
+                }
+                finally
+                {
+                    newClient.Disconnect();
+                    newClient.Dispose();
+                }
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+    }
+
+    /// <summary>
+    /// 최적화된 새 SFTP 클라이언트 생성 (병렬 전송용)
+    /// </summary>
+    private SftpClient CreateOptimizedClient()
+    {
+        if (_sftpClient?.ConnectionInfo == null)
+            throw new InvalidOperationException("원본 연결 정보가 없습니다.");
+
+        var newClient = new SftpClient(_sftpClient.ConnectionInfo);
+        newClient.BufferSize = 64 * 1024;
+        newClient.OperationTimeout = TimeSpan.FromSeconds(30);
+        newClient.Connect();
+        OptimizeSftpPerformance(newClient);
+        return newClient;
     }
 
     #endregion
