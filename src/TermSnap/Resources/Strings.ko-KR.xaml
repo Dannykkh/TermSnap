@@ -1,0 +1,802 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- 공통 (Common) -->
+    <system:String x:Key="Common.OK">확인</system:String>
+    <system:String x:Key="Common.Cancel">취소</system:String>
+    <system:String x:Key="Common.Save">저장</system:String>
+    <system:String x:Key="Common.Close">닫기</system:String>
+    <system:String x:Key="Common.Delete">삭제</system:String>
+    <system:String x:Key="Common.Edit">편집</system:String>
+    <system:String x:Key="Common.Add">추가</system:String>
+    <system:String x:Key="Common.Remove">제거</system:String>
+    <system:String x:Key="Common.Browse">찾아보기</system:String>
+    <system:String x:Key="Common.Apply">적용</system:String>
+    <system:String x:Key="Common.Reset">재설정</system:String>
+    <system:String x:Key="Common.Search">검색</system:String>
+    <system:String x:Key="Common.Refresh">새로고침</system:String>
+    <system:String x:Key="Common.Connect">연결</system:String>
+    <system:String x:Key="Common.Disconnect">연결 해제</system:String>
+    <system:String x:Key="Common.Upload">업로드</system:String>
+    <system:String x:Key="Common.Download">다운로드</system:String>
+    <system:String x:Key="Common.Yes">예</system:String>
+    <system:String x:Key="Common.No">아니요</system:String>
+
+    <!-- MainWindow (UI) -->
+    <system:String x:Key="MainWindow.Title">TermSnap</system:String>
+    <system:String x:Key="MainWindow.NewTab">새 탭</system:String>
+    <system:String x:Key="MainWindow.NewTabTooltip">새 SSH 연결 (Ctrl+T)</system:String>
+    <system:String x:Key="MainWindow.AIProviderTooltip">설정에서 AI 제공자 변경 가능</system:String>
+    <system:String x:Key="MainWindow.HistoryTooltip">히스토리 (Ctrl+Shift+H)</system:String>
+    <system:String x:Key="MainWindow.QATooltip">Q&amp;A 지식베이스</system:String>
+    <system:String x:Key="MainWindow.SettingsTooltip">설정 (Ctrl+,)</system:String>
+    <system:String x:Key="MainWindow.Settings">설정</system:String>
+    <system:String x:Key="MainWindow.FileTransfer">파일 전송</system:String>
+    <system:String x:Key="MainWindow.ServerMonitor">서버 모니터</system:String>
+    <system:String x:Key="MainWindow.QAManager">Q&amp;A 관리</system:String>
+    <system:String x:Key="MainWindow.SnippetManager">스니펫 관리</system:String>
+    <system:String x:Key="MainWindow.History">실행 이력</system:String>
+
+    <!-- NewSessionSelector (UI) -->
+    <system:String x:Key="NewSession.Title">새 세션 시작</system:String>
+    <system:String x:Key="NewSession.Subtitle">어떤 작업을 하시겠습니까?</system:String>
+    <system:String x:Key="NewSession.LocalTerminal">로컬 터미널</system:String>
+    <system:String x:Key="NewSession.LocalTerminal.Description">PowerShell, CMD, WSL 또는 Git Bash를 사용하여 로컬 컴퓨터에서 작업합니다.</system:String>
+    <system:String x:Key="NewSession.SSHServer">SSH 서버 연결</system:String>
+    <system:String x:Key="NewSession.SSHServer.Description">원격 Linux 서버에 SSH로 연결하고 AI 어시스턴트의 도움을 받아 명령어를 실행합니다.</system:String>
+    <system:String x:Key="NewSession.Shortcuts">단축키: </system:String>
+    <system:String x:Key="NewSession.LocalTerminalShortcut"> 로컬 터미널  |  </system:String>
+    <system:String x:Key="NewSession.SSHShortcut"> SSH 연결</system:String>
+
+    <!-- WelcomePanel -->
+    <system:String x:Key="Welcome.Title">TermSnap</system:String>
+    <system:String x:Key="Welcome.Subtitle">터미널에 오신 것을 환영합니다</system:String>
+    <system:String x:Key="Welcome.SelectShell">쉘 선택</system:String>
+    <system:String x:Key="Welcome.UseAICLI">AI CLI 사용 (Claude, Codex, Gemini...)</system:String>
+    <system:String x:Key="Welcome.CLI">CLI:</system:String>
+    <system:String x:Key="Welcome.NormalMode">일반 모드</system:String>
+    <system:String x:Key="Welcome.AutoMode">자동 모드</system:String>
+    <system:String x:Key="Welcome.Advanced">고급...</system:String>
+    <system:String x:Key="Welcome.ModeDescription.Normal">각 작업마다 권한 확인이 필요합니다 (안전)</system:String>
+    <system:String x:Key="Welcome.ModeDescription.Auto">자동으로 모든 작업을 진행합니다 (빠름)</system:String>
+    <system:String x:Key="Welcome.GetStarted">시작하기</system:String>
+    <system:String x:Key="Welcome.OpenFolder">폴더 열기</system:String>
+    <system:String x:Key="Welcome.OpenFolder.Description">로컬 폴더를 열어 작업을 시작합니다</system:String>
+    <system:String x:Key="Welcome.CloneRepository">저장소 복제</system:String>
+    <system:String x:Key="Welcome.CloneRepository.Description">Git 저장소를 복제하여 시작합니다</system:String>
+    <system:String x:Key="Welcome.NewProject">새 프로젝트</system:String>
+    <system:String x:Key="Welcome.NewProject.Description">새 폴더를 만들어 프로젝트를 시작합니다</system:String>
+    <system:String x:Key="Welcome.RecentFolders">최근 폴더</system:String>
+    <system:String x:Key="Welcome.ClearAll">모두 지우기</system:String>
+    <system:String x:Key="Welcome.NoRecentFolders">최근에 열었던 폴더가 없습니다</system:String>
+    <system:String x:Key="Welcome.Tip">팁</system:String>
+    <system:String x:Key="Welcome.TipMessage">Ctrl+` 키로 언제든 새 로컬 터미널을 열 수 있습니다. 파일 탐색기 아이콘을 클릭하면 IDE처럼 폴더 구조를 볼 수 있습니다.</system:String>
+
+    <!-- Settings (General) -->
+    <system:String x:Key="Settings.Title">설정</system:String>
+    <system:String x:Key="Settings.General">일반</system:String>
+    <system:String x:Key="Settings.AIModels">AI 모델</system:String>
+    <system:String x:Key="Settings.ServerProfiles">서버 프로필</system:String>
+    <system:String x:Key="Settings.ServerProfiles.Description">SSH 서버 연결 정보를 관리합니다</system:String>
+    <system:String x:Key="Settings.ServerProfiles.AddNew">+ 새 프로필</system:String>
+    <system:String x:Key="Settings.ServerProfiles.Empty">등록된 서버 프로필이 없습니다. '새 프로필' 버튼을 눌러 추가하세요.</system:String>
+    <system:String x:Key="Settings.Appearance">외관</system:String>
+    <system:String x:Key="Settings.Advanced">고급</system:String>
+    <system:String x:Key="Settings.Theme">테마</system:String>
+    <system:String x:Key="Settings.Theme.Dark">&#x1F319; 다크</system:String>
+    <system:String x:Key="Settings.Theme.Light">&#x2600; 라이트</system:String>
+    <system:String x:Key="Settings.Language">언어</system:String>
+    <system:String x:Key="Settings.Language.Korean">한국어</system:String>
+    <system:String x:Key="Settings.Language.English">English</system:String>
+    <system:String x:Key="Settings.AIProvider">AI 제공자 선택</system:String>
+    <system:String x:Key="Settings.AIProvider.Description">사용할 AI 제공자를 선택하세요</system:String>
+    <system:String x:Key="Settings.AIProvider.None">없음 (AI 사용 안 함)</system:String>
+    <system:String x:Key="Settings.APIKey">API 키</system:String>
+    <system:String x:Key="Settings.GetAPIKey">API 키 발급받기</system:String>
+    <system:String x:Key="Settings.Model">모델 선택</system:String>
+    <system:String x:Key="Settings.Embedding">임베딩 사용 (벡터 검색)</system:String>
+    <system:String x:Key="Settings.Embedding.Description">질문을 벡터로 변환하여 유사한 이전 답변을 검색합니다</system:String>
+    <system:String x:Key="Settings.Embedding.Local">로컬 모델 (권장)</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Description">API 호출 없이 빠르게 임베딩 (50~150ms)</system:String>
+    <system:String x:Key="Settings.Embedding.API">API 사용</system:String>
+    <system:String x:Key="Settings.Embedding.API.Description">Gemini/OpenAI 임베딩 API 호출 (소량 비용 발생)</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Status">로컬 모델 상태</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Checking">확인 중...</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Download">모델 다운로드</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Preparing">다운로드 준비 중...</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Model">모델:</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Size">크기:</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Dimension">차원:</system:String>
+    <system:String x:Key="Settings.Embedding.Local.KoreanSupport">한글 지원</system:String>
+    <system:String x:Key="Settings.LanguageChanged.Title">언어 변경</system:String>
+    <system:String x:Key="Settings.LanguageChanged.Message">언어가 변경되었습니다. 일부 UI는 앱을 재시작하면 적용됩니다.</system:String>
+
+    <!-- ServerSessionView -->
+    <system:String x:Key="ServerSession.ConnectToServer">서버에 연결하세요</system:String>
+    <system:String x:Key="ServerSession.SelectProfile">저장된 프로필을 선택하거나 새 서버를 추가하세요</system:String>
+    <system:String x:Key="ServerSession.SavedServers">저장된 서버</system:String>
+    <system:String x:Key="ServerSession.NoSavedServers">저장된 서버가 없습니다</system:String>
+    <system:String x:Key="ServerSession.EditProfile">프로필 편집</system:String>
+    <system:String x:Key="ServerSession.Connect">연결</system:String>
+    <system:String x:Key="ServerSession.FrequentCommands">자주 사용하는 명령어</system:String>
+    <system:String x:Key="ServerSession.NoCommands">아직 실행한 명령어가 없습니다</system:String>
+    <system:String x:Key="ServerSession.CommandsWillAppear">명령어를 실행하면 여기에 표시됩니다</system:String>
+    <system:String x:Key="ServerSession.CurrentPath">현재 경로:</system:String>
+    <system:String x:Key="ServerSession.Recommended">추천</system:String>
+    <system:String x:Key="ServerSession.AddNewServer">새 서버 추가</system:String>
+    <system:String x:Key="ServerSession.Settings">설정</system:String>
+    <system:String x:Key="ServerSession.SearchCommand">명령어 검색</system:String>
+    <system:String x:Key="ServerSession.EditCommand">편집 (설명 수정, AI 설명 생성)</system:String>
+    <system:String x:Key="ServerSession.Send">전송</system:String>
+    <system:String x:Key="ServerSession.FileExplorer">파일 탐색기 (IDE 스타일)</system:String>
+    <system:String x:Key="ServerSession.BlockView">블록보기</system:String>
+    <system:String x:Key="ServerSession.FileTransfer">파일 전송 (SFTP)</system:String>
+    <system:String x:Key="ServerSession.LogViewer">로그 뷰어</system:String>
+    <system:String x:Key="ServerSession.ServerMonitoring">서버 모니터링</system:String>
+    <system:String x:Key="SSH.ServerProfile">서버 프로필</system:String>
+    <system:String x:Key="SSH.Host">호스트</system:String>
+    <system:String x:Key="SSH.Port">포트</system:String>
+    <system:String x:Key="SSH.Username">사용자명</system:String>
+    <system:String x:Key="SSH.Password">비밀번호</system:String>
+    <system:String x:Key="SSH.SSHKey">SSH 키</system:String>
+    <system:String x:Key="SSH.AuthMethod">인증 방식</system:String>
+    <system:String x:Key="SSH.AuthMethod.Password">비밀번호</system:String>
+    <system:String x:Key="SSH.AuthMethod.SSHKey">SSH 키</system:String>
+    <system:String x:Key="SSH.Connected">연결됨</system:String>
+    <system:String x:Key="SSH.Disconnected">연결 해제됨</system:String>
+    <system:String x:Key="SSH.Connecting">연결 중...</system:String>
+
+    <!-- File Transfer -->
+    <system:String x:Key="FileTransfer.Title">파일 전송 (SFTP)</system:String>
+    <system:String x:Key="FileTransfer.LocalPath">로컬 경로</system:String>
+    <system:String x:Key="FileTransfer.RemotePath">원격 경로</system:String>
+    <system:String x:Key="FileTransfer.FileName">파일 이름</system:String>
+    <system:String x:Key="FileTransfer.FileSize">파일 크기</system:String>
+    <system:String x:Key="FileTransfer.Modified">수정 날짜</system:String>
+    <system:String x:Key="FileTransfer.Progress">진행률</system:String>
+    <system:String x:Key="FileTransfer.Status">상태</system:String>
+    <system:String x:Key="FileTransfer.NewFolder">새 폴더</system:String>
+    <system:String x:Key="FileTransfer.DeleteFile">파일 삭제</system:String>
+    <system:String x:Key="FileTransfer.RenameFile">파일 이름 변경</system:String>
+
+    <!-- AI Models -->
+    <system:String x:Key="AI.Provider">AI 제공자</system:String>
+    <system:String x:Key="AI.Model">모델</system:String>
+    <system:String x:Key="AI.APIKey">API 키</system:String>
+    <system:String x:Key="AI.EnterAPIKey">API 키 입력...</system:String>
+    <system:String x:Key="AI.TestConnection">연결 테스트</system:String>
+
+    <!-- Status Messages -->
+    <system:String x:Key="Status.Ready">준비</system:String>
+    <system:String x:Key="Status.Loading">로딩 중...</system:String>
+    <system:String x:Key="Status.Saving">저장 중...</system:String>
+    <system:String x:Key="Status.Success">성공</system:String>
+    <system:String x:Key="Status.Failed">실패</system:String>
+    <system:String x:Key="Status.Error">오류</system:String>
+
+    <!-- WelcomePanel Code-behind -->
+    <system:String x:Key="Welcome.ShellSelected">{0} 선택됨 (기본)</system:String>
+    <system:String x:Key="Welcome.ShellSelectedWithPath">{0} 선택됨 ({1})</system:String>
+    <system:String x:Key="Welcome.SelectFolder">작업할 폴더를 선택하세요</system:String>
+    <system:String x:Key="Welcome.SelectNewProjectLocation">새 프로젝트를 만들 위치를 선택하세요</system:String>
+    <system:String x:Key="Welcome.NewProjectTitle">새 프로젝트</system:String>
+    <system:String x:Key="Welcome.EnterProjectName">프로젝트 이름을 입력하세요:</system:String>
+    <system:String x:Key="Welcome.CannotCreateFolder">프로젝트 폴더를 만들 수 없습니다: {0}</system:String>
+    <system:String x:Key="Welcome.FolderNotFound">폴더가 존재하지 않습니다:\n{0}\n\n목록에서 제거하시겠습니까?</system:String>
+    <system:String x:Key="Welcome.FolderNotFoundTitle">폴더를 찾을 수 없음</system:String>
+    <system:String x:Key="Welcome.ConfirmClearRecent">최근 폴더 목록을 모두 지우시겠습니까?</system:String>
+    <system:String x:Key="Welcome.Confirm">확인</system:String>
+    <system:String x:Key="Welcome.AutoModeWithFlag">자동 모드 ({0})</system:String>
+    <system:String x:Key="Welcome.AutoModeNotSupported">자동 모드 (미지원)</system:String>
+    <system:String x:Key="Welcome.InstalledWithVersion">설치됨 ({0})</system:String>
+    <system:String x:Key="Welcome.Installed">설치됨</system:String>
+    <system:String x:Key="Welcome.InstallConfirm">{0}을(를) 설치하시겠습니까?\n\n실행할 명령어:\n{1}\n\n요구사항: {2}</system:String>
+    <system:String x:Key="Welcome.InstallTitle">AI CLI 설치</system:String>
+    <system:String x:Key="Welcome.CannotOpenWebsite">웹사이트를 열 수 없습니다: {0}</system:String>
+    <system:String x:Key="Common.Error">오류</system:String>
+
+    <!-- Messages -->
+    <system:String x:Key="Message.ConfirmDelete">정말 삭제하시겠습니까?</system:String>
+    <system:String x:Key="Message.SaveSuccess">저장되었습니다.</system:String>
+    <system:String x:Key="Message.SaveFailed">저장 실패</system:String>
+    <system:String x:Key="Message.ConnectionSuccess">연결 성공</system:String>
+    <system:String x:Key="Message.ConnectionFailed">연결 실패</system:String>
+
+    <!-- ServerSessionView Code-behind -->
+    <system:String x:Key="Common.Notification">알림</system:String>
+    <system:String x:Key="ServerSession.ConnectionFailed">서버 연결 실패: {0}</system:String>
+    <system:String x:Key="ServerSession.ImagePasteError">클립보드에서 이미지를 가져오는데 실패했습니다.</system:String>
+    <system:String x:Key="ServerSession.ImageAttachment">[이미지: {0}]</system:String>
+    <system:String x:Key="ServerSession.ImageSaved">📷 클립보드 이미지가 저장되었습니다: {0}</system:String>
+    <system:String x:Key="ServerSession.ImagePasteException">이미지 붙여넣기 중 오류가 발생했습니다: {0}</system:String>
+    <system:String x:Key="ServerSession.Cache">캐시</system:String>
+    <system:String x:Key="ServerSession.EmbeddingSearch">임베딩 검색 (유사도 {0:P0})</system:String>
+    <system:String x:Key="ServerSession.TextSearch">텍스트 검색</system:String>
+    <system:String x:Key="ServerSession.CacheWithSimilarity">캐시 (유사도 {0:P0})</system:String>
+    <system:String x:Key="ServerSession.NotConnected">서버에 연결되어 있지 않습니다.</system:String>
+    <system:String x:Key="ServerSession.ConnectFirst">먼저 서버에 연결하세요.</system:String>
+    <system:String x:Key="ServerSession.CannotOpenFile">파일을 열 수 없습니다: {0}</system:String>
+    <system:String x:Key="ServerSession.CannotOpenFileTree">파일 트리를 열 수 없습니다: {0}</system:String>
+
+    <!-- LocalTerminalView -->
+    <system:String x:Key="LocalTerminal.CommandSnippets">명령어 스니펫</system:String>
+    <system:String x:Key="LocalTerminal.AddSnippet">새 스니펫 추가</system:String>
+    <system:String x:Key="LocalTerminal.ClosePanel">패널 닫기</system:String>
+    <system:String x:Key="LocalTerminal.UseCount">{0}회</system:String>
+    <system:String x:Key="LocalTerminal.NoSnippets">등록된 스니펫이 없습니다</system:String>
+    <system:String x:Key="LocalTerminal.AddSnippetHint">+ 버튼으로 자주 쓰는 명령어를 추가하세요</system:String>
+    <system:String x:Key="LocalTerminal.CurrentPath">현재 경로:</system:String>
+    <system:String x:Key="LocalTerminal.Execute">실행</system:String>
+    <system:String x:Key="LocalTerminal.ClickTerminalHelp">✅ 터미널 화면을 클릭하여 입력</system:String>
+    <system:String x:Key="LocalTerminal.TerminalHelpDetail"> (영문, /명령어, 방향키)</system:String>
+    <system:String x:Key="LocalTerminal.AuxiliaryInputHelp">📝 한글/긴 문장은 아래 입력창 사용</system:String>
+    <system:String x:Key="LocalTerminal.Exit">종료</system:String>
+    <system:String x:Key="LocalTerminal.AuxiliaryInputTooltip">한글/이미지 등 복잡한 입력용</system:String>
+    <system:String x:Key="LocalTerminal.AuxiliaryInputHint">[보조 입력] 한글/긴 문장 입력 (Enter=전송, Shift+Enter=줄바꿈)</system:String>
+    <system:String x:Key="LocalTerminal.Send">전송</system:String>
+    <system:String x:Key="LocalTerminal.FileExplorerTooltip">파일 탐색기 (IDE 스타일)</system:String>
+    <system:String x:Key="LocalTerminal.SnippetPanelTooltip">명령어 스니펫 (자주 쓰는 명령어)</system:String>
+    <system:String x:Key="LocalTerminal.BlockUIModeTooltip">Block UI 모드 전환 (Warp 스타일)</system:String>
+    <system:String x:Key="LocalTerminal.ClearOutputTooltip">출력 지우기</system:String>
+    <system:String x:Key="LocalTerminal.MemoryUsageTooltip">메모리 사용량</system:String>
+    <system:String x:Key="LocalTerminal.CpuUsageTooltip">CPU 사용률</system:String>
+
+    <!-- LocalTerminalView Code-behind -->
+    <system:String x:Key="LocalTerminal.Starting">로컬 셸 시작 중...</system:String>
+    <system:String x:Key="LocalTerminal.ShellStarting">{0} 시작 중...</system:String>
+    <system:String x:Key="LocalTerminal.ShellStarted">✓ {0} 시작됨</system:String>
+    <system:String x:Key="LocalTerminal.CurrentDirectoryInfo">📁 현재 디렉토리: {0}</system:String>
+    <system:String x:Key="LocalTerminal.WorkingFolderInfo">📁 작업 폴더: {0}</system:String>
+    <system:String x:Key="LocalTerminal.StartFailed">로컬 셸 시작 실패</system:String>
+    <system:String x:Key="LocalTerminal.ShellStartedBracket">[{0} 시작]</system:String>
+    <system:String x:Key="LocalTerminal.ShellStartedWithApp">[{0} 시작됨: {1}]</system:String>
+    <system:String x:Key="LocalTerminal.ImageSaved">이미지가 저장되었습니다: {0}</system:String>
+    <system:String x:Key="LocalTerminal.ImagePasteException">이미지 붙여넣기 중 오류가 발생했습니다: {0}</system:String>
+    <system:String x:Key="LocalTerminal.CannotOpenFileTree">파일 트리를 열 수 없습니다: {0}</system:String>
+    <system:String x:Key="LocalTerminal.DeleteSnippetConfirm">'{0}' 스니펫을 삭제하시겠습니까?</system:String>
+    <system:String x:Key="LocalTerminal.DeleteSnippetTitle">스니펫 삭제</system:String>
+    <system:String x:Key="LocalTerminal.AICLIError">AI CLI 실행 중 오류가 발생했습니다:\n{0}</system:String>
+
+    <!-- HistoryWindow -->
+    <system:String x:Key="History.Title">명령어 히스토리</system:String>
+    <system:String x:Key="History.ExecutionHistory">명령어 실행 히스토리</system:String>
+    <system:String x:Key="History.SearchHint">검색 (명령어, 요청, 설명)</system:String>
+    <system:String x:Key="History.ProfileFilter">프로필 필터</system:String>
+    <system:String x:Key="History.SuccessOnly">성공만</system:String>
+    <system:String x:Key="History.Clear">지우기</system:String>
+    <system:String x:Key="History.Time">시간</system:String>
+    <system:String x:Key="History.Profile">프로필</system:String>
+    <system:String x:Key="History.UserRequest">사용자 요청</system:String>
+    <system:String x:Key="History.Command">명령어</system:String>
+    <system:String x:Key="History.Status">상태</system:String>
+    <system:String x:Key="History.Edited">편집됨</system:String>
+    <system:String x:Key="History.Select">선택</system:String>
+
+    <!-- ProfileSelectorWindow -->
+    <system:String x:Key="ProfileSelector.Title">서버 프로필 선택</system:String>
+    <system:String x:Key="ProfileSelector.SelectServer">연결할 서버 선택</system:String>
+    <system:String x:Key="ProfileSelector.SelectOrCreate">저장된 서버 프로필을 선택하거나 새로 만드세요</system:String>
+    <system:String x:Key="ProfileSelector.LastConnected">마지막 연결: {0:yyyy-MM-dd HH:mm}</system:String>
+    <system:String x:Key="ProfileSelector.NoConnectionHistory">연결 이력 없음</system:String>
+    <system:String x:Key="ProfileSelector.Password">비밀번호</system:String>
+    <system:String x:Key="ProfileSelector.SSHKey">SSH 키</system:String>
+    <system:String x:Key="ProfileSelector.NewProfile">새 프로필</system:String>
+
+    <!-- CommandManagerWindow -->
+    <system:String x:Key="CommandManager.Title">명령어 관리</system:String>
+    <system:String x:Key="CommandManager.DescriptionLabel">설명</system:String>
+    <system:String x:Key="CommandManager.GenerateAIDescription">AI 설명 생성</system:String>
+    <system:String x:Key="CommandManager.DescriptionHint">명령어 설명...</system:String>
+    <system:String x:Key="CommandManager.CommandLabel">명령어</system:String>
+    <system:String x:Key="CommandManager.CommandHint">리눅스 명령어...</system:String>
+    <system:String x:Key="CommandManager.UsageStats">사용 통계</system:String>
+    <system:String x:Key="CommandManager.NoResultsMessage">검색 결과가 없습니다</system:String>
+    <system:String x:Key="CommandManager.InitialMessage">검색어를 입력하면 명령어 기록에서 검색합니다</system:String>
+    <system:String x:Key="CommandManager.DoubleClickHint">더블클릭하면 명령어가 입력창에 복사됩니다</system:String>
+    <system:String x:Key="CommandManager.SearchCommand">명령어 검색</system:String>
+    <system:String x:Key="CommandManager.SearchHint">검색어를 입력하세요...</system:String>
+    <system:String x:Key="CommandManager.Search">검색</system:String>
+    <system:String x:Key="CommandManager.SaveChanges">변경사항 저장</system:String>
+    <system:String x:Key="CommandManager.UseCommand">사용</system:String>
+
+    <!-- FileTransferWindow -->
+    <system:String x:Key="FileTransfer.ManagementTitle">파일 전송 관리</system:String>
+    <system:String x:Key="FileTransfer.Back">뒤로</system:String>
+    <system:String x:Key="FileTransfer.Go">이동</system:String>
+    <system:String x:Key="FileTransfer.Icon">아이콘</system:String>
+    <system:String x:Key="FileTransfer.Name">이름</system:String>
+    <system:String x:Key="FileTransfer.Size">크기</system:String>
+    <system:String x:Key="FileTransfer.Permissions">권한</system:String>
+    <system:String x:Key="FileTransfer.CreateFolder">폴더 생성</system:String>
+    <system:String x:Key="FileTransfer.Rename">이름 변경</system:String>
+    <system:String x:Key="FileTransfer.Transferring">파일 전송 중...</system:String>
+
+    <!-- QAManagerWindow -->
+    <system:String x:Key="QAManager.Title">Q&amp;A 지식베이스 관리</system:String>
+    <system:String x:Key="QAManager.SearchButton">🔍 검색</system:String>
+    <system:String x:Key="QAManager.QAList">Q&amp;A 목록</system:String>
+    <system:String x:Key="QAManager.AddNew">➕ 새 항목</system:String>
+    <system:String x:Key="QAManager.EditHeader">새 Q&amp;A 추가</system:String>
+    <system:String x:Key="QAManager.Question">질문</system:String>
+    <system:String x:Key="QAManager.Answer">답변</system:String>
+    <system:String x:Key="QAManager.Category">카테고리</system:String>
+    <system:String x:Key="QAManager.Tags">태그 (쉼표로 구분)</system:String>
+    <system:String x:Key="QAManager.DeleteButton">🗑 삭제</system:String>
+    <system:String x:Key="QAManager.SaveButton">💾 저장</system:String>
+    <system:String x:Key="QAManager.ImportJson">📥 JSON 가져오기</system:String>
+    <system:String x:Key="QAManager.ExportJson">📤 JSON 내보내기</system:String>
+    <system:String x:Key="QAManager.GenerateEmbeddings">🧠 임베딩 일괄 생성</system:String>
+    <system:String x:Key="QAManager.TimesUsed">회 사용</system:String>
+
+    <!-- SnippetManagerWindow -->
+    <system:String x:Key="SnippetManager.Title">명령어 스니펫 관리</system:String>
+    <system:String x:Key="SnippetManager.SearchHint">검색 (이름, 설명, 명령어, 태그)</system:String>
+    <system:String x:Key="SnippetManager.CategoryHint">카테고리</system:String>
+    <system:String x:Key="SnippetManager.NewSnippet">새 스니펫</system:String>
+    <system:String x:Key="SnippetManager.Name">이름</system:String>
+    <system:String x:Key="SnippetManager.Description">설명</system:String>
+    <system:String x:Key="SnippetManager.Command">명령어</system:String>
+    <system:String x:Key="SnippetManager.UseCount">사용 횟수</system:String>
+    <system:String x:Key="SnippetManager.Actions">작업</system:String>
+    <system:String x:Key="SnippetManager.TotalCount">총 스니펫 수:</system:String>
+
+    <!-- ServerMonitorWindow -->
+    <system:String x:Key="ServerMonitor.Title">서버 모니터링</system:String>
+    <system:String x:Key="ServerMonitor.AutoRefresh">자동 새로고침 (10초)</system:String>
+    <system:String x:Key="ServerMonitor.SystemInfo">시스템 정보</system:String>
+    <system:String x:Key="ServerMonitor.Network">네트워크</system:String>
+    <system:String x:Key="ServerMonitor.OSInfo">OS: 정보 로드 중...</system:String>
+    <system:String x:Key="ServerMonitor.KernelVersion">Kernel: 정보 로드 중...</system:String>
+    <system:String x:Key="ServerMonitor.Uptime">Uptime: 정보 로드 중...</system:String>
+    <system:String x:Key="ServerMonitor.NetworkRx">수신: 0 B</system:String>
+    <system:String x:Key="ServerMonitor.NetworkTx">송신: 0 B</system:String>
+    <system:String x:Key="ServerMonitor.LoadAverage">Load: 정보 로드 중...</system:String>
+    <system:String x:Key="ServerMonitor.CPUUsage">🖥️ CPU 사용률</system:String>
+    <system:String x:Key="ServerMonitor.MemoryUsage">💾 메모리 사용률</system:String>
+    <system:String x:Key="ServerMonitor.DiskUsage">💿 디스크 사용률</system:String>
+    <system:String x:Key="ServerMonitor.ProcessCount">프로세스: 0</system:String>
+    <system:String x:Key="ServerMonitor.MemoryDetail">사용: 0 / 전체: 0</system:String>
+    <system:String x:Key="ServerMonitor.DiskDetail">사용: 0 / 전체: 0</system:String>
+    <system:String x:Key="ServerMonitor.Services">⚙️ 주요 서비스 상태</system:String>
+    <system:String x:Key="ServerMonitor.TopProcesses">📈 상위 프로세스 (CPU)</system:String>
+    <system:String x:Key="ServerMonitor.Service">서비스</system:String>
+    <system:String x:Key="ServerMonitor.ServiceStatus">상태</system:String>
+
+    <!-- FileEditorWindow -->
+    <system:String x:Key="FileEditor.Title">파일 편집기</system:String>
+    <system:String x:Key="FileEditor.EditButton">편집</system:String>
+    <system:String x:Key="FileEditor.EditTooltip">편집 모드로 전환</system:String>
+    <system:String x:Key="FileEditor.SaveTooltip">저장 (Ctrl+S)</system:String>
+    <system:String x:Key="FileEditor.CancelEdit">취소</system:String>
+    <system:String x:Key="FileEditor.CancelEditTooltip">편집 취소</system:String>
+    <system:String x:Key="FileEditor.Undo">↩️ 실행 취소</system:String>
+    <system:String x:Key="FileEditor.UndoTooltip">실행 취소 (Ctrl+Z)</system:String>
+    <system:String x:Key="FileEditor.Redo">↪️ 다시 실행</system:String>
+    <system:String x:Key="FileEditor.RedoTooltip">다시 실행 (Ctrl+Y)</system:String>
+    <system:String x:Key="FileEditor.Encoding">인코딩:</system:String>
+    <system:String x:Key="FileEditor.WordWrap">자동 줄바꿈</system:String>
+    <system:String x:Key="FileEditor.ShowLineNumbers">줄 번호</system:String>
+    <system:String x:Key="FileEditor.Modified"> ● 수정됨</system:String>
+    <system:String x:Key="FileEditor.LineColumn">줄 1, 열 1</system:String>
+
+    <!-- LogViewerWindow -->
+    <system:String x:Key="LogViewer.Title">로그 뷰어</system:String>
+    <system:String x:Key="LogViewer.LogFile">로그 파일:</system:String>
+    <system:String x:Key="LogViewer.Start">시작</system:String>
+    <system:String x:Key="LogViewer.Stop">중지</system:String>
+    <system:String x:Key="LogViewer.Clear">지우기</system:String>
+    <system:String x:Key="LogViewer.AutoScroll">자동 스크롤</system:String>
+    <system:String x:Key="LogViewer.Filter">필터:</system:String>
+    <system:String x:Key="LogViewer.Level">레벨:</system:String>
+    <system:String x:Key="LogViewer.LevelAll">모두</system:String>
+    <system:String x:Key="LogViewer.Waiting">대기 중</system:String>
+    <system:String x:Key="LogViewer.LineCount">0 줄</system:String>
+
+    <!-- OrchestratorWindow -->
+    <system:String x:Key="Orchestrator.Title">Claude Code Orchestrator</system:String>
+    <system:String x:Key="Orchestrator.Subtitle">PM + Worker 병렬 처리 시스템</system:String>
+    <system:String x:Key="Orchestrator.ProjectPath">프로젝트 경로</system:String>
+    <system:String x:Key="Orchestrator.LoadState">상태 조회</system:String>
+    <system:String x:Key="Orchestrator.WorkerCount">Worker 수:</system:String>
+    <system:String x:Key="Orchestrator.CleanStart">클린 스타트</system:String>
+    <system:String x:Key="Orchestrator.CleanStartTooltip">기존 상태 데이터를 삭제하고 새로 시작</system:String>
+    <system:String x:Key="Orchestrator.Launch">오케스트레이터 실행</system:String>
+    <system:String x:Key="Orchestrator.BuildMcp">MCP 서버 빌드</system:String>
+    <system:String x:Key="Orchestrator.TaskList">태스크 목록</system:String>
+    <system:String x:Key="Orchestrator.WorkerStatus">워커 상태</system:String>
+    <system:String x:Key="Orchestrator.FileLocks">파일 락</system:String>
+    <system:String x:Key="Orchestrator.TasksWorking">작업 중: {0}</system:String>
+    <system:String x:Key="Orchestrator.CompletedTasks">완료: {0}개</system:String>
+    <system:String x:Key="Orchestrator.Ready">준비</system:String>
+
+    <!-- HistoryWindow Code-behind -->
+    <system:String x:Key="History.ConfirmClearAll">모든 히스토리를 삭제하시겠습니까?</system:String>
+    <system:String x:Key="History.DeleteTitle">히스토리 삭제</system:String>
+    <system:String x:Key="History.DeleteSuccess">히스토리가 삭제되었습니다.</system:String>
+    <system:String x:Key="Common.Complete">완료</system:String>
+    <system:String x:Key="History.SelectRequired">히스토리 항목을 선택해주세요.</system:String>
+    <system:String x:Key="History.SelectionRequired">선택 필요</system:String>
+    <system:String x:Key="History.All">전체</system:String>
+    <system:String x:Key="History.TotalCount">전체 {0}개</system:String>
+
+    <!-- ProfileSelectorWindow Code-behind -->
+    <system:String x:Key="ProfileSelector.SelectProfileMessage">프로필을 선택해주세요.</system:String>
+
+    <!-- CommandManagerWindow Code-behind -->
+    <system:String x:Key="CommandManager.SearchTitle">명령어 검색</system:String>
+    <system:String x:Key="CommandManager.DetailTitle">명령어 상세</system:String>
+    <system:String x:Key="CommandManager.TotalUseCount">총 {0}회 사용</system:String>
+    <system:String x:Key="CommandManager.LastUsedTime">마지막 사용: {0:yyyy-MM-dd HH:mm}</system:String>
+    <system:String x:Key="CommandManager.NoUsageHistory">사용 기록 없음</system:String>
+    <system:String x:Key="CommandManager.ResultCount">{0}개 결과 (전체 {1}개 중)</system:String>
+    <system:String x:Key="CommandManager.TotalCommands">전체 {0}개의 명령어</system:String>
+    <system:String x:Key="CommandManager.NoResults">검색 결과 없음</system:String>
+    <system:String x:Key="CommandManager.SelectCommand">명령어를 선택해주세요.</system:String>
+    <system:String x:Key="CommandManager.EnterCommand">명령어를 입력해주세요.</system:String>
+    <system:String x:Key="CommandManager.SaveSuccess">저장되었습니다.</system:String>
+    <system:String x:Key="CommandManager.DeleteConfirm">'{0}'을(를) 삭제하시겠습니까?</system:String>
+    <system:String x:Key="CommandManager.DeleteTitle">삭제 확인</system:String>
+    <system:String x:Key="CommandManager.EnterCommandFirst">명령어를 먼저 입력해주세요.</system:String>
+    <system:String x:Key="CommandManager.AIProviderNotSet">AI 제공자가 설정되지 않았습니다.\n설정에서 API 키를 입력해주세요.</system:String>
+    <system:String x:Key="CommandManager.GeneratingAI">AI가 설명을 생성하는 중...</system:String>
+    <system:String x:Key="CommandManager.AIGenerationFailed">AI 설명 생성 실패: {0}</system:String>
+
+    <!-- FileTransferWindow Code-behind -->
+    <system:String x:Key="FileTransfer.ConnectionError">연결 오류</system:String>
+    <system:String x:Key="FileTransfer.SFTPConnectionFailed">SFTP 연결 실패:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.DirectoryLoadFailed">디렉토리 로드 실패:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.LargeFileWarning">파일 크기가 {0}입니다.\n대용량 파일은 편집기에서 열기가 느릴 수 있습니다.\n계속하시겠습니까?</system:String>
+    <system:String x:Key="FileTransfer.LargeFileWarningTitle">대용량 파일 경고</system:String>
+    <system:String x:Key="FileTransfer.CannotOpenEditor">파일 편집기를 열 수 없습니다.\n{0}</system:String>
+    <system:String x:Key="FileTransfer.Uploading">업로드 중: {0}</system:String>
+    <system:String x:Key="FileTransfer.Downloading">다운로드 중: {0}</system:String>
+    <system:String x:Key="FileTransfer.TransferDetails">{0:F2} / {1:F2} MB ({2:F1}%)</system:String>
+    <system:String x:Key="FileTransfer.UploadComplete">파일 업로드 완료:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.UploadSuccess">업로드 성공</system:String>
+    <system:String x:Key="FileTransfer.UploadMultipleFiles">업로드 중: {0}개 파일</system:String>
+    <system:String x:Key="FileTransfer.UploadMultipleComplete">파일 업로드 완료:\n{0}개 파일</system:String>
+    <system:String x:Key="FileTransfer.UploadFailed">파일 업로드 실패:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.SelectFilesToDownload">다운로드할 파일을 선택해주세요.\n(디렉토리는 다운로드할 수 없습니다)</system:String>
+    <system:String x:Key="FileTransfer.DownloadComplete">파일 다운로드 완료:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.DownloadSuccess">다운로드 성공</system:String>
+    <system:String x:Key="FileTransfer.DownloadMultipleFiles">다운로드 중: {0}개 파일</system:String>
+    <system:String x:Key="FileTransfer.DownloadMultipleComplete">파일 다운로드 완료:\n{0}개 파일 → {1}</system:String>
+    <system:String x:Key="FileTransfer.DownloadFailed">파일 다운로드 실패:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.NewFolderName">새 폴더 이름</system:String>
+    <system:String x:Key="FileTransfer.CreateFolderTitle">폴더 생성</system:String>
+    <system:String x:Key="FileTransfer.FolderCreated">폴더가 생성되었습니다:\n{0}</system:String>
+    <system:String x:Key="Common.Success">성공</system:String>
+    <system:String x:Key="FileTransfer.FolderCreationFailed">폴더 생성 실패:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.SelectItemToRename">이름을 변경할 항목을 선택해주세요.</system:String>
+    <system:String x:Key="FileTransfer.NewName">새 이름</system:String>
+    <system:String x:Key="FileTransfer.RenameTitle">이름 변경</system:String>
+    <system:String x:Key="FileTransfer.Renamed">이름이 변경되었습니다:\n{0} → {1}</system:String>
+    <system:String x:Key="FileTransfer.RenameFailed">이름 변경 실패:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.SelectItemToDelete">삭제할 항목을 선택해주세요.</system:String>
+    <system:String x:Key="FileTransfer.ConfirmDelete">다음 항목을 삭제하시겠습니까?\n\n{0}</system:String>
+    <system:String x:Key="FileTransfer.DeleteConfirmTitle">삭제 확인</system:String>
+    <system:String x:Key="FileTransfer.Deleted">삭제되었습니다:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.DeleteFailed">삭제 실패:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.FileCount">전체 {0}개 ({1}개 폴더, {2}개 파일)</system:String>
+
+    <!-- QAManagerWindow Code-behind -->
+    <system:String x:Key="QAManager.ValidationError">입력 오류</system:String>
+    <system:String x:Key="QAManager.EnterQuestionAndAnswer">질문과 답변을 모두 입력해주세요.</system:String>
+    <system:String x:Key="QAManager.Saving">저장 중...</system:String>
+    <system:String x:Key="QAManager.QAAdded">새 Q&amp;A가 추가되었습니다.</system:String>
+    <system:String x:Key="QAManager.QAUpdated">Q&amp;A가 수정되었습니다.</system:String>
+    <system:String x:Key="QAManager.SaveFailed">저장 실패: {0}</system:String>
+    <system:String x:Key="QAManager.DeleteQA">'{0}'을(를) 삭제하시겠습니까?</system:String>
+    <system:String x:Key="QAManager.Searching">검색 중...</system:String>
+    <system:String x:Key="QAManager.SearchResults">검색 결과: {0}개</system:String>
+    <system:String x:Key="QAManager.SearchFailed">검색 실패: {0}</system:String>
+    <system:String x:Key="QAManager.ImportData">Q&amp;A 데이터 가져오기</system:String>
+    <system:String x:Key="QAManager.NoDataToImport">가져올 데이터가 없습니다.</system:String>
+    <system:String x:Key="QAManager.ConfirmImport">{0}개의 Q&amp;A를 가져오시겠습니까?</system:String>
+    <system:String x:Key="QAManager.ImportConfirmTitle">가져오기 확인</system:String>
+    <system:String x:Key="QAManager.ImportComplete">{0}개의 Q&amp;A를 가져왔습니다.</system:String>
+    <system:String x:Key="QAManager.ImportFailed">가져오기 실패: {0}</system:String>
+    <system:String x:Key="QAManager.ExportData">Q&amp;A 데이터 내보내기</system:String>
+    <system:String x:Key="QAManager.ExportComplete">{0}개의 Q&amp;A를 내보냈습니다.</system:String>
+    <system:String x:Key="QAManager.ExportFailed">내보내기 실패: {0}</system:String>
+    <system:String x:Key="QAManager.AllVectorized">모든 항목이 이미 벡터화되어 있습니다.</system:String>
+    <system:String x:Key="QAManager.ConfirmGenerateEmbeddings">{0}개의 항목에 대해 임베딩을 생성하시겠습니까?\n(시간이 다소 걸릴 수 있습니다)</system:String>
+    <system:String x:Key="QAManager.GenerateEmbeddingsTitle">임베딩 생성 확인</system:String>
+    <system:String x:Key="QAManager.Generating">생성 중...</system:String>
+    <system:String x:Key="QAManager.EmbeddingsGenerated">{0}개의 임베딩을 생성했습니다.</system:String>
+    <system:String x:Key="QAManager.GenerationFailed">임베딩 생성 실패: {0}</system:String>
+    <system:String x:Key="QAManager.Statistics">총 {0}개 | 벡터화됨: {1}개 | 총 사용: {2}회</system:String>
+    <system:String x:Key="QAManager.AddNewQA">새 Q&amp;A 추가</system:String>
+    <system:String x:Key="QAManager.EditQA">Q&amp;A 수정</system:String>
+    <system:String x:Key="QAManager.VectorEmbeddingComplete">✅ 벡터 임베딩 완료</system:String>
+    <system:String x:Key="QAManager.NoVectorEmbedding">⚠️ 벡터 임베딩 없음 (저장 시 자동 생성)</system:String>
+
+    <!-- SnippetManagerWindow Code-behind -->
+    <system:String x:Key="SnippetManager.DeleteConfirm">'{0}' 스니펫을 삭제하시겠습니까?</system:String>
+    <system:String x:Key="SnippetManager.EditTitle">스니펫 편집</system:String>
+    <system:String x:Key="SnippetManager.NewSnippetTitle">새 스니펫</system:String>
+    <system:String x:Key="SnippetManager.EnterName">이름을 입력해주세요.</system:String>
+    <system:String x:Key="SnippetManager.EnterCommandText">명령어를 입력해주세요.</system:String>
+    <system:String x:Key="SnippetManager.SnippetInfo">스니펫 정보 입력</system:String>
+    <system:String x:Key="SnippetManager.NameRequired">이름 *</system:String>
+    <system:String x:Key="SnippetManager.DescriptionField">설명</system:String>
+    <system:String x:Key="SnippetManager.CommandRequired">명령어 *</system:String>
+    <system:String x:Key="SnippetManager.CategoryField">카테고리</system:String>
+    <system:String x:Key="SnippetManager.TagsField">태그 (쉼표로 구분)</system:String>
+    <system:String x:Key="SnippetManager.CategoryHintText">선택하거나 새 카테고리 입력</system:String>
+    <system:String x:Key="SnippetManager.CategoryHelp">기존 카테고리를 선택하거나 새로운 카테고리를 직접 입력할 수 있습니다.</system:String>
+    <system:String x:Key="SnippetManager.General">일반</system:String>
+
+    <!-- ServerMonitorWindow Code-behind -->
+    <system:String x:Key="ServerMonitor.LoadError">서버 통계를 가져올 수 없습니다:\n{0}</system:String>
+    <system:String x:Key="ServerMonitor.LoadFailed">데이터 로드 실패:\n{0}</system:String>
+    <system:String x:Key="ServerMonitor.ProcessCountLabel">프로세스: {0}</system:String>
+    <system:String x:Key="ServerMonitor.MemoryUsageDetail">사용: {0} / 전체: {1}</system:String>
+    <system:String x:Key="ServerMonitor.DiskUsageDetail">사용: {0} / 전체: {1}</system:String>
+    <system:String x:Key="ServerMonitor.OSInfoLabel">OS: {0}</system:String>
+    <system:String x:Key="ServerMonitor.KernelVersionLabel">Kernel: {0}</system:String>
+    <system:String x:Key="ServerMonitor.UptimeLabel">Uptime: {0}</system:String>
+    <system:String x:Key="ServerMonitor.NetworkRxLabel">수신: {0}</system:String>
+    <system:String x:Key="ServerMonitor.NetworkTxLabel">송신: {0}</system:String>
+    <system:String x:Key="ServerMonitor.LoadAverageLabel">Load: {0}</system:String>
+    <system:String x:Key="ServerMonitor.LastUpdated">마지막 업데이트: {0:HH:mm:ss}</system:String>
+
+    <!-- FileEditorWindow Code-behind -->
+    <system:String x:Key="FileEditor.LoadingTitle">파일 편집기 - {0} (로딩 중...)</system:String>
+    <system:String x:Key="FileEditor.LargeFileConfirm">파일 크기가 {0}입니다.\n대용량 파일은 편집이 느릴 수 있습니다.\n계속하시겠습니까?</system:String>
+    <system:String x:Key="FileEditor.CannotOpenFile">파일을 열 수 없습니다.\n{0}</system:String>
+    <system:String x:Key="FileEditor.SavingTitle">파일 편집기 - {0} (저장 중...)</system:String>
+    <system:String x:Key="FileEditor.FileSaved">파일이 저장되었습니다.</system:String>
+    <system:String x:Key="FileEditor.SaveComplete">저장 완료</system:String>
+    <system:String x:Key="FileEditor.CannotSaveFile">파일을 저장할 수 없습니다.\n{0}</system:String>
+    <system:String x:Key="FileEditor.SaveError">저장 오류</system:String>
+    <system:String x:Key="FileEditor.ConfirmCancelEdit">변경 사항을 취소하시겠습니까?\n저장되지 않은 내용은 모두 사라집니다.</system:String>
+    <system:String x:Key="FileEditor.CancelEditConfirmTitle">편집 취소 확인</system:String>
+    <system:String x:Key="FileEditor.LineColumnStatus">줄 {0}, 열 {1}</system:String>
+    <system:String x:Key="FileEditor.UnsavedChanges">변경 사항이 저장되지 않았습니다.\n저장하시겠습니까?</system:String>
+    <system:String x:Key="FileEditor.SaveConfirm">저장 확인</system:String>
+    <system:String x:Key="FileEditor.SaveFailedError">저장 실패: {0}</system:String>
+    <system:String x:Key="FileEditor.ViewerMode">[뷰어 모드] 파일 편집기 - {0}</system:String>
+    <system:String x:Key="FileEditor.EditMode">[편집 모드] 파일 편집기 - {0}</system:String>
+    <system:String x:Key="FileEditor.ModifiedPrefix">* </system:String>
+
+    <!-- LogViewerWindow Code-behind -->
+    <system:String x:Key="LogViewer.ConnectionFailed">SSH 연결 실패:\n{0}</system:String>
+    <system:String x:Key="LogViewer.EnterLogPath">로그 파일 경로를 입력하세요.</system:String>
+    <system:String x:Key="LogViewer.InputRequired">입력 필요</system:String>
+    <system:String x:Key="LogViewer.StartingStream">스트리밍 시작 중...</system:String>
+    <system:String x:Key="LogViewer.StreamStartFailed">로그 스트리밍 시작 실패:\n{0}</system:String>
+    <system:String x:Key="LogViewer.Stopping">중지 중...</system:String>
+    <system:String x:Key="LogViewer.StopFailed">로그 스트리밍 중지 실패:\n{0}</system:String>
+    <system:String x:Key="LogViewer.Connecting">연결 중...</system:String>
+    <system:String x:Key="LogViewer.ConnectedSelect">연결됨 - 로그 파일을 선택하고 시작하세요</system:String>
+    <system:String x:Key="LogViewer.Streaming">스트리밍 중...</system:String>
+    <system:String x:Key="LogViewer.Stopped">중지됨</system:String>
+    <system:String x:Key="LogViewer.ErrorOccurred">오류: {0}</system:String>
+    <system:String x:Key="LogViewer.LineCountWithFilter">{0} / {1} 줄</system:String>
+    <system:String x:Key="LogViewer.LineCountTotal">{0} 줄</system:String>
+
+    <!-- ClaudeOptionsDialog -->
+    <system:String x:Key="ClaudeOptions.Title">Claude Code 실행 옵션</system:String>
+    <system:String x:Key="ClaudeOptions.Subtitle">실행할 옵션을 선택하세요</system:String>
+    <system:String x:Key="ClaudeOptions.PermissionMode">권한 모드</system:String>
+    <system:String x:Key="ClaudeOptions.NormalMode">일반 모드 (권한 확인)</system:String>
+    <system:String x:Key="ClaudeOptions.AutoMode">자동 모드 (권한 스킵)</system:String>
+    <system:String x:Key="ClaudeOptions.Model">모델</system:String>
+    <system:String x:Key="ClaudeOptions.DefaultModel">기본값 (설정된 모델)</system:String>
+    <system:String x:Key="ClaudeOptions.OutputFormat">출력 형식</system:String>
+    <system:String x:Key="ClaudeOptions.InteractiveDefault">대화형 (기본)</system:String>
+    <system:String x:Key="ClaudeOptions.TextOnly">텍스트만 출력 (--print)</system:String>
+    <system:String x:Key="ClaudeOptions.JSONOutput">JSON 출력</system:String>
+    <system:String x:Key="ClaudeOptions.StreamJSON">스트림 JSON</system:String>
+    <system:String x:Key="ClaudeOptions.MaxTurns">최대 턴 수</system:String>
+    <system:String x:Key="ClaudeOptions.UnlimitedTurns">0 = 무제한</system:String>
+    <system:String x:Key="ClaudeOptions.AdditionalOptions">추가 옵션</system:String>
+    <system:String x:Key="ClaudeOptions.VerboseOutput">상세 출력 (--verbose)</system:String>
+    <system:String x:Key="ClaudeOptions.IgnoreConfig">설정 파일 무시 (--no-config)</system:String>
+    <system:String x:Key="ClaudeOptions.ResumePrevious">이전 대화 이어하기 (--resume)</system:String>
+    <system:String x:Key="ClaudeOptions.ContinueRecent">가장 최근 대화 계속 (--continue)</system:String>
+    <system:String x:Key="ClaudeOptions.SystemPrompt">시스템 프롬프트 (선택사항)</system:String>
+    <system:String x:Key="ClaudeOptions.SystemPromptHint">예: You are a helpful coding assistant...</system:String>
+    <system:String x:Key="ClaudeOptions.InitialPrompt">초기 프롬프트 (선택사항)</system:String>
+    <system:String x:Key="ClaudeOptions.InitialPromptHint">실행 시 바로 전달할 프롬프트...</system:String>
+    <system:String x:Key="ClaudeOptions.CommandPreview">실행 명령어</system:String>
+    <system:String x:Key="ClaudeOptions.Copy">복사</system:String>
+    <system:String x:Key="ClaudeOptions.CopyTooltip">명령어를 클립보드에 복사</system:String>
+    <system:String x:Key="ClaudeOptions.Cancel">취소</system:String>
+    <system:String x:Key="ClaudeOptions.Run">실행</system:String>
+
+    <!-- AICLIOptionsDialog -->
+    <system:String x:Key="AICLIOptions.Title">AI CLI 실행 옵션</system:String>
+    <system:String x:Key="AICLIOptions.Subtitle">사용할 AI CLI와 실행 옵션을 선택하세요</system:String>
+    <system:String x:Key="AICLIOptions.SelectCLI">AI CLI 선택</system:String>
+    <system:String x:Key="AICLIOptions.CustomCommand">커스텀 명령어</system:String>
+    <system:String x:Key="AICLIOptions.CustomCommandHint">예: my-ai-cli --option</system:String>
+    <system:String x:Key="AICLIOptions.ExecutionMode">실행 모드</system:String>
+    <system:String x:Key="AICLIOptions.AutoMode">자동 모드</system:String>
+    <system:String x:Key="AICLIOptions.AutoModeWarning">권한 확인 없이 자동으로 작업을 수행합니다 (주의 필요)</system:String>
+    <system:String x:Key="AICLIOptions.ClaudeOptions">Claude Code 옵션</system:String>
+    <system:String x:Key="AICLIOptions.PrintOnly">출력만 (--print) - 대화형 모드 없이 결과만 출력</system:String>
+    <system:String x:Key="AICLIOptions.OutputFormatLabel">출력 형식:</system:String>
+    <system:String x:Key="AICLIOptions.DefaultInteractive">기본 (대화형)</system:String>
+    <system:String x:Key="AICLIOptions.Text">텍스트</system:String>
+    <system:String x:Key="AICLIOptions.JSON">JSON</system:String>
+    <system:String x:Key="AICLIOptions.CodexOptions">Codex CLI 옵션</system:String>
+    <system:String x:Key="AICLIOptions.QuietMode">조용한 모드 (--quiet)</system:String>
+    <system:String x:Key="AICLIOptions.GeminiOptions">Gemini CLI 옵션</system:String>
+    <system:String x:Key="AICLIOptions.YoloMode">YOLO 모드 (-y) - 모든 확인 스킵</system:String>
+    <system:String x:Key="AICLIOptions.AiderOptions">Aider 옵션</system:String>
+    <system:String x:Key="AICLIOptions.AutoCommits">자동 커밋 (--auto-commits)</system:String>
+    <system:String x:Key="AICLIOptions.NoPretty">포맷팅 없음 (--no-pretty)</system:String>
+    <system:String x:Key="AICLIOptions.AdditionalFlags">추가 플래그 (선택사항)</system:String>
+    <system:String x:Key="AICLIOptions.AdditionalFlagsHint">예: --max-turns 10 --no-config</system:String>
+    <system:String x:Key="AICLIOptions.CommandPreviewEditable">(직접 편집 가능)</system:String>
+    <system:String x:Key="AICLIOptions.OK">확인</system:String>
+
+    <!-- TextInputDialog -->
+    <system:String x:Key="TextInput.Title">입력</system:String>
+    <system:String x:Key="TextInput.Prompt">입력하세요:</system:String>
+    <system:String x:Key="TextInput.Hint">입력</system:String>
+    <system:String x:Key="TextInput.Cancel">취소</system:String>
+    <system:String x:Key="TextInput.OK">확인</system:String>
+
+    <!-- CommandConfirmDialog -->
+    <system:String x:Key="CommandConfirm.Title">명령어 확인</system:String>
+    <system:String x:Key="CommandConfirm.ExplanationHeader">명령어 설명</system:String>
+    <system:String x:Key="CommandConfirm.GeneratedCommand">생성된 명령어 (편집 가능)</system:String>
+    <system:String x:Key="CommandConfirm.ReviewMessage">명령어를 검토하고 필요시 수정한 후 실행하세요</system:String>
+    <system:String x:Key="CommandConfirm.Cancel">취소</system:String>
+    <system:String x:Key="CommandConfirm.Execute">실행</system:String>
+
+    <!-- CloneRepositoryDialog -->
+    <system:String x:Key="CloneRepo.Title">저장소 복제</system:String>
+    <system:String x:Key="CloneRepo.Header">Git 저장소 복제</system:String>
+    <system:String x:Key="CloneRepo.RepositoryURL">저장소 URL</system:String>
+    <system:String x:Key="CloneRepo.URLHint">https://github.com/user/repo.git</system:String>
+    <system:String x:Key="CloneRepo.TargetFolder">대상 폴더</system:String>
+    <system:String x:Key="CloneRepo.TargetHint">C:\Projects\my-repo</system:String>
+    <system:String x:Key="CloneRepo.Browse">찾아보기</system:String>
+    <system:String x:Key="CloneRepo.Tip">저장소 URL을 입력하면 자동으로 폴더 이름이 설정됩니다.</system:String>
+    <system:String x:Key="CloneRepo.Cancel">취소</system:String>
+    <system:String x:Key="CloneRepo.Clone">복제</system:String>
+
+    <!-- ViewModel Common -->
+    <system:String x:Key="ViewModel.NotConnected">연결되지 않음</system:String>
+    <system:String x:Key="ViewModel.NewSession">새 세션</system:String>
+    <system:String x:Key="ViewModel.NewTab">새 탭</system:String>
+    <system:String x:Key="ViewModel.SelectSessionType">세션 타입을 선택하세요</system:String>
+    <system:String x:Key="ViewModel.LocalTerminal">로컬 터미널</system:String>
+    <system:String x:Key="ViewModel.NoAI">AI 없음</system:String>
+    <system:String x:Key="ViewModel.ConnectionFailed">연결 실패:\n{0}</system:String>
+    <system:String x:Key="ViewModel.ConnectionError">연결 오류</system:String>
+    <system:String x:Key="ViewModel.InteractiveMode">인터랙티브 모드 (Ctrl+C로 종료)</system:String>
+    <system:String x:Key="ViewModel.Connecting">연결 중...</system:String>
+    <system:String x:Key="ViewModel.Disconnected">연결 해제됨</system:String>
+    <system:String x:Key="ViewModel.DisconnectedSuffix"> (연결 해제됨)</system:String>
+
+    <!-- OrchestratorWindow Code-behind -->
+    <system:String x:Key="Orchestrator.ProjectPathRequired">프로젝트 경로를 입력하세요.</system:String>
+    <system:String x:Key="Orchestrator.FolderNotExist">프로젝트 폴더가 존재하지 않습니다.</system:String>
+    <system:String x:Key="Orchestrator.StateLoaded">상태 로드됨 - 자동 갱신 중</system:String>
+    <system:String x:Key="Orchestrator.NoState">오케스트레이터 상태 없음 (실행 필요)</system:String>
+    <system:String x:Key="Orchestrator.Running">오케스트레이터 실행 중...</system:String>
+    <system:String x:Key="Orchestrator.Launched">오케스트레이터 실행됨</system:String>
+    <system:String x:Key="Orchestrator.LaunchFailed">실행 실패: {0}</system:String>
+    <system:String x:Key="Orchestrator.ExecutionFailed">실행 실패</system:String>
+    <system:String x:Key="Orchestrator.ErrorOccurred">오류: {0}</system:String>
+    <system:String x:Key="Orchestrator.ErrorStatus">오류 발생</system:String>
+    <system:String x:Key="Orchestrator.Building">MCP 서버 빌드 중...</system:String>
+    <system:String x:Key="Orchestrator.BuildComplete">MCP 서버 빌드 완료</system:String>
+    <system:String x:Key="Orchestrator.BuildFailed">빌드 실패:\n{0}</system:String>
+    <system:String x:Key="Orchestrator.BuildError">빌드 오류: {0}</system:String>
+    <system:String x:Key="Orchestrator.BuildErrorStatus">빌드 오류</system:String>
+    <system:String x:Key="Orchestrator.McpReady">MCP 서버 준비됨</system:String>
+    <system:String x:Key="Orchestrator.McpBuildRequired">MCP 서버 빌드 필요</system:String>
+    <system:String x:Key="Orchestrator.NoTasks">태스크 없음</system:String>
+    <system:String x:Key="Orchestrator.AllComplete">모든 태스크 완료!</system:String>
+    <system:String x:Key="Orchestrator.InProgress">진행 중... ({0}개 작업 중)</system:String>
+
+    <!-- AI CLI Info -->
+    <system:String x:Key="AICLI.Claude.Description">Anthropic의 AI 코딩 어시스턴트</system:String>
+    <system:String x:Key="AICLI.Claude.InstallDesc">Node.js 18+ 필요</system:String>
+    <system:String x:Key="AICLI.Codex.Description">OpenAI의 코드 생성 CLI</system:String>
+    <system:String x:Key="AICLI.Codex.InstallDesc">Node.js 22+ 필요</system:String>
+    <system:String x:Key="AICLI.Gemini.Description">Google의 Gemini AI CLI</system:String>
+    <system:String x:Key="AICLI.Gemini.InstallDesc">Node.js 18+ 필요</system:String>
+    <system:String x:Key="AICLI.Aider.Description">오픈소스 AI 페어 프로그래밍</system:String>
+    <system:String x:Key="AICLI.Aider.InstallDesc">Python 3.9+ 필요</system:String>
+    <system:String x:Key="AICLI.Custom.Name">커스텀</system:String>
+    <system:String x:Key="AICLI.Custom.Description">사용자 정의 AI CLI 명령어</system:String>
+    <system:String x:Key="AICLI.Custom.InstallDesc">직접 설치한 CLI의 명령어를 입력하세요</system:String>
+
+    <!-- ProfileEditorDialog -->
+    <system:String x:Key="ProfileEditor.WindowTitle">서버 프로필 편집</system:String>
+    <system:String x:Key="ProfileEditor.NewProfile">새 서버 프로필</system:String>
+    <system:String x:Key="ProfileEditor.ProfileName">프로필 이름</system:String>
+    <system:String x:Key="ProfileEditor.Host">호스트 (IP 또는 도메인)</system:String>
+    <system:String x:Key="ProfileEditor.Port">포트</system:String>
+    <system:String x:Key="ProfileEditor.Username">사용자 이름</system:String>
+    <system:String x:Key="ProfileEditor.AuthMethod">인증 방식</system:String>
+    <system:String x:Key="ProfileEditor.Password">비밀번호</system:String>
+    <system:String x:Key="ProfileEditor.SSHKey">SSH 키</system:String>
+    <system:String x:Key="ProfileEditor.KeyPath">SSH 키 경로</system:String>
+    <system:String x:Key="ProfileEditor.Passphrase">Passphrase (선택사항)</system:String>
+    <system:String x:Key="ProfileEditor.AddToFavorites">즐겨찾기에 추가</system:String>
+    <system:String x:Key="ProfileEditor.Notes">메모 (선택사항)</system:String>
+
+    <!-- HistorySearchPopup -->
+    <system:String x:Key="HistorySearch.WindowTitle">명령어 히스토리 검색</system:String>
+    <system:String x:Key="HistorySearch.SearchHint">검색어 입력... (Ctrl+R)</system:String>
+    <system:String x:Key="HistorySearch.Success">성공</system:String>
+    <system:String x:Key="HistorySearch.Failed">실패</system:String>
+    <system:String x:Key="HistorySearch.SelectHelp">↑↓ 선택</system:String>
+    <system:String x:Key="HistorySearch.UseHelp">Enter 사용</system:String>
+    <system:String x:Key="HistorySearch.CloseHelp">Esc 닫기</system:String>
+
+    <!-- WelcomePanel Additional -->
+    <system:String x:Key="Welcome.NotInstalled">미설치</system:String>
+    <system:String x:Key="Welcome.Install">설치</system:String>
+    <system:String x:Key="Welcome.OfficialWebsite">공식 웹사이트</system:String>
+    <system:String x:Key="Welcome.Loading">로딩 중...</system:String>
+    <system:String x:Key="Welcome.RemoveFromList">목록에서 제거</system:String>
+
+    <!-- WorkflowParameterDialog -->
+    <system:String x:Key="WorkflowParam.Title">워크플로우 파라미터 입력</system:String>
+    <system:String x:Key="WorkflowParam.Header">워크플로우 파라미터</system:String>
+    <system:String x:Key="WorkflowParam.SnippetName">스니펫 이름</system:String>
+    <system:String x:Key="WorkflowParam.Command">명령어</system:String>
+    <system:String x:Key="WorkflowParam.Required"> (필수)</system:String>
+    <system:String x:Key="WorkflowParam.PreviewTitle">최종 명령어 미리보기</system:String>
+
+    <!-- FileViewerPanel -->
+    <system:String x:Key="FileViewer.DragToResize">드래그하여 너비 조절</system:String>
+    <system:String x:Key="FileViewer.SelectFile">파일을 선택하세요</system:String>
+    <system:String x:Key="FileViewer.OpenWithDefault">기본 프로그램으로 열기</system:String>
+    <system:String x:Key="FileViewer.Close">닫기</system:String>
+    <system:String x:Key="FileViewer.EmptyMessage">파일을 선택하면 여기에 표시됩니다</system:String>
+
+    <!-- FileTreePanel -->
+    <system:String x:Key="FileTree.Title">파일 탐색기</system:String>
+    <system:String x:Key="FileTree.Refresh">새로고침</system:String>
+    <system:String x:Key="FileTree.ShowHidden">숨김 파일 표시</system:String>
+    <system:String x:Key="FileTree.CollapsePanel">패널 닫기</system:String>
+    <system:String x:Key="FileTree.GoUp">상위 폴더</system:String>
+    <system:String x:Key="FileTree.Loading">로딩 중...</system:String>
+    <system:String x:Key="FileTree.DragToResize">드래그하여 너비 조절</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Open">열기</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Edit">편집</system:String>
+    <system:String x:Key="FileTree.ContextMenu.OpenInTerminal">터미널에서 열기</system:String>
+    <system:String x:Key="FileTree.ContextMenu.NewFolder">새 폴더</system:String>
+    <system:String x:Key="FileTree.ContextMenu.NewFile">새 파일</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Rename">이름 변경 (F2)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Delete">삭제 (Delete)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Copy">복사 (Ctrl+C)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Cut">잘라내기 (Ctrl+X)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Paste">붙여넣기 (Ctrl+V)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.CopyPath">경로 복사</system:String>
+
+    <!-- CommandPalette -->
+    <system:String x:Key="CommandPalette.SearchHint">&gt; 명령어, 스니펫, 히스토리 검색...</system:String>
+    <system:String x:Key="CommandPalette.FilterAll">전체</system:String>
+    <system:String x:Key="CommandPalette.FilterHistory">히스토리</system:String>
+    <system:String x:Key="CommandPalette.FilterSnippets">스니펫</system:String>
+    <system:String x:Key="CommandPalette.FilterActions">액션</system:String>
+    <system:String x:Key="CommandPalette.NoResults">검색 결과가 없습니다</system:String>
+    <system:String x:Key="CommandPalette.HelpSelectKey">↑↓ 선택</system:String>
+    <system:String x:Key="CommandPalette.HelpExecuteKey">Enter 실행</system:String>
+    <system:String x:Key="CommandPalette.HelpCloseKey">Esc 닫기</system:String>
+
+    <!-- CommandBlock Template -->
+    <system:String x:Key="CommandBlock.Cache">캐시:</system:String>
+    <system:String x:Key="CommandBlock.ExecutionResult">실행 결과</system:String>
+    <system:String x:Key="CommandBlock.ServerResponse">서버 응답</system:String>
+    <system:String x:Key="CommandBlock.NoOutput">(출력 없음)</system:String>
+
+    <!-- CommandManager Additional Buttons -->
+    <system:String x:Key="CommandManager.Close">닫기</system:String>
+    <system:String x:Key="CommandManager.BackToList">목록</system:String>
+    <system:String x:Key="CommandManager.Save">저장</system:String>
+    <system:String x:Key="CommandManager.Delete">삭제</system:String>
+
+</ResourceDictionary>

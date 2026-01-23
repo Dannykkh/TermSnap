@@ -46,6 +46,21 @@ public interface ISessionViewModel : IDisposable
     bool UseBlockUI { get; set; }
 
     /// <summary>
+    /// 파일 트리 표시 여부
+    /// </summary>
+    bool IsFileTreeVisible { get; set; }
+
+    /// <summary>
+    /// 파일 트리 현재 경로 (탭 전환 시 경로 유지용)
+    /// </summary>
+    string? FileTreeCurrentPath { get; set; }
+
+    /// <summary>
+    /// 스니펫 패널 표시 여부
+    /// </summary>
+    bool ShowSnippetPanel { get; set; }
+
+    /// <summary>
     /// 채팅 메시지 목록
     /// </summary>
     ObservableCollection<ChatMessage> Messages { get; }

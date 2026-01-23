@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:local="clr-namespace:TermSnap.Views"
-        Title="명령어 히스토리"
+        Title="{DynamicResource History.Title}"
         Height="600"
         Width="900"
         WindowStartupLocation="CenterOwner"
@@ -19,7 +19,7 @@
 
         <!-- 제목 -->
         <TextBlock Grid.Row="0"
-                   Text="명령어 실행 히스토리"
+                   Text="{DynamicResource History.ExecutionHistory}"
                    FontSize="20"
                    FontWeight="Bold"
                    Foreground="{DynamicResource TextPrimaryBrush}"
@@ -36,7 +36,7 @@
 
             <TextBox x:Name="SearchTextBox"
                      Grid.Column="0"
-                     materialDesign:HintAssist.Hint="검색 (명령어, 요청, 설명)"
+                     materialDesign:HintAssist.Hint="{DynamicResource History.SearchHint}"
                      Foreground="{DynamicResource TextPrimaryBrush}"
                      Background="{DynamicResource CardBrush}"
                      CaretBrush="{DynamicResource TextPrimaryBrush}"
@@ -49,13 +49,13 @@
                       Margin="10,0,0,0"
                       Foreground="{DynamicResource TextPrimaryBrush}"
                       Background="{DynamicResource CardBrush}"
-                      materialDesign:HintAssist.Hint="프로필 필터"
+                      materialDesign:HintAssist.Hint="{DynamicResource History.ProfileFilter}"
                       Style="{StaticResource MaterialDesignOutlinedComboBox}"
                       SelectionChanged="ProfileFilterComboBox_SelectionChanged"/>
 
             <CheckBox x:Name="SuccessOnlyCheckBox"
                       Grid.Column="2"
-                      Content="성공만"
+                      Content="{DynamicResource History.SuccessOnly}"
                       Foreground="{DynamicResource TextPrimaryBrush}"
                       Margin="15,0,0,0"
                       VerticalAlignment="Center"
@@ -63,7 +63,7 @@
                       Unchecked="SuccessOnlyCheckBox_Changed"/>
 
             <Button Grid.Column="3"
-                    Content="지우기"
+                    Content="{DynamicResource History.Clear}"
                     Width="80"
                     Margin="15,0,0,0"
                     Padding="5,3"
@@ -97,16 +97,16 @@
                 </Style>
             </DataGrid.ColumnHeaderStyle>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="시간"
+                <DataGridTextColumn Header="{DynamicResource History.Time}"
                                     Binding="{Binding ExecutedAt, StringFormat='{}{0:MM/dd HH:mm:ss}'}"
                                     Width="120"/>
-                <DataGridTextColumn Header="프로필"
+                <DataGridTextColumn Header="{DynamicResource History.Profile}"
                                     Binding="{Binding ProfileName}"
                                     Width="100"/>
-                <DataGridTextColumn Header="사용자 요청"
+                <DataGridTextColumn Header="{DynamicResource History.UserRequest}"
                                     Binding="{Binding UserRequest}"
                                     Width="200"/>
-                <DataGridTextColumn Header="명령어"
+                <DataGridTextColumn Header="{DynamicResource History.Command}"
                                     Binding="{Binding GeneratedCommand}"
                                     Width="*">
                     <DataGridTextColumn.ElementStyle>
@@ -116,7 +116,7 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTemplateColumn Header="상태" Width="60">
+                <DataGridTemplateColumn Header="{DynamicResource History.Status}" Width="60">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding IsSuccess, Converter={StaticResource StatusConverter}}"
@@ -124,7 +124,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="편집됨" Width="70">
+                <DataGridTemplateColumn Header="{DynamicResource History.Edited}" Width="70">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding WasEdited, Converter={StaticResource BoolConverter}}"
@@ -144,12 +144,12 @@
                        VerticalAlignment="Center"
                        Margin="0,0,20,0"
                        Foreground="{DynamicResource TextSecondaryBrush}"/>
-            <Button Content="닫기"
+            <Button Content="{DynamicResource Common.Close}"
                     Width="100"
                     Margin="0,0,10,0"
                     Padding="5,3"
                     Click="CloseButton_Click"/>
-            <Button Content="선택"
+            <Button Content="{DynamicResource History.Select}"
                     Width="100"
                     Padding="5,3"
                     Click="SelectButton_Click"/>

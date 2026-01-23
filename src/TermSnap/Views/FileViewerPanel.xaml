@@ -21,7 +21,7 @@
                 MouseLeftButtonDown="ResizeGrip_MouseLeftButtonDown"
                 MouseLeftButtonUp="ResizeGrip_MouseLeftButtonUp"
                 MouseMove="ResizeGrip_MouseMove"
-                ToolTip="드래그하여 너비 조절">
+                ToolTip="{DynamicResource FileViewer.DragToResize}">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Background" Value="Transparent"/>
@@ -72,7 +72,7 @@
                 <!-- 파일명 -->
                 <TextBlock Grid.Column="1"
                            x:Name="FileNameText"
-                           Text="파일을 선택하세요"
+                           Text="{DynamicResource FileViewer.SelectFile}"
                            FontSize="13"
                            FontWeight="Medium"
                            VerticalAlignment="Center"
@@ -86,7 +86,7 @@
                     <Button x:Name="OpenExternalBtn"
                             Style="{StaticResource MaterialDesignToolButton}"
                             Click="OpenExternal_Click"
-                            ToolTip="기본 프로그램으로 열기"
+                            ToolTip="{DynamicResource FileViewer.OpenWithDefault}"
                             Margin="4,0">
                         <materialDesign:PackIcon Kind="OpenInNew" Width="18" Height="18"
                                                  Foreground="{DynamicResource PrimaryHueMidBrush}"/>
@@ -96,7 +96,7 @@
                     <Button x:Name="CloseBtn"
                             Style="{StaticResource MaterialDesignToolButton}"
                             Click="Close_Click"
-                            ToolTip="닫기">
+                            ToolTip="{DynamicResource FileViewer.Close}">
                         <materialDesign:PackIcon Kind="Close" Width="18" Height="18"
                                                  Foreground="{DynamicResource MaterialDesignBody}"/>
                     </Button>
@@ -116,7 +116,7 @@
                                          HorizontalAlignment="Center"
                                          Foreground="{DynamicResource MaterialDesignBodyLight}"
                                          Margin="0,0,0,12"/>
-                <TextBlock Text="파일을 선택하면 여기에 표시됩니다"
+                <TextBlock Text="{DynamicResource FileViewer.EmptyMessage}"
                            Foreground="{DynamicResource MaterialDesignBodyLight}"
                            HorizontalAlignment="Center"/>
             </StackPanel>

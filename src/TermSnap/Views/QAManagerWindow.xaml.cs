@@ -133,14 +133,18 @@ public partial class QAManagerWindow : Window
 
         if (string.IsNullOrEmpty(question) || string.IsNullOrEmpty(answer))
         {
-            MessageBox.Show("질문과 답변을 모두 입력해주세요.", "입력 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("QAManager.EnterQuestionAndAnswer"),
+                LocalizationService.Instance.GetString("QAManager.ValidationError"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
         try
         {
             SaveButton.IsEnabled = false;
-            SaveButton.Content = "저장 중...";
+            SaveButton.Content = LocalizationService.Instance.GetString("QAManager.Saving");
 
             if (_isNewEntry)
             {
@@ -154,7 +158,11 @@ public partial class QAManagerWindow : Window
                 };
 
                 await _qaService.AddEntry(entry);
-                MessageBox.Show("새 Q&A가 추가되었습니다.", "성공", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    LocalizationService.Instance.GetString("QAManager.QAAdded"),
+                    LocalizationService.Instance.GetString("Common.Success"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             else if (_selectedEntry != null)
             {
@@ -165,7 +173,11 @@ public partial class QAManagerWindow : Window
                 _selectedEntry.Tags = string.IsNullOrEmpty(TagsTextBox.Text) ? null : TagsTextBox.Text;
 
                 await _qaService.UpdateEntry(_selectedEntry);
-                MessageBox.Show("Q&A가 수정되었습니다.", "성공", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    LocalizationService.Instance.GetString("QAManager.QAUpdated"),
+                    LocalizationService.Instance.GetString("Common.Success"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
 
             LoadEntries();
@@ -175,7 +187,11 @@ public partial class QAManagerWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"저장 실패: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("QAManager.SaveFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
         finally
         {
@@ -261,7 +277,10 @@ public partial class QAManagerWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"검색 실패: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("QAManager.SearchFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -290,13 +309,16 @@ public partial class QAManagerWindow : Window
 
                 if (entries == null || entries.Count == 0)
                 {
-                    MessageBox.Show("가져올 데이터가 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(
+                        LocalizationService.Instance.GetString("QAManager.NoDataToImport"),
+                        LocalizationService.Instance.GetString("Common.Notification"),
+                        MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
                 var result = MessageBox.Show(
-                    $"{entries.Count}개의 Q&A를 가져오시겠습니까?",
-                    "가져오기 확인",
+                    string.Format(LocalizationService.Instance.GetString("QAManager.ConfirmImport"), entries.Count),
+                    LocalizationService.Instance.GetString("QAManager.ImportConfirmTitle"),
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
 
@@ -313,7 +335,10 @@ public partial class QAManagerWindow : Window
                         catch { /* 개별 항목 실패 무시 */ }
                     }
 
-                    MessageBox.Show($"{imported}개의 Q&A를 가져왔습니다.", "완료", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(
+                        string.Format(LocalizationService.Instance.GetString("QAManager.ImportComplete"), imported),
+                        LocalizationService.Instance.GetString("QAManager.Complete"),
+                        MessageBoxButton.OK, MessageBoxImage.Information);
                     LoadEntries();
                     LoadCategories();
                     UpdateStatistics();
@@ -321,7 +346,10 @@ public partial class QAManagerWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"가져오기 실패: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    string.Format(LocalizationService.Instance.GetString("QAManager.ImportFailed"), ex.Message),
+                    LocalizationService.Instance.GetString("Common.Error"),
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -356,11 +384,17 @@ public partial class QAManagerWindow : Window
                 var json = JsonConvert.SerializeObject(exportData, Formatting.Indented);
                 await File.WriteAllTextAsync(dialog.FileName, json);
 
-                MessageBox.Show($"{entries.Count}개의 Q&A를 내보냈습니다.", "완료", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    string.Format(LocalizationService.Instance.GetString("QAManager.ExportComplete"), entries.Count),
+                    LocalizationService.Instance.GetString("QAManager.Complete"),
+                    MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"내보내기 실패: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    string.Format(LocalizationService.Instance.GetString("QAManager.ExportFailed"), ex.Message),
+                    LocalizationService.Instance.GetString("Common.Error"),
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -375,13 +409,16 @@ public partial class QAManagerWindow : Window
 
         if (withoutEmbedding == 0)
         {
-            MessageBox.Show("모든 항목이 이미 벡터화되어 있습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("QAManager.AllVectorized"),
+                LocalizationService.Instance.GetString("Common.Notification"),
+                MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         var result = MessageBox.Show(
-            $"{withoutEmbedding}개의 항목에 대해 임베딩을 생성하시겠습니까?\n(시간이 다소 걸릴 수 있습니다)",
-            "임베딩 생성 확인",
+            string.Format(LocalizationService.Instance.GetString("QAManager.ConfirmEmbedding"), withoutEmbedding),
+            LocalizationService.Instance.GetString("QAManager.EmbeddingConfirmTitle"),
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
@@ -394,12 +431,18 @@ public partial class QAManagerWindow : Window
 
                 var processed = await _qaService.GenerateEmbeddingsForExistingEntries(100);
 
-                MessageBox.Show($"{processed}개의 임베딩을 생성했습니다.", "완료", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    string.Format(LocalizationService.Instance.GetString("QAManager.EmbeddingComplete"), processed),
+                    LocalizationService.Instance.GetString("QAManager.Complete"),
+                    MessageBoxButton.OK, MessageBoxImage.Information);
                 UpdateStatistics();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"임베딩 생성 실패: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    string.Format(LocalizationService.Instance.GetString("QAManager.EmbeddingFailed"), ex.Message),
+                    LocalizationService.Instance.GetString("Common.Error"),
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {

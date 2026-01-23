@@ -135,3 +135,25 @@ public class NullToVisibilityConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// 객체의 타입이 parameter와 일치하면 true, 아니면 false 반환
+/// </summary>
+public class TypeToBoolConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value == null || parameter == null)
+            return false;
+
+        var typeName = parameter.ToString();
+        var valueType = value.GetType();
+
+        return valueType.Name == typeName || valueType.FullName == typeName;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
+using TermSnap.Services;
 
 namespace TermSnap.Core.Sessions;
 
@@ -146,8 +147,8 @@ public class LocalSession : TerminalSessionBase
             }
             Debug.WriteLine("[ConPTY] Pipes created successfully");
 
-            // Pseudo Console 생성
-            var size = new COORD { X = 120, Y = 30 };
+            // Pseudo Console 생성 (130x40으로 초기화, 나중에 ResizeTerminal로 동적 조정됨)
+            var size = new COORD { X = 130, Y = 40 };
             var hr = CreatePseudoConsole(size, _hPipeIn!.DangerousGetHandle(), _hPipeOut!.DangerousGetHandle(), 0, out _hPseudoConsole);
             if (hr != 0)
             {
@@ -181,7 +182,7 @@ public class LocalSession : TerminalSessionBase
             Debug.WriteLine("[ConPTY] Output reader started");
 
             State = ConnectionState.Connected;
-            RaiseOutputReceived($"[{DisplayName} 시작됨]", false);
+            RaiseOutputReceived(string.Format(LocalizationService.Instance.GetString("LocalTerminal.ShellStartedBracket"), DisplayName), false);
             return true;
         }
         catch (Exception ex)
@@ -305,6 +306,8 @@ public class LocalSession : TerminalSessionBase
         return Task.Run(() =>
         {
             var buffer = new byte[4096];
+            var decoder = Encoding.UTF8.GetDecoder();  // 상태 유지 디코더
+            var charBuffer = new char[4096];
 
             try
             {
@@ -339,16 +342,22 @@ public class LocalSession : TerminalSessionBase
                         break;
                     }
 
-                    var rawOutput = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                    Debug.WriteLine($"[ConPTY Read] {bytesRead} bytes");
+                    // UTF-8 디코더를 사용하여 멀티바이트 문자 경계 처리
+                    // Decoder는 불완전한 바이트 시퀀스를 내부 버퍼에 보관
+                    int charsRead = decoder.GetChars(buffer, 0, bytesRead, charBuffer, 0, false);
+                    var rawOutput = new string(charBuffer, 0, charsRead);
+
+                    Debug.WriteLine($"[ConPTY Read] {bytesRead} bytes -> {charsRead} chars, preview: '{rawOutput.Substring(0, Math.Min(100, rawOutput.Length))}'");
 
                     // ANSI 이스케이프 코드 제거 (WPF TextBlock은 ANSI를 렌더링하지 못함)
                     var cleanOutput = StripAnsiCodes(rawOutput);
+                    Debug.WriteLine($"[ConPTY Read] Clean output: '{cleanOutput.Substring(0, Math.Min(100, cleanOutput.Length))}'");
 
                     // 출력 수집
                     _currentOutput.Append(cleanOutput);
 
                     // UI에 전달 (rawOutput도 함께 전달하여 터미널 컨트롤에서 사용)
+                    Debug.WriteLine($"[ConPTY Read] Raising OutputReceived event, rawOutput length: {rawOutput.Length}");
                     RaiseOutputReceived(cleanOutput, false, rawOutput);
                 }
             }
@@ -472,7 +481,7 @@ public class LocalSession : TerminalSessionBase
         _shellProcess.BeginErrorReadLine();
 
         State = ConnectionState.Connected;
-        RaiseOutputReceived($"[{DisplayName} 시작됨: {app}]", false);
+        RaiseOutputReceived(string.Format(LocalizationService.Instance.GetString("LocalTerminal.ShellStartedWithApp"), DisplayName, app), false);
         return true;
     }
 
@@ -737,7 +746,7 @@ public class LocalSession : TerminalSessionBase
             }
             else
             {
-                Debug.WriteLine($"[ConPTY] Terminal resized to {columns}x{rows}");
+                Debug.WriteLine($"[ConPTY] ✓ Terminal resized to {columns}x{rows} (cols×rows)");
             }
         }
     }
@@ -756,6 +765,17 @@ public class LocalSession : TerminalSessionBase
             // Process 모드에서는 Kill
             try { _shellProcess.Kill(); }
             catch { }
+        }
+    }
+
+    /// <summary>
+    /// 터미널에 직접 출력 (ANSI 코드 포함 가능, 입력 없이 출력만)
+    /// </summary>
+    public async Task WriteDirectOutputAsync(string text)
+    {
+        if (_hPseudoConsole != IntPtr.Zero && _writeStream != null)
+        {
+            await WriteToConPtyAsync(text);
         }
     }
 

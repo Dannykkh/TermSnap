@@ -21,6 +21,7 @@ public class IpcService : IDisposable
     private Task? _serverTask;
     private bool _isRunning;
     private MainViewModel? _mainViewModel;
+    private bool _disposed;
 
     public static IpcService Instance { get; } = new();
 
@@ -404,6 +405,37 @@ public class IpcService : IDisposable
 
     public void Dispose()
     {
-        Stop();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // 관리 리소스 정리
+            try
+            {
+                Stop();
+
+                _cts?.Dispose();
+                _cts = null;
+
+                _mainViewModel = null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[IpcService] Dispose 중 오류: {ex.Message}");
+            }
+        }
+
+        _disposed = true;
+    }
+
+    ~IpcService()
+    {
+        Dispose(false);
     }
 }

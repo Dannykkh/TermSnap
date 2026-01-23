@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:system="clr-namespace:System;assembly=mscorlib"
-        Title="서버 프로필 선택"
+        Title="{DynamicResource ProfileSelector.Title}"
         Height="500" Width="600"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource MaterialDesignPaper}">
@@ -17,10 +17,10 @@
 
         <!-- 제목 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="연결할 서버 선택"
+            <TextBlock Text="{DynamicResource ProfileSelector.SelectServer}"
                        FontSize="24"
                        FontWeight="Bold"/>
-            <TextBlock Text="저장된 서버 프로필을 선택하거나 새로 만드세요"
+            <TextBlock Text="{DynamicResource ProfileSelector.SelectOrCreate}"
                        FontSize="12"
                        Foreground="Gray"
                        Margin="0,5,0,0"/>
@@ -92,7 +92,7 @@
                                         <Style TargetType="TextBlock">
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding LastConnected}" Value="{x:Static system:DateTime.MinValue}">
-                                                    <Setter Property="Text" Value="연결 이력 없음"/>
+                                                    <Setter Property="Text" Value="{DynamicResource ProfileSelector.NoConnectionHistory}"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -112,10 +112,10 @@
                                         <Style TargetType="TextBlock">
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding AuthType}" Value="Password">
-                                                    <Setter Property="Text" Value="비밀번호"/>
+                                                    <Setter Property="Text" Value="{DynamicResource ProfileSelector.Password}"/>
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding AuthType}" Value="PrivateKey">
-                                                    <Setter Property="Text" Value="SSH 키"/>
+                                                    <Setter Property="Text" Value="{DynamicResource ProfileSelector.SSHKey}"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -133,15 +133,15 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,20,0,0">
-            <Button Content="새 프로필"
+            <Button Content="{DynamicResource ProfileSelector.NewProfile}"
                     Click="NewProfile_Click"
                     Margin="0,0,10,0"
                     Style="{StaticResource MaterialDesignOutlinedButton}"/>
-            <Button Content="선택"
+            <Button Content="{DynamicResource History.Select}"
                     Click="Select_Click"
                     Margin="0,0,10,0"
                     Style="{StaticResource MaterialDesignRaisedButton}"/>
-            <Button Content="취소"
+            <Button Content="{DynamicResource Common.Cancel}"
                     Click="Cancel_Click"
                     Style="{StaticResource MaterialDesignOutlinedButton}"/>
         </StackPanel>

@@ -71,6 +71,47 @@ dotnet run --project src/TermSnap/TermSnap.csproj
    - Choose shell: PowerShell, CMD, WSL, or Git Bash
    - Open a folder → Run AI CLI tools (Claude Code, Aider, etc.)
 
+## Screenshots
+
+### Session Selector
+
+![Session Selector](docs/images/session-selector.png)
+
+When you create a new tab, choose between:
+- **Local Terminal**: Work on your local computer using PowerShell, CMD, WSL, or Git Bash
+- **SSH Server Connection**: Connect to a remote Linux server via SSH
+
+**Shortcuts**: `Ctrl+L` for Local Terminal, `Ctrl+T` for SSH Connection
+
+### Local Terminal - Welcome Panel
+
+![Local Terminal Welcome](docs/images/local-terminal-welcome.png)
+
+The welcome panel lets you:
+- **Select Shell**: PowerShell (default), Windows PowerShell, CMD, Git Bash, WSL (Ubuntu, Docker)
+- **AI CLI Integration**: Enable Claude Code, Codex, Gemini CLI, or Aider with one checkbox
+  - Auto-detect installation status
+  - One-click install button if not installed
+  - Auto mode toggle (`--dangerously-skip-permissions` for Claude Code)
+- **Current Path Display**: Shows your working directory
+- **Execute Button**: Start your selected shell with AI CLI if enabled
+
+**Note**: Claude Code CLI requires Node.js 18+ and `npm install -g @anthropic-ai/claude-code`
+
+### SSH Server Connection
+
+![SSH Connection](docs/images/ssh-connection.png)
+
+Connect to saved servers or add new ones:
+- **Saved Servers**: Quick access to frequently used servers
+- **Add New Server**: Configure host, port, username, password/SSH key
+- **Settings**: Manage server profiles (edit, delete, organize)
+
+**Features**:
+- SSH key authentication (.pem, .ppk files supported)
+- Password encryption using Windows DPAPI
+- Server profiles with custom names and notes
+
 ## Features
 
 ### 1. SSH Server Management

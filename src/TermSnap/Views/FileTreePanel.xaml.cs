@@ -209,6 +209,13 @@ public partial class FileTreePanel : UserControl, INotifyPropertyChanged
         {
             _fileWatcher.EnableRaisingEvents = true;
         }
+
+        // TreeView UI 강제 갱신 (탭 전환 후 렌더링 이슈 방지)
+        Dispatcher.BeginInvoke(() =>
+        {
+            FileTree.Items.Refresh();
+            FileTree.UpdateLayout();
+        }, System.Windows.Threading.DispatcherPriority.Render);
     }
 
     /// <summary>

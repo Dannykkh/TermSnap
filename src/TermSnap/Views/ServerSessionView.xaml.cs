@@ -74,11 +74,11 @@ public partial class ServerSessionView : UserControl
             // 파일 트리가 이미 초기화되어 있고 표시 상태였다면 Visibility만 복원
             if (vm.IsFileTreeVisible && _isFileTreeInitialized)
             {
-                FileTreePanelControl.Visibility = Visibility.Visible;
+                // FileTreePanelControl (MainWindow에서 관리).Visibility = Visibility.Visible;
             }
             else
             {
-                FileTreePanelControl.Visibility = Visibility.Collapsed;
+                // FileTreePanelControl (MainWindow에서 관리).Visibility = Visibility.Collapsed;
             }
         }
     }
@@ -191,7 +191,9 @@ public partial class ServerSessionView : UserControl
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"서버 연결 실패: {ex.Message}", "오류",
+                MessageBox.Show(
+                    string.Format(LocalizationService.Instance.GetString("ServerSession.ConnectionFailed"), ex.Message),
+                    LocalizationService.Instance.GetString("Common.Error"),
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -366,7 +368,9 @@ public partial class ServerSessionView : UserControl
             var imagePath = ClipboardService.SaveClipboardImage();
             if (string.IsNullOrEmpty(imagePath))
             {
-                MessageBox.Show("클립보드에서 이미지를 가져오는데 실패했습니다.", "오류", 
+                MessageBox.Show(
+                    LocalizationService.Instance.GetString("ServerSession.ImagePasteError"),
+                    LocalizationService.Instance.GetString("Common.Error"),
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -378,17 +382,22 @@ public partial class ServerSessionView : UserControl
                 var currentInput = vm.UserInput ?? "";
                 
                 // 이미지 경로를 인라인으로 추가 (사용자가 편집 가능)
-                vm.UserInput = string.IsNullOrEmpty(currentInput) 
-                    ? $"[이미지: {imagePath}]" 
-                    : $"{currentInput} [이미지: {imagePath}]";
+                var imageText = string.Format(LocalizationService.Instance.GetString("ServerSession.ImageAttachment"), imagePath);
+                vm.UserInput = string.IsNullOrEmpty(currentInput)
+                    ? imageText
+                    : $"{currentInput} {imageText}";
 
                 // 사용자에게 알림
-                vm.AddMessage($"📷 클립보드 이미지가 저장되었습니다: {imagePath}", MessageType.Info);
+                vm.AddMessage(
+                    string.Format(LocalizationService.Instance.GetString("ServerSession.ImageSaved"), imagePath),
+                    MessageType.Info);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"이미지 붙여넣기 중 오류가 발생했습니다: {ex.Message}", "오류", 
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("ServerSession.ImagePasteException"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -548,7 +557,7 @@ public partial class ServerSessionView : UserControl
             if (result.IsFromCache && result.CachedCommand != null)
             {
                 ShowSuggestion(
-                    result.SearchMethod ?? "캐시",
+                    result.SearchMethod ?? LocalizationService.Instance.GetString("ServerSession.Cache"),
                     input,
                     result.CachedCommand,
                     result.Similarity);
@@ -573,17 +582,17 @@ public partial class ServerSessionView : UserControl
 
         if (source.Contains("임베딩") || source.Contains("Embedding"))
         {
-            sourceText = $"임베딩 검색 (유사도 {similarity:P0})";
+            sourceText = string.Format(LocalizationService.Instance.GetString("ServerSession.EmbeddingSearch"), similarity);
             iconKind = MaterialDesignThemes.Wpf.PackIconKind.VectorCombine;
         }
         else if (source.Contains("FTS") || source.Contains("텍스트"))
         {
-            sourceText = "텍스트 검색";
+            sourceText = LocalizationService.Instance.GetString("ServerSession.TextSearch");
             iconKind = MaterialDesignThemes.Wpf.PackIconKind.TextSearch;
         }
         else
         {
-            sourceText = $"캐시 (유사도 {similarity:P0})";
+            sourceText = string.Format(LocalizationService.Instance.GetString("ServerSession.CacheWithSimilarity"), similarity);
             iconKind = MaterialDesignThemes.Wpf.PackIconKind.DatabaseSearch;
         }
 
@@ -637,8 +646,11 @@ public partial class ServerSessionView : UserControl
     /// </summary>
     private async void FileTreeToggle_Click(object sender, RoutedEventArgs e)
     {
-        // IsChecked는 IsFileTreeVisible에 바인딩되어 있으므로 자동 업데이트됨
-        if (FileTreeToggle.IsChecked == true)
+        if (DataContext is not ServerSessionViewModel vm)
+            return;
+
+        // IsFileTreeVisible 값에 따라 파일 트리 표시/숨김
+        if (vm.IsFileTreeVisible)
         {
             // 파일 트리 표시
             await ShowFileTreeAsync();
@@ -657,17 +669,22 @@ public partial class ServerSessionView : UserControl
     {
         if (DataContext is not ServerSessionViewModel vm || vm.ServerProfile == null)
         {
-            MessageBox.Show("서버에 연결되어 있지 않습니다.", "알림", 
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("ServerSession.NotConnected"),
+                LocalizationService.Instance.GetString("Common.Notification"),
                 MessageBoxButton.OK, MessageBoxImage.Information);
-            FileTreeToggle.IsChecked = false;
+            if (DataContext is ServerSessionViewModel vmTemp)
+                vmTemp.IsFileTreeVisible = false;
             return;
         }
 
         if (!vm.IsConnected)
         {
-            MessageBox.Show("먼저 서버에 연결하세요.", "알림", 
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("ServerSession.ConnectFirst"),
+                LocalizationService.Instance.GetString("Common.Notification"),
                 MessageBoxButton.OK, MessageBoxImage.Information);
-            FileTreeToggle.IsChecked = false;
+            vm.IsFileTreeVisible = false;
             return;
         }
 
@@ -683,7 +700,7 @@ public partial class ServerSessionView : UserControl
             // 파일 트리 패널 초기화
             if (!_isFileTreeInitialized)
             {
-                FileTreePanelControl.CloseRequested += (s, args) =>
+                // FileTreePanelControl (MainWindow에서 관리).CloseRequested += (s, args) =>
                 {
                     // IsChecked는 IsFileTreeVisible에 바인딩되어 있으므로 ViewModel만 업데이트
                     if (DataContext is ServerSessionViewModel vmClose)
@@ -693,50 +710,55 @@ public partial class ServerSessionView : UserControl
                     HideFileTree();
                 };
 
-                FileTreePanelControl.OpenInTerminalRequested += (s, path) =>
-                {
-                    if (path != null && DataContext is ServerSessionViewModel sessionVm)
-                    {
-                        sessionVm.UserInput = $"cd {path}";
-                    }
-                };
+                // FileTreePanel은 MainWindow에서 관리
+                // FileTreePanelControl.OpenInTerminalRequested += (s, path) =>
+                // {
+                //     if (path != null && DataContext is ServerSessionViewModel sessionVm)
+                //     {
+                //         sessionVm.UserInput = $"cd {path}";
+                //     }
+                // };
 
-                FileTreePanelControl.FileDoubleClicked += async (s, item) =>
-                {
-                    // 파일 더블클릭 시 편집기 열기
-                    if (_sftpService != null && !item.IsDirectory)
-                    {
-                        try
-                        {
-                            var editorWindow = new FileEditorWindow(_sftpService, item.FullPath);
-                            editorWindow.Owner = Window.GetWindow(this);
-                            editorWindow.Show();
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show($"파일을 열 수 없습니다: {ex.Message}", "오류",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
-                        }
-                    }
-                };
+                // FileTreePanel은 MainWindow에서 관리
+                // FileTreePanelControl.FileDoubleClicked += async (s, item) =>
+                // {
+                //     // 파일 더블클릭 시 편집기 열기
+                //     if (_sftpService != null && !item.IsDirectory)
+                //     {
+                //         try
+                //         {
+                //             var editorWindow = new FileEditorWindow(_sftpService, item.FullPath);
+                //             editorWindow.Owner = Window.GetWindow(this);
+                //             editorWindow.Show();
+                //         }
+                //         catch (Exception ex)
+                //         {
+                //             MessageBox.Show(
+                //                 string.Format(LocalizationService.Instance.GetString("ServerSession.CannotOpenFile"), ex.Message),
+                //                 LocalizationService.Instance.GetString("Common.Error"),
+                //                 MessageBoxButton.OK, MessageBoxImage.Error);
+                //         }
+                //     }
+                // };
 
+                // FileTreePanel은 MainWindow에서 관리
                 // 파일 탐색기에서 디렉토리 변경 시 처리
-                FileTreePanelControl.DirectoryChanged += async (s, path) =>
-                {
-                    if (!string.IsNullOrEmpty(path) && DataContext is ServerSessionViewModel sessionVm)
-                    {
-                        // ViewModel에 경로 저장 (각 탭마다 독립적)
-                        sessionVm.FileTreeCurrentPath = path;
-
-                        // 현재 디렉토리와 다를 때만 cd 실행
-                        if (sessionVm.CurrentDirectory != path)
-                        {
-                            sessionVm.UserInput = $"cd {path}";
-                            // 자동 실행
-                            await sessionVm.ExecuteCurrentInputAsync();
-                        }
-                    }
-                };
+                // FileTreePanelControl.DirectoryChanged += async (s, path) =>
+                // {
+                //     if (!string.IsNullOrEmpty(path) && DataContext is ServerSessionViewModel sessionVm)
+                //     {
+                //         // ViewModel에 경로 저장 (각 탭마다 독립적)
+                //         sessionVm.FileTreeCurrentPath = path;
+                //
+                //         // 현재 디렉토리와 다를 때만 cd 실행
+                //         if (sessionVm.CurrentDirectory != path)
+                //         {
+                //             sessionVm.UserInput = $"cd {path}";
+                //             // 자동 실행
+                //             await sessionVm.ExecuteCurrentInputAsync();
+                //         }
+                //     }
+                // };
 
                 _isFileTreeInitialized = true;
             }
@@ -745,8 +767,9 @@ public partial class ServerSessionView : UserControl
             var sftpClient = _sftpService.GetSftpClient();
             if (sftpClient != null)
             {
-                await FileTreePanelControl.InitializeSshAsync(sftpClient, _sftpService);
-                FileTreePanelControl.Visibility = Visibility.Visible;
+                // FileTreePanel은 MainWindow에서 관리
+                // await FileTreePanelControl.InitializeSshAsync(sftpClient, _sftpService);
+                // FileTreePanelControl.Visibility = Visibility.Visible;
 
                 // ViewModel 상태 업데이트
                 if (DataContext is ServerSessionViewModel vmUpdate)
@@ -757,9 +780,12 @@ public partial class ServerSessionView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"파일 트리를 열 수 없습니다: {ex.Message}", "오류",
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("ServerSession.CannotOpenFileTree"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
-            FileTreeToggle.IsChecked = false;
+            if (DataContext is ServerSessionViewModel vmTemp)
+                vmTemp.IsFileTreeVisible = false;
         }
     }
 
@@ -768,7 +794,7 @@ public partial class ServerSessionView : UserControl
     /// </summary>
     private void HideFileTree()
     {
-        FileTreePanelControl.Visibility = Visibility.Collapsed;
+        // FileTreePanelControl (MainWindow에서 관리).Visibility = Visibility.Collapsed;
     }
 
     /// <summary>
@@ -776,7 +802,7 @@ public partial class ServerSessionView : UserControl
     /// </summary>
     public void ActivateFileWatcher()
     {
-        FileTreePanelControl.EnableFileWatcher();
+        // FileTreePanelControl (MainWindow에서 관리).EnableFileWatcher();
     }
 
     /// <summary>
@@ -784,7 +810,7 @@ public partial class ServerSessionView : UserControl
     /// </summary>
     public void DeactivateFileWatcher()
     {
-        FileTreePanelControl.DisableFileWatcher();
+        // FileTreePanelControl (MainWindow에서 관리).DisableFileWatcher();
     }
 
     #endregion

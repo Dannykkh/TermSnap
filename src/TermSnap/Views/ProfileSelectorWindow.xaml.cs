@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using TermSnap.Models;
+using TermSnap.Services;
 
 namespace TermSnap.Views;
 
@@ -63,8 +64,8 @@ public partial class ProfileSelectorWindow : Window
         else
         {
             MessageBox.Show(
-                "프로필을 선택해주세요.",
-                "알림",
+                LocalizationService.Instance.GetString("ProfileSelector.SelectProfileMessage"),
+                LocalizationService.Instance.GetString("Common.Notification"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }

@@ -19,6 +19,7 @@ public class SftpService : IDisposable
     private readonly ServerConfig _config;
     private SftpClient? _sftpClient;
     private bool _isConnected = false;
+    private bool _disposed;
 
     public bool IsConnected => _isConnected && _sftpClient != null && _sftpClient.IsConnected;
 
@@ -594,8 +595,41 @@ public class SftpService : IDisposable
 
     public void Dispose()
     {
-        Disconnect();
-        _sftpClient?.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // 관리 리소스 정리
+            try
+            {
+                // 이벤트 구독 해제
+                TransferProgress = null;
+
+                // 연결 종료
+                Disconnect();
+
+                // SFTP 클라이언트 정리
+                _sftpClient?.Dispose();
+                _sftpClient = null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SftpService] Dispose 중 오류: {ex.Message}");
+            }
+        }
+
+        _disposed = true;
+    }
+
+    ~SftpService()
+    {
+        Dispose(false);
     }
 }
 

@@ -51,6 +51,47 @@
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
+## 스크린샷
+
+### 세션 선택 화면
+
+![세션 선택](docs/images/session-selector.png)
+
+새 탭을 생성할 때 다음 중 선택:
+- **로컬 터미널**: PowerShell, CMD, WSL, Git Bash 등으로 로컬 작업
+- **SSH 서버 연결**: 원격 Linux 서버에 SSH로 연결
+
+**단축키**: `Ctrl+L` 로컬 터미널, `Ctrl+T` SSH 연결
+
+### 로컬 터미널 - 웰컴 패널
+
+![로컬 터미널 웰컴](docs/images/local-terminal-welcome.png)
+
+웰컴 패널 기능:
+- **쉘 선택**: PowerShell (기본), Windows PowerShell, CMD, Git Bash, WSL (Ubuntu, Docker)
+- **AI CLI 통합**: Claude Code, Codex, Gemini CLI, Aider를 체크박스 하나로 활성화
+  - 설치 여부 자동 감지
+  - 미설치 시 원클릭 설치 버튼 제공
+  - 자동 모드 토글 (Claude Code의 경우 `--dangerously-skip-permissions`)
+- **현재 경로 표시**: 작업 디렉토리 표시
+- **실행 버튼**: 선택한 쉘을 AI CLI와 함께 시작
+
+**참고**: Claude Code CLI는 Node.js 18+ 및 `npm install -g @anthropic-ai/claude-code` 필요
+
+### SSH 서버 연결
+
+![SSH 연결](docs/images/ssh-connection.png)
+
+저장된 서버에 연결하거나 새 서버 추가:
+- **저장된 서버**: 자주 사용하는 서버 빠른 접속
+- **새 서버 추가**: 호스트, 포트, 사용자명, 비밀번호/SSH 키 설정
+- **설정**: 서버 프로필 관리 (편집, 삭제, 정리)
+
+**기능**:
+- SSH 키 인증 (.pem, .ppk 파일 지원)
+- Windows DPAPI 암호화로 비밀번호 보호
+- 커스텀 이름 및 메모가 포함된 서버 프로필
+
 ## 주요 기능
 
 ### 1. SSH 서버 연결 (PuTTY 대체)

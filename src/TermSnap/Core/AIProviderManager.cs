@@ -309,27 +309,57 @@ public sealed class AIProviderManager : IDisposable
 
     public void Dispose()
     {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
         if (_disposed) return;
 
         lock (_lock)
         {
             if (_disposed) return;
-            _disposed = true;
 
-            // EmbeddingService들 Dispose
-            foreach (var embeddingService in _embeddingCache.Values)
+            if (disposing)
             {
-                embeddingService?.Dispose();
+                // 관리 리소스 정리
+                try
+                {
+                    // EmbeddingService들 Dispose
+                    foreach (var embeddingService in _embeddingCache.Values)
+                    {
+                        try
+                        {
+                            embeddingService?.Dispose();
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[AIProviderManager] EmbeddingService Dispose 오류: {ex.Message}");
+                        }
+                    }
+
+                    _localEmbeddingService?.Dispose();
+                    _localEmbeddingService = null;
+
+                    _providerCache.Clear();
+                    _embeddingCache.Clear();
+                    _currentProvider = null;
+                    _currentEmbeddingService = null;
+                    _currentConfig = null;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[AIProviderManager] Dispose 중 오류: {ex.Message}");
+                }
             }
 
-            _localEmbeddingService?.Dispose();
-            _localEmbeddingService = null;
-
-            _providerCache.Clear();
-            _embeddingCache.Clear();
-            _currentProvider = null;
-            _currentEmbeddingService = null;
-            _currentConfig = null;
+            _disposed = true;
         }
+    }
+
+    ~AIProviderManager()
+    {
+        Dispose(false);
     }
 }

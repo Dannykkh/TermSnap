@@ -28,7 +28,7 @@ public partial class FileEditorWindow : Window
         _remotePath = remotePath ?? throw new ArgumentNullException(nameof(remotePath));
 
         FilePathText.Text = remotePath;
-        Title = $"파일 편집기 - {Path.GetFileName(remotePath)}";
+        Title = string.Format(LocalizationService.Instance.GetString("FileEditor.ViewerMode"), Path.GetFileName(remotePath));
 
         // 구문 강조 설정
         SetSyntaxHighlighting(remotePath);
@@ -51,7 +51,7 @@ public partial class FileEditorWindow : Window
         try
         {
             IsEnabled = false;
-            Title = $"파일 편집기 - {Path.GetFileName(_remotePath)} (로딩 중...)";
+            Title = string.Format(LocalizationService.Instance.GetString("FileEditor.LoadingTitle"), Path.GetFileName(_remotePath));
 
             // 파일 정보 조회
             var fileInfo = await _sftpService.GetFileInfoAsync(_remotePath);
@@ -61,8 +61,8 @@ public partial class FileEditorWindow : Window
                 if (fileInfo.Size > 1024 * 1024)
                 {
                     var result = MessageBox.Show(
-                        $"파일 크기가 {fileInfo.SizeFormatted}입니다.\n대용량 파일은 편집이 느릴 수 있습니다.\n계속하시겠습니까?",
-                        "대용량 파일 경고",
+                        string.Format(LocalizationService.Instance.GetString("FileEditor.LargeFileConfirm"), fileInfo.SizeFormatted),
+                        LocalizationService.Instance.GetString("FileTransfer.LargeFileWarningTitle"),
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning);
 
@@ -87,13 +87,13 @@ public partial class FileEditorWindow : Window
             // ⭐ 기본은 뷰어 모드 (읽기 전용)
             SetViewerMode();
 
-            Title = $"파일 편집기 - {Path.GetFileName(_remotePath)}";
+            Title = string.Format(LocalizationService.Instance.GetString("FileEditor.ViewerMode"), Path.GetFileName(_remotePath));
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"파일을 열 수 없습니다.\n{ex.Message}",
-                "오류",
+                string.Format(LocalizationService.Instance.GetString("FileEditor.CannotOpenFile"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Close();
@@ -152,7 +152,7 @@ public partial class FileEditorWindow : Window
         try
         {
             IsEnabled = false;
-            Title = $"파일 편집기 - {Path.GetFileName(_remotePath)} (저장 중...)";
+            Title = string.Format(LocalizationService.Instance.GetString("FileEditor.SavingTitle"), Path.GetFileName(_remotePath));
 
             await _sftpService.WriteFileAsync(_remotePath, TextEditor.Text, _currentEncoding);
 
@@ -170,16 +170,16 @@ public partial class FileEditorWindow : Window
             SetViewerMode();
 
             MessageBox.Show(
-                "파일이 저장되었습니다.",
-                "저장 완료",
+                LocalizationService.Instance.GetString("FileEditor.FileSaved"),
+                LocalizationService.Instance.GetString("FileEditor.SaveComplete"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"파일을 저장할 수 없습니다.\n{ex.Message}",
-                "저장 오류",
+                string.Format(LocalizationService.Instance.GetString("FileEditor.CannotSaveFile"), ex.Message),
+                LocalizationService.Instance.GetString("FileEditor.SaveError"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -257,9 +257,9 @@ public partial class FileEditorWindow : Window
     {
         ModifiedIndicator.Visibility = _isModified ? Visibility.Visible : Visibility.Collapsed;
 
-        var modePrefix = _isEditMode ? "[편집 모드] " : "[뷰어 모드] ";
-        var modifiedPrefix = _isModified ? "* " : "";
-        Title = $"{modifiedPrefix}{modePrefix}파일 편집기 - {Path.GetFileName(_remotePath)}";
+        var titleKey = _isEditMode ? "FileEditor.EditMode" : "FileEditor.ViewerMode";
+        var modifiedPrefix = _isModified ? LocalizationService.Instance.GetString("FileEditor.ModifiedPrefix") : "";
+        Title = $"{modifiedPrefix}{string.Format(LocalizationService.Instance.GetString(titleKey), Path.GetFileName(_remotePath))}";
     }
 
     /// <summary>
@@ -319,8 +319,8 @@ public partial class FileEditorWindow : Window
         if (_isModified)
         {
             var result = MessageBox.Show(
-                "변경 사항을 취소하시겠습니까?\n저장되지 않은 내용은 모두 사라집니다.",
-                "편집 취소 확인",
+                LocalizationService.Instance.GetString("FileEditor.ConfirmCancelEdit"),
+                LocalizationService.Instance.GetString("FileEditor.CancelEditConfirmTitle"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
@@ -341,7 +341,7 @@ public partial class FileEditorWindow : Window
     {
         var line = TextEditor.TextArea.Caret.Line;
         var column = TextEditor.TextArea.Caret.Column;
-        LineColumnText.Text = $"줄 {line}, 열 {column}";
+        LineColumnText.Text = string.Format(LocalizationService.Instance.GetString("FileEditor.LineColumnStatus"), line, column);
     }
 
     /// <summary>
@@ -369,8 +369,8 @@ public partial class FileEditorWindow : Window
         if (_isModified)
         {
             var result = MessageBox.Show(
-                "변경 사항이 저장되지 않았습니다.\n저장하시겠습니까?",
-                "저장 확인",
+                LocalizationService.Instance.GetString("FileEditor.UnsavedChanges"),
+                LocalizationService.Instance.GetString("FileEditor.SaveConfirm"),
                 MessageBoxButton.YesNoCancel,
                 MessageBoxImage.Question);
 
@@ -384,7 +384,10 @@ public partial class FileEditorWindow : Window
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"저장 실패: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show(
+                            string.Format(LocalizationService.Instance.GetString("FileEditor.SaveFailedError"), ex.Message),
+                            LocalizationService.Instance.GetString("Common.Error"),
+                            MessageBoxButton.OK, MessageBoxImage.Error);
                         e.Cancel = true;
                     }
                     break;

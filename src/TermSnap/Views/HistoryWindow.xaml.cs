@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using TermSnap.Models;
+using TermSnap.Services;
 
 namespace TermSnap.Views;
 
@@ -35,7 +36,7 @@ public partial class HistoryWindow : Window
 
     private void LoadProfiles()
     {
-        var profiles = new List<string> { "전체" };
+        var profiles = new List<string> { LocalizationService.Instance.GetString("History.All") };
         profiles.AddRange(_config.ServerProfiles.Select(p => p.ProfileName));
         ProfileFilterComboBox.ItemsSource = profiles;
         ProfileFilterComboBox.SelectedIndex = 0;
@@ -44,7 +45,7 @@ public partial class HistoryWindow : Window
     private void UpdateGrid()
     {
         HistoryDataGrid.ItemsSource = _filteredHistory;
-        CountTextBlock.Text = $"전체 {_filteredHistory.Count}개";
+        CountTextBlock.Text = string.Format(LocalizationService.Instance.GetString("History.TotalCount"), _filteredHistory.Count);
     }
 
     private void ApplyFilters()
@@ -92,8 +93,8 @@ public partial class HistoryWindow : Window
     private void ClearButton_Click(object sender, RoutedEventArgs e)
     {
         var result = MessageBox.Show(
-            "모든 히스토리를 삭제하시겠습니까?",
-            "히스토리 삭제",
+            LocalizationService.Instance.GetString("History.ConfirmClearAll"),
+            LocalizationService.Instance.GetString("History.DeleteTitle"),
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
@@ -106,7 +107,11 @@ public partial class HistoryWindow : Window
             _filteredHistory.Clear();
             UpdateGrid();
 
-            MessageBox.Show("히스토리가 삭제되었습니다.", "완료", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("History.DeleteSuccess"),
+                LocalizationService.Instance.GetString("Common.Complete"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
     }
 
@@ -130,7 +135,11 @@ public partial class HistoryWindow : Window
         }
         else
         {
-            MessageBox.Show("히스토리 항목을 선택해주세요.", "선택 필요", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("History.SelectRequired"),
+                LocalizationService.Instance.GetString("History.SelectionRequired"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
     }
 
@@ -170,7 +179,7 @@ public class BoolToYesNoConverter : IValueConverter
     {
         if (value is bool boolValue)
         {
-            return boolValue ? "예" : "";
+            return boolValue ? LocalizationService.Instance.GetString("Common.Yes") : "";
         }
         return "";
     }

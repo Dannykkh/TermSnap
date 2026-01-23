@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using TermSnap.Core.Sessions;
 using TermSnap.Mcp;
+using TermSnap.Models;
 using TermSnap.Services;
 using TermSnap.ViewModels;
 using TermSnap.Views;
@@ -16,6 +18,7 @@ namespace TermSnap;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
+    private ISessionViewModel? _currentTrackedSession;
 
     public MainWindow()
     {
@@ -28,6 +31,9 @@ public partial class MainWindow : Window
 
         // 분할 모드 변경 및 탭 전환 감지
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        // Sessions 컬렉션 변경 감지 (탭 닫기 시 구독 해제)
+        _viewModel.Sessions.CollectionChanged += Sessions_CollectionChanged;
 
         // 초기 레이아웃 설정
         Loaded += (s, e) =>
@@ -44,6 +50,9 @@ public partial class MainWindow : Window
             {
                 System.Diagnostics.Debug.WriteLine($"[MainWindow] MCP IPC 서버 시작 실패: {ex.Message}");
             }
+
+            // FileTreePanel 이벤트 연결
+            ConnectFileTreePanelEvents();
         };
     }
 
@@ -53,6 +62,209 @@ public partial class MainWindow : Window
             e.PropertyName == nameof(MainViewModel.SplitOrientation))
         {
             UpdateSplitLayout();
+        }
+        else if (e.PropertyName == nameof(MainViewModel.SelectedSession))
+        {
+            // 이전 세션의 PropertyChanged 구독 해제
+            if (_currentTrackedSession != null && _currentTrackedSession is INotifyPropertyChanged oldSession)
+            {
+                oldSession.PropertyChanged -= CurrentSession_PropertyChanged;
+            }
+
+            // 새 세션의 PropertyChanged 구독
+            if (_viewModel.CurrentSession != null && _viewModel.CurrentSession is INotifyPropertyChanged newSession)
+            {
+                newSession.PropertyChanged += CurrentSession_PropertyChanged;
+                _currentTrackedSession = _viewModel.CurrentSession;
+            }
+
+            // 탭 전환 시 파일 트리 동기화
+            _ = SyncFileTreePanelAsync();
+            UpdateSnippetPanelVisibility();
+        }
+    }
+
+    /// <summary>
+    /// Sessions 컬렉션 변경 감지 (탭 닫기 시 구독 해제)
+    /// </summary>
+    private void Sessions_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        // 제거된 세션의 PropertyChanged 구독 해제
+        if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems != null)
+        {
+            foreach (var item in e.OldItems)
+            {
+                if (item is INotifyPropertyChanged removedSession)
+                {
+                    removedSession.PropertyChanged -= CurrentSession_PropertyChanged;
+
+                    // 현재 추적 중인 세션이 제거되었다면 null로 설정
+                    if (_currentTrackedSession == item)
+                    {
+                        _currentTrackedSession = null;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// CurrentSession의 속성 변경 감지
+    /// </summary>
+    private void CurrentSession_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ISessionViewModel.IsFileTreeVisible))
+        {
+            // 파일 트리 가시성 변경 시 동기화
+            _ = SyncFileTreePanelAsync();
+        }
+        else if (e.PropertyName == nameof(ISessionViewModel.ShowSnippetPanel))
+        {
+            // 스니펫 패널 가시성 변경 시 업데이트
+            UpdateSnippetPanelVisibility();
+        }
+    }
+
+    /// <summary>
+    /// 현재 세션에 맞게 파일 트리 패널 동기화
+    /// </summary>
+    private async System.Threading.Tasks.Task SyncFileTreePanelAsync()
+    {
+        if (_viewModel.CurrentSession == null)
+        {
+            FileTreePanelControl.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        // 파일 트리 가시성 설정
+        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
+        {
+            FileTreePanelControl.Visibility = localVm.IsFileTreeVisible ? Visibility.Visible : Visibility.Collapsed;
+
+            if (localVm.IsFileTreeVisible)
+            {
+                // 로컬 모드로 초기화
+                await FileTreePanelControl.InitializeLocalAsync(localVm.FileTreeCurrentPath ?? localVm.CurrentDirectory);
+            }
+        }
+        else if (_viewModel.CurrentSession is ServerSessionViewModel serverVm)
+        {
+            FileTreePanelControl.Visibility = serverVm.IsFileTreeVisible ? Visibility.Visible : Visibility.Collapsed;
+
+            if (serverVm.IsFileTreeVisible && serverVm.IsConnected && serverVm.ServerProfile != null)
+            {
+                // SSH 모드로 초기화
+                var sftpService = new SftpService(serverVm.ServerProfile);
+                await sftpService.ConnectAsync();
+                var sftpClient = sftpService.GetSftpClient();
+                if (sftpClient != null)
+                {
+                    await FileTreePanelControl.InitializeSshAsync(sftpClient, sftpService, serverVm.FileTreeCurrentPath ?? "/");
+                }
+            }
+        }
+        else
+        {
+            FileTreePanelControl.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>
+    /// FileTreePanel 이벤트 연결
+    /// </summary>
+    private void ConnectFileTreePanelEvents()
+    {
+        FileTreePanelControl.CloseRequested += FileTreePanelCloseRequested;
+        FileTreePanelControl.OpenInTerminalRequested += FileTreePanelOpenInTerminalRequested;
+        FileTreePanelControl.FileDoubleClicked += FileTreePanelFileDoubleClicked;
+        FileTreePanelControl.DirectoryChanged += FileTreePanelDirectoryChanged;
+    }
+
+    /// <summary>
+    /// FileTreePanel 닫기 요청 처리
+    /// </summary>
+    private void FileTreePanelCloseRequested(object? sender, EventArgs e)
+    {
+        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
+        {
+            localVm.IsFileTreeVisible = false;
+        }
+        else if (_viewModel.CurrentSession is ServerSessionViewModel serverVm)
+        {
+            serverVm.IsFileTreeVisible = false;
+        }
+    }
+
+    /// <summary>
+    /// FileTreePanel 터미널에서 열기 요청 처리
+    /// </summary>
+    private void FileTreePanelOpenInTerminalRequested(object? sender, string path)
+    {
+        if (path != null && _viewModel.CurrentSession != null)
+        {
+            _viewModel.CurrentSession.UserInput = $"cd \"{path}\"";
+        }
+    }
+
+    /// <summary>
+    /// FileTreePanel 파일 더블클릭 처리
+    /// </summary>
+    private async void FileTreePanelFileDoubleClicked(object? sender, FileTreeItem item)
+    {
+        if (item == null || item.IsDirectory)
+            return;
+
+        // 로컬 세션: 기본 애플리케이션으로 파일 열기
+        if (_viewModel.CurrentSession is LocalTerminalViewModel)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = item.FullPath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"파일을 열 수 없습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        // SSH 세션: SFTP로 파일 편집기 열기
+        else if (_viewModel.CurrentSession is ServerSessionViewModel serverVm && serverVm.ServerProfile != null)
+        {
+            try
+            {
+                var sftpService = new SftpService(serverVm.ServerProfile);
+                await sftpService.ConnectAsync();
+
+                var editorWindow = new FileEditorWindow(sftpService, item.FullPath);
+                editorWindow.Owner = this;
+                editorWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"파일을 열 수 없습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    }
+
+    /// <summary>
+    /// FileTreePanel 디렉토리 변경 처리
+    /// </summary>
+    private void FileTreePanelDirectoryChanged(object? sender, string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return;
+
+        // ViewModel에 경로 저장 (각 탭마다 독립적으로 유지)
+        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
+        {
+            localVm.FileTreeCurrentPath = path;
+        }
+        else if (_viewModel.CurrentSession is ServerSessionViewModel serverVm)
+        {
+            serverVm.FileTreeCurrentPath = path;
         }
     }
 
@@ -83,6 +295,21 @@ public partial class MainWindow : Window
                     MainContentControl.Visibility = Visibility.Visible;
                     break;
             }
+        }
+    }
+
+    /// <summary>
+    /// 스니펫 패널 가시성 업데이트
+    /// </summary>
+    private void UpdateSnippetPanelVisibility()
+    {
+        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
+        {
+            SnippetPanel.Visibility = localVm.ShowSnippetPanel ? Visibility.Visible : Visibility.Collapsed;
+        }
+        else
+        {
+            SnippetPanel.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -212,20 +439,35 @@ public partial class MainWindow : Window
         settingsWindow.ShowDialog();
     }
 
-    /// <summary>
-    /// 커스텀 탭 헤더 클릭 시 해당 세션 선택
-    /// </summary>
-    private void TabHeader_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        if (sender is FrameworkElement element && element.DataContext is ISessionViewModel session)
-        {
-            _viewModel.SelectedSession = session;
-        }
-    }
-
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
+
+        // FileTreePanel 이벤트 구독 해제
+        try
+        {
+            FileTreePanelControl.CloseRequested -= FileTreePanelCloseRequested;
+            FileTreePanelControl.OpenInTerminalRequested -= FileTreePanelOpenInTerminalRequested;
+            FileTreePanelControl.FileDoubleClicked -= FileTreePanelFileDoubleClicked;
+            FileTreePanelControl.DirectoryChanged -= FileTreePanelDirectoryChanged;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] FileTreePanel 이벤트 해제 실패: {ex.Message}");
+        }
+
+        // CurrentSession PropertyChanged 이벤트 해제
+        if (_currentTrackedSession != null && _currentTrackedSession is INotifyPropertyChanged trackedSession)
+        {
+            trackedSession.PropertyChanged -= CurrentSession_PropertyChanged;
+        }
+
+        // Sessions 컬렉션 변경 이벤트 해제
+        if (_viewModel != null)
+        {
+            _viewModel.Sessions.CollectionChanged -= Sessions_CollectionChanged;
+            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        }
 
         // MCP IPC 서버 종료
         try

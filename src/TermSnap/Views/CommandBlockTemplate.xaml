@@ -117,7 +117,7 @@
                                  Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                         <!-- 출력 없음 -->
-                        <TextBlock Text="(출력 없음)"
+                        <TextBlock Text="{DynamicResource CommandBlock.NoOutput}"
                                    FontSize="12"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    FontStyle="Italic">
@@ -165,7 +165,7 @@
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="12,0,0,0"
                                    Visibility="{Binding IsFromCache, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <Run Text="캐시:"/>
+                            <Run Text="{DynamicResource CommandBlock.Cache}"/>
                             <Run Text="{Binding SearchMethod, Mode=OneWay}"/>
                         </TextBlock>
                     </StackPanel>
@@ -343,7 +343,7 @@
                                      TextWrapping="Wrap"
                                      Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                            <TextBlock Text="(출력 없음)"
+                            <TextBlock Text="{DynamicResource CommandBlock.NoOutput}"
                                        FontSize="11"
                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                        FontStyle="Italic">
@@ -376,7 +376,7 @@
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="8,0,0,0"
                                    Visibility="{Binding IsFromCache, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <Run Text="캐시:"/>
+                            <Run Text="{DynamicResource CommandBlock.Cache}"/>
                             <Run Text="{Binding SearchMethod, Mode=OneWay}"/>
                         </TextBlock>
                     </StackPanel>

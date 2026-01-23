@@ -317,21 +317,78 @@ public class LogStreamService : IDisposable
     /// </summary>
     public void Disconnect()
     {
-        StopStreamingAsync().Wait();
-
-        if (_sshClient?.IsConnected == true)
+        try
         {
-            _sshClient.Disconnect();
+            // 타임아웃을 설정하여 데드락 방지
+            var stopTask = StopStreamingAsync();
+            if (!stopTask.Wait(TimeSpan.FromSeconds(5)))
+            {
+                System.Diagnostics.Debug.WriteLine("[LogStreamService] StopStreaming 타임아웃");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LogStreamService] Disconnect 중 오류: {ex.Message}");
+        }
+
+        try
+        {
+            if (_sshClient?.IsConnected == true)
+            {
+                _sshClient.Disconnect();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LogStreamService] SSH Disconnect 중 오류: {ex.Message}");
         }
     }
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
 
-        Disconnect();
-        _sshClient?.Dispose();
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // 관리 리소스 정리
+            try
+            {
+                // 이벤트 구독 해제
+                LogLineReceived = null;
+                StreamingStateChanged = null;
+                ErrorOccurred = null;
+
+                // 연결 종료
+                Disconnect();
+
+                // 리소스 정리
+                _shellStream?.Dispose();
+                _shellStream = null;
+
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
+
+                _sshClient?.Dispose();
+                _sshClient = null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LogStreamService] Dispose 중 오류: {ex.Message}");
+            }
+        }
+
+        _disposed = true;
+    }
+
+    ~LogStreamService()
+    {
+        Dispose(false);
     }
 }
 

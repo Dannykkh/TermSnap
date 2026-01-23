@@ -1,0 +1,802 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- Common -->
+    <system:String x:Key="Common.OK">OK</system:String>
+    <system:String x:Key="Common.Cancel">Cancel</system:String>
+    <system:String x:Key="Common.Save">Save</system:String>
+    <system:String x:Key="Common.Close">Close</system:String>
+    <system:String x:Key="Common.Delete">Delete</system:String>
+    <system:String x:Key="Common.Edit">Edit</system:String>
+    <system:String x:Key="Common.Add">Add</system:String>
+    <system:String x:Key="Common.Remove">Remove</system:String>
+    <system:String x:Key="Common.Browse">Browse</system:String>
+    <system:String x:Key="Common.Apply">Apply</system:String>
+    <system:String x:Key="Common.Reset">Reset</system:String>
+    <system:String x:Key="Common.Search">Search</system:String>
+    <system:String x:Key="Common.Refresh">Refresh</system:String>
+    <system:String x:Key="Common.Connect">Connect</system:String>
+    <system:String x:Key="Common.Disconnect">Disconnect</system:String>
+    <system:String x:Key="Common.Upload">Upload</system:String>
+    <system:String x:Key="Common.Download">Download</system:String>
+    <system:String x:Key="Common.Yes">Yes</system:String>
+    <system:String x:Key="Common.No">No</system:String>
+
+    <!-- MainWindow (UI) -->
+    <system:String x:Key="MainWindow.Title">TermSnap</system:String>
+    <system:String x:Key="MainWindow.NewTab">New Tab</system:String>
+    <system:String x:Key="MainWindow.NewTabTooltip">New SSH Connection (Ctrl+T)</system:String>
+    <system:String x:Key="MainWindow.AIProviderTooltip">Change AI provider in settings</system:String>
+    <system:String x:Key="MainWindow.HistoryTooltip">History (Ctrl+Shift+H)</system:String>
+    <system:String x:Key="MainWindow.QATooltip">Q&amp;A Knowledge Base</system:String>
+    <system:String x:Key="MainWindow.SettingsTooltip">Settings (Ctrl+,)</system:String>
+    <system:String x:Key="MainWindow.Settings">Settings</system:String>
+    <system:String x:Key="MainWindow.FileTransfer">File Transfer</system:String>
+    <system:String x:Key="MainWindow.ServerMonitor">Server Monitor</system:String>
+    <system:String x:Key="MainWindow.QAManager">Q&amp;A Manager</system:String>
+    <system:String x:Key="MainWindow.SnippetManager">Snippet Manager</system:String>
+    <system:String x:Key="MainWindow.History">History</system:String>
+
+    <!-- NewSessionSelector (UI) -->
+    <system:String x:Key="NewSession.Title">Start New Session</system:String>
+    <system:String x:Key="NewSession.Subtitle">What would you like to do?</system:String>
+    <system:String x:Key="NewSession.LocalTerminal">Local Terminal</system:String>
+    <system:String x:Key="NewSession.LocalTerminal.Description">Work on your local computer using PowerShell, CMD, WSL, or Git Bash.</system:String>
+    <system:String x:Key="NewSession.SSHServer">SSH Server Connection</system:String>
+    <system:String x:Key="NewSession.SSHServer.Description">Connect to a remote Linux server via SSH and execute commands with AI assistant help.</system:String>
+    <system:String x:Key="NewSession.Shortcuts">Shortcuts: </system:String>
+    <system:String x:Key="NewSession.LocalTerminalShortcut"> Local Terminal  |  </system:String>
+    <system:String x:Key="NewSession.SSHShortcut"> SSH Connection</system:String>
+
+    <!-- WelcomePanel -->
+    <system:String x:Key="Welcome.Title">TermSnap</system:String>
+    <system:String x:Key="Welcome.Subtitle">Welcome to Terminal</system:String>
+    <system:String x:Key="Welcome.SelectShell">Select Shell</system:String>
+    <system:String x:Key="Welcome.UseAICLI">Use AI CLI (Claude, Codex, Gemini...)</system:String>
+    <system:String x:Key="Welcome.CLI">CLI:</system:String>
+    <system:String x:Key="Welcome.NormalMode">Normal Mode</system:String>
+    <system:String x:Key="Welcome.AutoMode">Auto Mode</system:String>
+    <system:String x:Key="Welcome.Advanced">Advanced...</system:String>
+    <system:String x:Key="Welcome.ModeDescription.Normal">Permission required for each task (Safe)</system:String>
+    <system:String x:Key="Welcome.ModeDescription.Auto">Automatically proceed with all tasks (Fast)</system:String>
+    <system:String x:Key="Welcome.GetStarted">Get Started</system:String>
+    <system:String x:Key="Welcome.OpenFolder">Open Folder</system:String>
+    <system:String x:Key="Welcome.OpenFolder.Description">Open a local folder to start working</system:String>
+    <system:String x:Key="Welcome.CloneRepository">Clone Repository</system:String>
+    <system:String x:Key="Welcome.CloneRepository.Description">Clone a Git repository to get started</system:String>
+    <system:String x:Key="Welcome.NewProject">New Project</system:String>
+    <system:String x:Key="Welcome.NewProject.Description">Create a new folder to start a project</system:String>
+    <system:String x:Key="Welcome.RecentFolders">Recent Folders</system:String>
+    <system:String x:Key="Welcome.ClearAll">Clear All</system:String>
+    <system:String x:Key="Welcome.NoRecentFolders">No recent folders</system:String>
+    <system:String x:Key="Welcome.Tip">Tip</system:String>
+    <system:String x:Key="Welcome.TipMessage">Press Ctrl+` to open a new local terminal anytime. Click the file explorer icon to view the folder structure like an IDE.</system:String>
+
+    <!-- Settings (General) -->
+    <system:String x:Key="Settings.Title">Settings</system:String>
+    <system:String x:Key="Settings.General">General</system:String>
+    <system:String x:Key="Settings.AIModels">AI Models</system:String>
+    <system:String x:Key="Settings.ServerProfiles">Server Profiles</system:String>
+    <system:String x:Key="Settings.ServerProfiles.Description">Manage SSH server connection information</system:String>
+    <system:String x:Key="Settings.ServerProfiles.AddNew">+ New Profile</system:String>
+    <system:String x:Key="Settings.ServerProfiles.Empty">No server profiles registered. Click 'New Profile' button to add.</system:String>
+    <system:String x:Key="Settings.Appearance">Appearance</system:String>
+    <system:String x:Key="Settings.Advanced">Advanced</system:String>
+    <system:String x:Key="Settings.Theme">Theme</system:String>
+    <system:String x:Key="Settings.Theme.Dark">&#x1F319; Dark</system:String>
+    <system:String x:Key="Settings.Theme.Light">&#x2600; Light</system:String>
+    <system:String x:Key="Settings.Language">Language</system:String>
+    <system:String x:Key="Settings.Language.Korean">한국어</system:String>
+    <system:String x:Key="Settings.Language.English">English</system:String>
+    <system:String x:Key="Settings.AIProvider">Select AI Provider</system:String>
+    <system:String x:Key="Settings.AIProvider.Description">Choose AI provider to use</system:String>
+    <system:String x:Key="Settings.AIProvider.None">None (No AI)</system:String>
+    <system:String x:Key="Settings.APIKey">API Key</system:String>
+    <system:String x:Key="Settings.GetAPIKey">Get API Key</system:String>
+    <system:String x:Key="Settings.Model">Select Model</system:String>
+    <system:String x:Key="Settings.Embedding">Use Embedding (Vector Search)</system:String>
+    <system:String x:Key="Settings.Embedding.Description">Convert questions to vectors and search similar previous answers</system:String>
+    <system:String x:Key="Settings.Embedding.Local">Local Model (Recommended)</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Description">Fast embedding without API calls (50~150ms)</system:String>
+    <system:String x:Key="Settings.Embedding.API">Use API</system:String>
+    <system:String x:Key="Settings.Embedding.API.Description">Call Gemini/OpenAI embedding API (small cost)</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Status">Local Model Status</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Checking">Checking...</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Download">Download Model</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Preparing">Preparing download...</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Model">Model:</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Size">Size:</system:String>
+    <system:String x:Key="Settings.Embedding.Local.Dimension">Dimension:</system:String>
+    <system:String x:Key="Settings.Embedding.Local.KoreanSupport">Korean Support</system:String>
+    <system:String x:Key="Settings.LanguageChanged.Title">Language Changed</system:String>
+    <system:String x:Key="Settings.LanguageChanged.Message">Language has been changed. Some UI will be applied after restarting the app.</system:String>
+
+    <!-- ServerSessionView -->
+    <system:String x:Key="ServerSession.ConnectToServer">Connect to Server</system:String>
+    <system:String x:Key="ServerSession.SelectProfile">Select a saved profile or add a new server</system:String>
+    <system:String x:Key="ServerSession.SavedServers">Saved Servers</system:String>
+    <system:String x:Key="ServerSession.NoSavedServers">No saved servers</system:String>
+    <system:String x:Key="ServerSession.EditProfile">Edit Profile</system:String>
+    <system:String x:Key="ServerSession.Connect">Connect</system:String>
+    <system:String x:Key="ServerSession.FrequentCommands">Frequent Commands</system:String>
+    <system:String x:Key="ServerSession.NoCommands">No commands executed yet</system:String>
+    <system:String x:Key="ServerSession.CommandsWillAppear">Commands will appear here after execution</system:String>
+    <system:String x:Key="ServerSession.CurrentPath">Current Path:</system:String>
+    <system:String x:Key="ServerSession.Recommended">Recommended</system:String>
+    <system:String x:Key="ServerSession.AddNewServer">Add New Server</system:String>
+    <system:String x:Key="ServerSession.Settings">Settings</system:String>
+    <system:String x:Key="ServerSession.SearchCommand">Search Command</system:String>
+    <system:String x:Key="ServerSession.EditCommand">Edit (Modify description, AI description)</system:String>
+    <system:String x:Key="ServerSession.Send">Send</system:String>
+    <system:String x:Key="ServerSession.FileExplorer">File Explorer (IDE Style)</system:String>
+    <system:String x:Key="ServerSession.BlockView">Block View</system:String>
+    <system:String x:Key="ServerSession.FileTransfer">File Transfer (SFTP)</system:String>
+    <system:String x:Key="ServerSession.LogViewer">Log Viewer</system:String>
+    <system:String x:Key="ServerSession.ServerMonitoring">Server Monitoring</system:String>
+    <system:String x:Key="SSH.ServerProfile">Server Profile</system:String>
+    <system:String x:Key="SSH.Host">Host</system:String>
+    <system:String x:Key="SSH.Port">Port</system:String>
+    <system:String x:Key="SSH.Username">Username</system:String>
+    <system:String x:Key="SSH.Password">Password</system:String>
+    <system:String x:Key="SSH.SSHKey">SSH Key</system:String>
+    <system:String x:Key="SSH.AuthMethod">Authentication Method</system:String>
+    <system:String x:Key="SSH.AuthMethod.Password">Password</system:String>
+    <system:String x:Key="SSH.AuthMethod.SSHKey">SSH Key</system:String>
+    <system:String x:Key="SSH.Connected">Connected</system:String>
+    <system:String x:Key="SSH.Disconnected">Disconnected</system:String>
+    <system:String x:Key="SSH.Connecting">Connecting...</system:String>
+
+    <!-- File Transfer -->
+    <system:String x:Key="FileTransfer.Title">File Transfer (SFTP)</system:String>
+    <system:String x:Key="FileTransfer.LocalPath">Local Path</system:String>
+    <system:String x:Key="FileTransfer.RemotePath">Remote Path</system:String>
+    <system:String x:Key="FileTransfer.FileName">File Name</system:String>
+    <system:String x:Key="FileTransfer.FileSize">File Size</system:String>
+    <system:String x:Key="FileTransfer.Modified">Modified Date</system:String>
+    <system:String x:Key="FileTransfer.Progress">Progress</system:String>
+    <system:String x:Key="FileTransfer.Status">Status</system:String>
+    <system:String x:Key="FileTransfer.NewFolder">New Folder</system:String>
+    <system:String x:Key="FileTransfer.DeleteFile">Delete File</system:String>
+    <system:String x:Key="FileTransfer.RenameFile">Rename File</system:String>
+
+    <!-- AI Models -->
+    <system:String x:Key="AI.Provider">AI Provider</system:String>
+    <system:String x:Key="AI.Model">Model</system:String>
+    <system:String x:Key="AI.APIKey">API Key</system:String>
+    <system:String x:Key="AI.EnterAPIKey">Enter API Key...</system:String>
+    <system:String x:Key="AI.TestConnection">Test Connection</system:String>
+
+    <!-- Status Messages -->
+    <system:String x:Key="Status.Ready">Ready</system:String>
+    <system:String x:Key="Status.Loading">Loading...</system:String>
+    <system:String x:Key="Status.Saving">Saving...</system:String>
+    <system:String x:Key="Status.Success">Success</system:String>
+    <system:String x:Key="Status.Failed">Failed</system:String>
+    <system:String x:Key="Status.Error">Error</system:String>
+
+    <!-- WelcomePanel Code-behind -->
+    <system:String x:Key="Welcome.ShellSelected">{0} selected (default)</system:String>
+    <system:String x:Key="Welcome.ShellSelectedWithPath">{0} selected ({1})</system:String>
+    <system:String x:Key="Welcome.SelectFolder">Select a folder to work with</system:String>
+    <system:String x:Key="Welcome.SelectNewProjectLocation">Select location for new project</system:String>
+    <system:String x:Key="Welcome.NewProjectTitle">New Project</system:String>
+    <system:String x:Key="Welcome.EnterProjectName">Enter project name:</system:String>
+    <system:String x:Key="Welcome.CannotCreateFolder">Cannot create project folder: {0}</system:String>
+    <system:String x:Key="Welcome.FolderNotFound">Folder does not exist:\n{0}\n\nRemove from list?</system:String>
+    <system:String x:Key="Welcome.FolderNotFoundTitle">Folder Not Found</system:String>
+    <system:String x:Key="Welcome.ConfirmClearRecent">Clear all recent folders?</system:String>
+    <system:String x:Key="Welcome.Confirm">Confirm</system:String>
+    <system:String x:Key="Welcome.AutoModeWithFlag">Auto Mode ({0})</system:String>
+    <system:String x:Key="Welcome.AutoModeNotSupported">Auto Mode (Not supported)</system:String>
+    <system:String x:Key="Welcome.InstalledWithVersion">Installed ({0})</system:String>
+    <system:String x:Key="Welcome.Installed">Installed</system:String>
+    <system:String x:Key="Welcome.InstallConfirm">Install {0}?\n\nCommand to run:\n{1}\n\nRequirements: {2}</system:String>
+    <system:String x:Key="Welcome.InstallTitle">Install AI CLI</system:String>
+    <system:String x:Key="Welcome.CannotOpenWebsite">Cannot open website: {0}</system:String>
+    <system:String x:Key="Common.Error">Error</system:String>
+
+    <!-- Messages -->
+    <system:String x:Key="Message.ConfirmDelete">Are you sure you want to delete?</system:String>
+    <system:String x:Key="Message.SaveSuccess">Saved successfully.</system:String>
+    <system:String x:Key="Message.SaveFailed">Save failed</system:String>
+    <system:String x:Key="Message.ConnectionSuccess">Connection successful</system:String>
+    <system:String x:Key="Message.ConnectionFailed">Connection failed</system:String>
+
+    <!-- ServerSessionView Code-behind -->
+    <system:String x:Key="Common.Notification">Notification</system:String>
+    <system:String x:Key="ServerSession.ConnectionFailed">Server connection failed: {0}</system:String>
+    <system:String x:Key="ServerSession.ImagePasteError">Failed to get image from clipboard.</system:String>
+    <system:String x:Key="ServerSession.ImageAttachment">[Image: {0}]</system:String>
+    <system:String x:Key="ServerSession.ImageSaved">📷 Clipboard image saved: {0}</system:String>
+    <system:String x:Key="ServerSession.ImagePasteException">An error occurred while pasting image: {0}</system:String>
+    <system:String x:Key="ServerSession.Cache">Cache</system:String>
+    <system:String x:Key="ServerSession.EmbeddingSearch">Embedding Search (Similarity {0:P0})</system:String>
+    <system:String x:Key="ServerSession.TextSearch">Text Search</system:String>
+    <system:String x:Key="ServerSession.CacheWithSimilarity">Cache (Similarity {0:P0})</system:String>
+    <system:String x:Key="ServerSession.NotConnected">Not connected to server.</system:String>
+    <system:String x:Key="ServerSession.ConnectFirst">Please connect to server first.</system:String>
+    <system:String x:Key="ServerSession.CannotOpenFile">Cannot open file: {0}</system:String>
+    <system:String x:Key="ServerSession.CannotOpenFileTree">Cannot open file tree: {0}</system:String>
+
+    <!-- LocalTerminalView -->
+    <system:String x:Key="LocalTerminal.CommandSnippets">Command Snippets</system:String>
+    <system:String x:Key="LocalTerminal.AddSnippet">Add New Snippet</system:String>
+    <system:String x:Key="LocalTerminal.ClosePanel">Close Panel</system:String>
+    <system:String x:Key="LocalTerminal.UseCount">{0} times</system:String>
+    <system:String x:Key="LocalTerminal.NoSnippets">No registered snippets</system:String>
+    <system:String x:Key="LocalTerminal.AddSnippetHint">Add frequently used commands with + button</system:String>
+    <system:String x:Key="LocalTerminal.CurrentPath">Current Path:</system:String>
+    <system:String x:Key="LocalTerminal.Execute">Execute</system:String>
+    <system:String x:Key="LocalTerminal.ClickTerminalHelp">✅ Click terminal screen to input</system:String>
+    <system:String x:Key="LocalTerminal.TerminalHelpDetail"> (English, /commands, arrow keys)</system:String>
+    <system:String x:Key="LocalTerminal.AuxiliaryInputHelp">📝 Use input box below for Korean/long text</system:String>
+    <system:String x:Key="LocalTerminal.Exit">Exit</system:String>
+    <system:String x:Key="LocalTerminal.AuxiliaryInputTooltip">For complex input like Korean/images</system:String>
+    <system:String x:Key="LocalTerminal.AuxiliaryInputHint">[Auxiliary Input] Enter Korean/long text (Enter=Send, Shift+Enter=NewLine)</system:String>
+    <system:String x:Key="LocalTerminal.Send">Send</system:String>
+    <system:String x:Key="LocalTerminal.FileExplorerTooltip">File Explorer (IDE Style)</system:String>
+    <system:String x:Key="LocalTerminal.SnippetPanelTooltip">Command Snippets (Frequently Used Commands)</system:String>
+    <system:String x:Key="LocalTerminal.BlockUIModeTooltip">Toggle Block UI Mode (Warp Style)</system:String>
+    <system:String x:Key="LocalTerminal.ClearOutputTooltip">Clear Output</system:String>
+    <system:String x:Key="LocalTerminal.MemoryUsageTooltip">Memory Usage</system:String>
+    <system:String x:Key="LocalTerminal.CpuUsageTooltip">CPU Usage</system:String>
+
+    <!-- LocalTerminalView Code-behind -->
+    <system:String x:Key="LocalTerminal.Starting">Starting local shell...</system:String>
+    <system:String x:Key="LocalTerminal.ShellStarting">{0} starting...</system:String>
+    <system:String x:Key="LocalTerminal.ShellStarted">✓ {0} started</system:String>
+    <system:String x:Key="LocalTerminal.CurrentDirectoryInfo">📁 Current directory: {0}</system:String>
+    <system:String x:Key="LocalTerminal.WorkingFolderInfo">📁 Working folder: {0}</system:String>
+    <system:String x:Key="LocalTerminal.StartFailed">Failed to start local shell</system:String>
+    <system:String x:Key="LocalTerminal.ShellStartedBracket">[{0} Started]</system:String>
+    <system:String x:Key="LocalTerminal.ShellStartedWithApp">[{0} Started: {1}]</system:String>
+    <system:String x:Key="LocalTerminal.ImageSaved">Image saved: {0}</system:String>
+    <system:String x:Key="LocalTerminal.ImagePasteException">An error occurred while pasting image: {0}</system:String>
+    <system:String x:Key="LocalTerminal.CannotOpenFileTree">Cannot open file tree: {0}</system:String>
+    <system:String x:Key="LocalTerminal.DeleteSnippetConfirm">Delete snippet '{0}'?</system:String>
+    <system:String x:Key="LocalTerminal.DeleteSnippetTitle">Delete Snippet</system:String>
+    <system:String x:Key="LocalTerminal.AICLIError">An error occurred while running AI CLI:\n{0}</system:String>
+
+    <!-- HistoryWindow -->
+    <system:String x:Key="History.Title">Command History</system:String>
+    <system:String x:Key="History.ExecutionHistory">Command Execution History</system:String>
+    <system:String x:Key="History.SearchHint">Search (command, request, description)</system:String>
+    <system:String x:Key="History.ProfileFilter">Profile Filter</system:String>
+    <system:String x:Key="History.SuccessOnly">Success Only</system:String>
+    <system:String x:Key="History.Clear">Clear</system:String>
+    <system:String x:Key="History.Time">Time</system:String>
+    <system:String x:Key="History.Profile">Profile</system:String>
+    <system:String x:Key="History.UserRequest">User Request</system:String>
+    <system:String x:Key="History.Command">Command</system:String>
+    <system:String x:Key="History.Status">Status</system:String>
+    <system:String x:Key="History.Edited">Edited</system:String>
+    <system:String x:Key="History.Select">Select</system:String>
+
+    <!-- ProfileSelectorWindow -->
+    <system:String x:Key="ProfileSelector.Title">Select Server Profile</system:String>
+    <system:String x:Key="ProfileSelector.SelectServer">Select Server to Connect</system:String>
+    <system:String x:Key="ProfileSelector.SelectOrCreate">Select a saved server profile or create a new one</system:String>
+    <system:String x:Key="ProfileSelector.LastConnected">Last connected: {0:yyyy-MM-dd HH:mm}</system:String>
+    <system:String x:Key="ProfileSelector.NoConnectionHistory">No connection history</system:String>
+    <system:String x:Key="ProfileSelector.Password">Password</system:String>
+    <system:String x:Key="ProfileSelector.SSHKey">SSH Key</system:String>
+    <system:String x:Key="ProfileSelector.NewProfile">New Profile</system:String>
+
+    <!-- CommandManagerWindow -->
+    <system:String x:Key="CommandManager.Title">Command Manager</system:String>
+    <system:String x:Key="CommandManager.DescriptionLabel">Description</system:String>
+    <system:String x:Key="CommandManager.GenerateAIDescription">Generate AI Description</system:String>
+    <system:String x:Key="CommandManager.DescriptionHint">Command description...</system:String>
+    <system:String x:Key="CommandManager.CommandLabel">Command</system:String>
+    <system:String x:Key="CommandManager.CommandHint">Linux command...</system:String>
+    <system:String x:Key="CommandManager.UsageStats">Usage Statistics</system:String>
+    <system:String x:Key="CommandManager.NoResultsMessage">No search results</system:String>
+    <system:String x:Key="CommandManager.InitialMessage">Enter search term to search command history</system:String>
+    <system:String x:Key="CommandManager.DoubleClickHint">Double-click to copy command to input</system:String>
+    <system:String x:Key="CommandManager.SearchCommand">Search Command</system:String>
+    <system:String x:Key="CommandManager.SearchHint">Enter search term...</system:String>
+    <system:String x:Key="CommandManager.Search">Search</system:String>
+    <system:String x:Key="CommandManager.SaveChanges">Save Changes</system:String>
+    <system:String x:Key="CommandManager.UseCommand">Use</system:String>
+
+    <!-- FileTransferWindow -->
+    <system:String x:Key="FileTransfer.ManagementTitle">File Transfer Management</system:String>
+    <system:String x:Key="FileTransfer.Back">Back</system:String>
+    <system:String x:Key="FileTransfer.Go">Go</system:String>
+    <system:String x:Key="FileTransfer.Icon">Icon</system:String>
+    <system:String x:Key="FileTransfer.Name">Name</system:String>
+    <system:String x:Key="FileTransfer.Size">Size</system:String>
+    <system:String x:Key="FileTransfer.Permissions">Permissions</system:String>
+    <system:String x:Key="FileTransfer.CreateFolder">Create Folder</system:String>
+    <system:String x:Key="FileTransfer.Rename">Rename</system:String>
+    <system:String x:Key="FileTransfer.Transferring">Transferring files...</system:String>
+
+    <!-- QAManagerWindow -->
+    <system:String x:Key="QAManager.Title">Q&amp;A Knowledge Base Management</system:String>
+    <system:String x:Key="QAManager.SearchButton">🔍 Search</system:String>
+    <system:String x:Key="QAManager.QAList">Q&amp;A List</system:String>
+    <system:String x:Key="QAManager.AddNew">➕ New Item</system:String>
+    <system:String x:Key="QAManager.EditHeader">Add New Q&amp;A</system:String>
+    <system:String x:Key="QAManager.Question">Question</system:String>
+    <system:String x:Key="QAManager.Answer">Answer</system:String>
+    <system:String x:Key="QAManager.Category">Category</system:String>
+    <system:String x:Key="QAManager.Tags">Tags (comma separated)</system:String>
+    <system:String x:Key="QAManager.DeleteButton">🗑 Delete</system:String>
+    <system:String x:Key="QAManager.SaveButton">💾 Save</system:String>
+    <system:String x:Key="QAManager.ImportJson">📥 Import JSON</system:String>
+    <system:String x:Key="QAManager.ExportJson">📤 Export JSON</system:String>
+    <system:String x:Key="QAManager.GenerateEmbeddings">🧠 Generate Embeddings</system:String>
+    <system:String x:Key="QAManager.TimesUsed"> times used</system:String>
+
+    <!-- SnippetManagerWindow -->
+    <system:String x:Key="SnippetManager.Title">Command Snippet Management</system:String>
+    <system:String x:Key="SnippetManager.SearchHint">Search (name, description, command, tags)</system:String>
+    <system:String x:Key="SnippetManager.CategoryHint">Category</system:String>
+    <system:String x:Key="SnippetManager.NewSnippet">New Snippet</system:String>
+    <system:String x:Key="SnippetManager.Name">Name</system:String>
+    <system:String x:Key="SnippetManager.Description">Description</system:String>
+    <system:String x:Key="SnippetManager.Command">Command</system:String>
+    <system:String x:Key="SnippetManager.UseCount">Use Count</system:String>
+    <system:String x:Key="SnippetManager.Actions">Actions</system:String>
+    <system:String x:Key="SnippetManager.TotalCount">Total snippets:</system:String>
+
+    <!-- ServerMonitorWindow -->
+    <system:String x:Key="ServerMonitor.Title">Server Monitoring</system:String>
+    <system:String x:Key="ServerMonitor.AutoRefresh">Auto Refresh (10s)</system:String>
+    <system:String x:Key="ServerMonitor.SystemInfo">System Information</system:String>
+    <system:String x:Key="ServerMonitor.Network">Network</system:String>
+    <system:String x:Key="ServerMonitor.OSInfo">OS: Loading info...</system:String>
+    <system:String x:Key="ServerMonitor.KernelVersion">Kernel: Loading info...</system:String>
+    <system:String x:Key="ServerMonitor.Uptime">Uptime: Loading info...</system:String>
+    <system:String x:Key="ServerMonitor.NetworkRx">Received: 0 B</system:String>
+    <system:String x:Key="ServerMonitor.NetworkTx">Sent: 0 B</system:String>
+    <system:String x:Key="ServerMonitor.LoadAverage">Load: Loading info...</system:String>
+    <system:String x:Key="ServerMonitor.CPUUsage">🖥️ CPU Usage</system:String>
+    <system:String x:Key="ServerMonitor.MemoryUsage">💾 Memory Usage</system:String>
+    <system:String x:Key="ServerMonitor.DiskUsage">💿 Disk Usage</system:String>
+    <system:String x:Key="ServerMonitor.ProcessCount">Processes: 0</system:String>
+    <system:String x:Key="ServerMonitor.MemoryDetail">Used: 0 / Total: 0</system:String>
+    <system:String x:Key="ServerMonitor.DiskDetail">Used: 0 / Total: 0</system:String>
+    <system:String x:Key="ServerMonitor.Services">⚙️ Main Services Status</system:String>
+    <system:String x:Key="ServerMonitor.TopProcesses">📈 Top Processes (CPU)</system:String>
+    <system:String x:Key="ServerMonitor.Service">Service</system:String>
+    <system:String x:Key="ServerMonitor.ServiceStatus">Status</system:String>
+
+    <!-- FileEditorWindow -->
+    <system:String x:Key="FileEditor.Title">File Editor</system:String>
+    <system:String x:Key="FileEditor.EditButton">Edit</system:String>
+    <system:String x:Key="FileEditor.EditTooltip">Switch to edit mode</system:String>
+    <system:String x:Key="FileEditor.SaveTooltip">Save (Ctrl+S)</system:String>
+    <system:String x:Key="FileEditor.CancelEdit">Cancel</system:String>
+    <system:String x:Key="FileEditor.CancelEditTooltip">Cancel editing</system:String>
+    <system:String x:Key="FileEditor.Undo">↩️ Undo</system:String>
+    <system:String x:Key="FileEditor.UndoTooltip">Undo (Ctrl+Z)</system:String>
+    <system:String x:Key="FileEditor.Redo">↪️ Redo</system:String>
+    <system:String x:Key="FileEditor.RedoTooltip">Redo (Ctrl+Y)</system:String>
+    <system:String x:Key="FileEditor.Encoding">Encoding:</system:String>
+    <system:String x:Key="FileEditor.WordWrap">Word Wrap</system:String>
+    <system:String x:Key="FileEditor.ShowLineNumbers">Line Numbers</system:String>
+    <system:String x:Key="FileEditor.Modified"> ● Modified</system:String>
+    <system:String x:Key="FileEditor.LineColumn">Line 1, Column 1</system:String>
+
+    <!-- LogViewerWindow -->
+    <system:String x:Key="LogViewer.Title">Log Viewer</system:String>
+    <system:String x:Key="LogViewer.LogFile">Log File:</system:String>
+    <system:String x:Key="LogViewer.Start">Start</system:String>
+    <system:String x:Key="LogViewer.Stop">Stop</system:String>
+    <system:String x:Key="LogViewer.Clear">Clear</system:String>
+    <system:String x:Key="LogViewer.AutoScroll">Auto Scroll</system:String>
+    <system:String x:Key="LogViewer.Filter">Filter:</system:String>
+    <system:String x:Key="LogViewer.Level">Level:</system:String>
+    <system:String x:Key="LogViewer.LevelAll">All</system:String>
+    <system:String x:Key="LogViewer.Waiting">Waiting</system:String>
+    <system:String x:Key="LogViewer.LineCount">0 lines</system:String>
+
+    <!-- OrchestratorWindow -->
+    <system:String x:Key="Orchestrator.Title">Claude Code Orchestrator</system:String>
+    <system:String x:Key="Orchestrator.Subtitle">PM + Worker Parallel Processing System</system:String>
+    <system:String x:Key="Orchestrator.ProjectPath">Project Path</system:String>
+    <system:String x:Key="Orchestrator.LoadState">Load State</system:String>
+    <system:String x:Key="Orchestrator.WorkerCount">Worker Count:</system:String>
+    <system:String x:Key="Orchestrator.CleanStart">Clean Start</system:String>
+    <system:String x:Key="Orchestrator.CleanStartTooltip">Delete existing state data and start fresh</system:String>
+    <system:String x:Key="Orchestrator.Launch">Launch Orchestrator</system:String>
+    <system:String x:Key="Orchestrator.BuildMcp">Build MCP Server</system:String>
+    <system:String x:Key="Orchestrator.TaskList">Task List</system:String>
+    <system:String x:Key="Orchestrator.WorkerStatus">Worker Status</system:String>
+    <system:String x:Key="Orchestrator.FileLocks">File Locks</system:String>
+    <system:String x:Key="Orchestrator.TasksWorking">Working: {0}</system:String>
+    <system:String x:Key="Orchestrator.CompletedTasks">Completed: {0} tasks</system:String>
+    <system:String x:Key="Orchestrator.Ready">Ready</system:String>
+
+    <!-- HistoryWindow Code-behind -->
+    <system:String x:Key="History.ConfirmClearAll">Delete all history?</system:String>
+    <system:String x:Key="History.DeleteTitle">Delete History</system:String>
+    <system:String x:Key="History.DeleteSuccess">History has been deleted.</system:String>
+    <system:String x:Key="Common.Complete">Complete</system:String>
+    <system:String x:Key="History.SelectRequired">Please select a history item.</system:String>
+    <system:String x:Key="History.SelectionRequired">Selection Required</system:String>
+    <system:String x:Key="History.All">All</system:String>
+    <system:String x:Key="History.TotalCount">Total {0} items</system:String>
+
+    <!-- ProfileSelectorWindow Code-behind -->
+    <system:String x:Key="ProfileSelector.SelectProfileMessage">Please select a profile.</system:String>
+
+    <!-- CommandManagerWindow Code-behind -->
+    <system:String x:Key="CommandManager.SearchTitle">Search Commands</system:String>
+    <system:String x:Key="CommandManager.DetailTitle">Command Details</system:String>
+    <system:String x:Key="CommandManager.TotalUseCount">Total {0} times used</system:String>
+    <system:String x:Key="CommandManager.LastUsedTime">Last used: {0:yyyy-MM-dd HH:mm}</system:String>
+    <system:String x:Key="CommandManager.NoUsageHistory">No usage history</system:String>
+    <system:String x:Key="CommandManager.ResultCount">{0} results (out of {1} total)</system:String>
+    <system:String x:Key="CommandManager.TotalCommands">Total {0} commands</system:String>
+    <system:String x:Key="CommandManager.NoResults">No results</system:String>
+    <system:String x:Key="CommandManager.SelectCommand">Please select a command.</system:String>
+    <system:String x:Key="CommandManager.EnterCommand">Please enter a command.</system:String>
+    <system:String x:Key="CommandManager.SaveSuccess">Saved successfully.</system:String>
+    <system:String x:Key="CommandManager.DeleteConfirm">Delete '{0}'?</system:String>
+    <system:String x:Key="CommandManager.DeleteTitle">Confirm Delete</system:String>
+    <system:String x:Key="CommandManager.EnterCommandFirst">Please enter a command first.</system:String>
+    <system:String x:Key="CommandManager.AIProviderNotSet">AI provider is not configured.\nPlease enter API key in settings.</system:String>
+    <system:String x:Key="CommandManager.GeneratingAI">AI is generating description...</system:String>
+    <system:String x:Key="CommandManager.AIGenerationFailed">AI description generation failed: {0}</system:String>
+
+    <!-- FileTransferWindow Code-behind -->
+    <system:String x:Key="FileTransfer.ConnectionError">Connection Error</system:String>
+    <system:String x:Key="FileTransfer.SFTPConnectionFailed">SFTP connection failed:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.DirectoryLoadFailed">Failed to load directory:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.LargeFileWarning">File size is {0}.\nEditing large files may be slow.\nContinue?</system:String>
+    <system:String x:Key="FileTransfer.LargeFileWarningTitle">Large File Warning</system:String>
+    <system:String x:Key="FileTransfer.CannotOpenEditor">Cannot open file editor.\n{0}</system:String>
+    <system:String x:Key="FileTransfer.Uploading">Uploading: {0}</system:String>
+    <system:String x:Key="FileTransfer.Downloading">Downloading: {0}</system:String>
+    <system:String x:Key="FileTransfer.TransferDetails">{0:F2} / {1:F2} MB ({2:F1}%)</system:String>
+    <system:String x:Key="FileTransfer.UploadComplete">File upload complete:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.UploadSuccess">Upload Success</system:String>
+    <system:String x:Key="FileTransfer.UploadMultipleFiles">Uploading: {0} files</system:String>
+    <system:String x:Key="FileTransfer.UploadMultipleComplete">File upload complete:\n{0} files</system:String>
+    <system:String x:Key="FileTransfer.UploadFailed">File upload failed:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.SelectFilesToDownload">Please select files to download.\n(Directories cannot be downloaded)</system:String>
+    <system:String x:Key="FileTransfer.DownloadComplete">File download complete:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.DownloadSuccess">Download Success</system:String>
+    <system:String x:Key="FileTransfer.DownloadMultipleFiles">Downloading: {0} files</system:String>
+    <system:String x:Key="FileTransfer.DownloadMultipleComplete">File download complete:\n{0} files → {1}</system:String>
+    <system:String x:Key="FileTransfer.DownloadFailed">File download failed:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.NewFolderName">New folder name</system:String>
+    <system:String x:Key="FileTransfer.CreateFolderTitle">Create Folder</system:String>
+    <system:String x:Key="FileTransfer.FolderCreated">Folder created:\n{0}</system:String>
+    <system:String x:Key="Common.Success">Success</system:String>
+    <system:String x:Key="FileTransfer.FolderCreationFailed">Failed to create folder:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.SelectItemToRename">Please select an item to rename.</system:String>
+    <system:String x:Key="FileTransfer.NewName">New name</system:String>
+    <system:String x:Key="FileTransfer.RenameTitle">Rename</system:String>
+    <system:String x:Key="FileTransfer.Renamed">Renamed:\n{0} → {1}</system:String>
+    <system:String x:Key="FileTransfer.RenameFailed">Rename failed:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.SelectItemToDelete">Please select an item to delete.</system:String>
+    <system:String x:Key="FileTransfer.ConfirmDelete">Delete the following item?\n\n{0}</system:String>
+    <system:String x:Key="FileTransfer.DeleteConfirmTitle">Confirm Delete</system:String>
+    <system:String x:Key="FileTransfer.Deleted">Deleted:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.DeleteFailed">Delete failed:\n{0}</system:String>
+    <system:String x:Key="FileTransfer.FileCount">Total {0} items ({1} folders, {2} files)</system:String>
+
+    <!-- QAManagerWindow Code-behind -->
+    <system:String x:Key="QAManager.ValidationError">Input Error</system:String>
+    <system:String x:Key="QAManager.EnterQuestionAndAnswer">Please enter both question and answer.</system:String>
+    <system:String x:Key="QAManager.Saving">Saving...</system:String>
+    <system:String x:Key="QAManager.QAAdded">New Q&amp;A has been added.</system:String>
+    <system:String x:Key="QAManager.QAUpdated">Q&amp;A has been updated.</system:String>
+    <system:String x:Key="QAManager.SaveFailed">Save failed: {0}</system:String>
+    <system:String x:Key="QAManager.DeleteQA">Delete '{0}'?</system:String>
+    <system:String x:Key="QAManager.Searching">Searching...</system:String>
+    <system:String x:Key="QAManager.SearchResults">Search results: {0} items</system:String>
+    <system:String x:Key="QAManager.SearchFailed">Search failed: {0}</system:String>
+    <system:String x:Key="QAManager.ImportData">Import Q&amp;A Data</system:String>
+    <system:String x:Key="QAManager.NoDataToImport">No data to import.</system:String>
+    <system:String x:Key="QAManager.ConfirmImport">Import {0} Q&amp;A items?</system:String>
+    <system:String x:Key="QAManager.ImportConfirmTitle">Confirm Import</system:String>
+    <system:String x:Key="QAManager.ImportComplete">{0} Q&amp;A items imported.</system:String>
+    <system:String x:Key="QAManager.ImportFailed">Import failed: {0}</system:String>
+    <system:String x:Key="QAManager.ExportData">Export Q&amp;A Data</system:String>
+    <system:String x:Key="QAManager.ExportComplete">{0} Q&amp;A items exported.</system:String>
+    <system:String x:Key="QAManager.ExportFailed">Export failed: {0}</system:String>
+    <system:String x:Key="QAManager.AllVectorized">All items are already vectorized.</system:String>
+    <system:String x:Key="QAManager.ConfirmGenerateEmbeddings">Generate embeddings for {0} items?\n(This may take some time)</system:String>
+    <system:String x:Key="QAManager.GenerateEmbeddingsTitle">Confirm Embedding Generation</system:String>
+    <system:String x:Key="QAManager.Generating">Generating...</system:String>
+    <system:String x:Key="QAManager.EmbeddingsGenerated">{0} embeddings generated.</system:String>
+    <system:String x:Key="QAManager.GenerationFailed">Embedding generation failed: {0}</system:String>
+    <system:String x:Key="QAManager.Statistics">Total {0} | Vectorized: {1} | Total uses: {2}</system:String>
+    <system:String x:Key="QAManager.AddNewQA">Add New Q&amp;A</system:String>
+    <system:String x:Key="QAManager.EditQA">Edit Q&amp;A</system:String>
+    <system:String x:Key="QAManager.VectorEmbeddingComplete">✅ Vector embedding complete</system:String>
+    <system:String x:Key="QAManager.NoVectorEmbedding">⚠️ No vector embedding (auto-generated on save)</system:String>
+
+    <!-- SnippetManagerWindow Code-behind -->
+    <system:String x:Key="SnippetManager.DeleteConfirm">Delete '{0}' snippet?</system:String>
+    <system:String x:Key="SnippetManager.EditTitle">Edit Snippet</system:String>
+    <system:String x:Key="SnippetManager.NewSnippetTitle">New Snippet</system:String>
+    <system:String x:Key="SnippetManager.EnterName">Please enter a name.</system:String>
+    <system:String x:Key="SnippetManager.EnterCommandText">Please enter a command.</system:String>
+    <system:String x:Key="SnippetManager.SnippetInfo">Enter Snippet Information</system:String>
+    <system:String x:Key="SnippetManager.NameRequired">Name *</system:String>
+    <system:String x:Key="SnippetManager.DescriptionField">Description</system:String>
+    <system:String x:Key="SnippetManager.CommandRequired">Command *</system:String>
+    <system:String x:Key="SnippetManager.CategoryField">Category</system:String>
+    <system:String x:Key="SnippetManager.TagsField">Tags (comma separated)</system:String>
+    <system:String x:Key="SnippetManager.CategoryHintText">Select or enter new category</system:String>
+    <system:String x:Key="SnippetManager.CategoryHelp">You can select an existing category or enter a new one.</system:String>
+    <system:String x:Key="SnippetManager.General">General</system:String>
+
+    <!-- ServerMonitorWindow Code-behind -->
+    <system:String x:Key="ServerMonitor.LoadError">Cannot retrieve server statistics:\n{0}</system:String>
+    <system:String x:Key="ServerMonitor.LoadFailed">Data load failed:\n{0}</system:String>
+    <system:String x:Key="ServerMonitor.ProcessCountLabel">Processes: {0}</system:String>
+    <system:String x:Key="ServerMonitor.MemoryUsageDetail">Used: {0} / Total: {1}</system:String>
+    <system:String x:Key="ServerMonitor.DiskUsageDetail">Used: {0} / Total: {1}</system:String>
+    <system:String x:Key="ServerMonitor.OSInfoLabel">OS: {0}</system:String>
+    <system:String x:Key="ServerMonitor.KernelVersionLabel">Kernel: {0}</system:String>
+    <system:String x:Key="ServerMonitor.UptimeLabel">Uptime: {0}</system:String>
+    <system:String x:Key="ServerMonitor.NetworkRxLabel">Received: {0}</system:String>
+    <system:String x:Key="ServerMonitor.NetworkTxLabel">Sent: {0}</system:String>
+    <system:String x:Key="ServerMonitor.LoadAverageLabel">Load: {0}</system:String>
+    <system:String x:Key="ServerMonitor.LastUpdated">Last updated: {0:HH:mm:ss}</system:String>
+
+    <!-- FileEditorWindow Code-behind -->
+    <system:String x:Key="FileEditor.LoadingTitle">File Editor - {0} (Loading...)</system:String>
+    <system:String x:Key="FileEditor.LargeFileConfirm">File size is {0}.\nEditing large files may be slow.\nContinue?</system:String>
+    <system:String x:Key="FileEditor.CannotOpenFile">Cannot open file.\n{0}</system:String>
+    <system:String x:Key="FileEditor.SavingTitle">File Editor - {0} (Saving...)</system:String>
+    <system:String x:Key="FileEditor.FileSaved">File has been saved.</system:String>
+    <system:String x:Key="FileEditor.SaveComplete">Save Complete</system:String>
+    <system:String x:Key="FileEditor.CannotSaveFile">Cannot save file.\n{0}</system:String>
+    <system:String x:Key="FileEditor.SaveError">Save Error</system:String>
+    <system:String x:Key="FileEditor.ConfirmCancelEdit">Cancel changes?\nAll unsaved content will be lost.</system:String>
+    <system:String x:Key="FileEditor.CancelEditConfirmTitle">Confirm Cancel Edit</system:String>
+    <system:String x:Key="FileEditor.LineColumnStatus">Line {0}, Column {1}</system:String>
+    <system:String x:Key="FileEditor.UnsavedChanges">You have unsaved changes.\nSave now?</system:String>
+    <system:String x:Key="FileEditor.SaveConfirm">Save Confirmation</system:String>
+    <system:String x:Key="FileEditor.SaveFailedError">Save failed: {0}</system:String>
+    <system:String x:Key="FileEditor.ViewerMode">[Viewer Mode] File Editor - {0}</system:String>
+    <system:String x:Key="FileEditor.EditMode">[Edit Mode] File Editor - {0}</system:String>
+    <system:String x:Key="FileEditor.ModifiedPrefix">* </system:String>
+
+    <!-- LogViewerWindow Code-behind -->
+    <system:String x:Key="LogViewer.ConnectionFailed">SSH connection failed:\n{0}</system:String>
+    <system:String x:Key="LogViewer.EnterLogPath">Enter log file path.</system:String>
+    <system:String x:Key="LogViewer.InputRequired">Input Required</system:String>
+    <system:String x:Key="LogViewer.StartingStream">Starting streaming...</system:String>
+    <system:String x:Key="LogViewer.StreamStartFailed">Log streaming start failed:\n{0}</system:String>
+    <system:String x:Key="LogViewer.Stopping">Stopping...</system:String>
+    <system:String x:Key="LogViewer.StopFailed">Log streaming stop failed:\n{0}</system:String>
+    <system:String x:Key="LogViewer.Connecting">Connecting...</system:String>
+    <system:String x:Key="LogViewer.ConnectedSelect">Connected - Select log file and start</system:String>
+    <system:String x:Key="LogViewer.Streaming">Streaming...</system:String>
+    <system:String x:Key="LogViewer.Stopped">Stopped</system:String>
+    <system:String x:Key="LogViewer.ErrorOccurred">Error: {0}</system:String>
+    <system:String x:Key="LogViewer.LineCountWithFilter">{0} / {1} lines</system:String>
+    <system:String x:Key="LogViewer.LineCountTotal">{0} lines</system:String>
+
+    <!-- ClaudeOptionsDialog -->
+    <system:String x:Key="ClaudeOptions.Title">Claude Code Execution Options</system:String>
+    <system:String x:Key="ClaudeOptions.Subtitle">Select execution options</system:String>
+    <system:String x:Key="ClaudeOptions.PermissionMode">Permission Mode</system:String>
+    <system:String x:Key="ClaudeOptions.NormalMode">Normal Mode (Confirm Permissions)</system:String>
+    <system:String x:Key="ClaudeOptions.AutoMode">Auto Mode (Skip Permissions)</system:String>
+    <system:String x:Key="ClaudeOptions.Model">Model</system:String>
+    <system:String x:Key="ClaudeOptions.DefaultModel">Default (Configured Model)</system:String>
+    <system:String x:Key="ClaudeOptions.OutputFormat">Output Format</system:String>
+    <system:String x:Key="ClaudeOptions.InteractiveDefault">Interactive (Default)</system:String>
+    <system:String x:Key="ClaudeOptions.TextOnly">Text Only (--print)</system:String>
+    <system:String x:Key="ClaudeOptions.JSONOutput">JSON Output</system:String>
+    <system:String x:Key="ClaudeOptions.StreamJSON">Stream JSON</system:String>
+    <system:String x:Key="ClaudeOptions.MaxTurns">Max Turns</system:String>
+    <system:String x:Key="ClaudeOptions.UnlimitedTurns">0 = Unlimited</system:String>
+    <system:String x:Key="ClaudeOptions.AdditionalOptions">Additional Options</system:String>
+    <system:String x:Key="ClaudeOptions.VerboseOutput">Verbose Output (--verbose)</system:String>
+    <system:String x:Key="ClaudeOptions.IgnoreConfig">Ignore Config File (--no-config)</system:String>
+    <system:String x:Key="ClaudeOptions.ResumePrevious">Resume Previous Conversation (--resume)</system:String>
+    <system:String x:Key="ClaudeOptions.ContinueRecent">Continue Most Recent (--continue)</system:String>
+    <system:String x:Key="ClaudeOptions.SystemPrompt">System Prompt (Optional)</system:String>
+    <system:String x:Key="ClaudeOptions.SystemPromptHint">e.g., You are a helpful coding assistant...</system:String>
+    <system:String x:Key="ClaudeOptions.InitialPrompt">Initial Prompt (Optional)</system:String>
+    <system:String x:Key="ClaudeOptions.InitialPromptHint">Prompt to send on execution...</system:String>
+    <system:String x:Key="ClaudeOptions.CommandPreview">Execution Command</system:String>
+    <system:String x:Key="ClaudeOptions.Copy">Copy</system:String>
+    <system:String x:Key="ClaudeOptions.CopyTooltip">Copy command to clipboard</system:String>
+    <system:String x:Key="ClaudeOptions.Cancel">Cancel</system:String>
+    <system:String x:Key="ClaudeOptions.Run">Run</system:String>
+
+    <!-- AICLIOptionsDialog -->
+    <system:String x:Key="AICLIOptions.Title">AI CLI Execution Options</system:String>
+    <system:String x:Key="AICLIOptions.Subtitle">Select AI CLI and execution options</system:String>
+    <system:String x:Key="AICLIOptions.SelectCLI">Select AI CLI</system:String>
+    <system:String x:Key="AICLIOptions.CustomCommand">Custom Command</system:String>
+    <system:String x:Key="AICLIOptions.CustomCommandHint">e.g., my-ai-cli --option</system:String>
+    <system:String x:Key="AICLIOptions.ExecutionMode">Execution Mode</system:String>
+    <system:String x:Key="AICLIOptions.AutoMode">Auto Mode</system:String>
+    <system:String x:Key="AICLIOptions.AutoModeWarning">Performs tasks automatically without permission confirmation (Use with caution)</system:String>
+    <system:String x:Key="AICLIOptions.ClaudeOptions">Claude Code Options</system:String>
+    <system:String x:Key="AICLIOptions.PrintOnly">Print Only (--print) - Output results without interactive mode</system:String>
+    <system:String x:Key="AICLIOptions.OutputFormatLabel">Output Format:</system:String>
+    <system:String x:Key="AICLIOptions.DefaultInteractive">Default (Interactive)</system:String>
+    <system:String x:Key="AICLIOptions.Text">Text</system:String>
+    <system:String x:Key="AICLIOptions.JSON">JSON</system:String>
+    <system:String x:Key="AICLIOptions.CodexOptions">Codex CLI Options</system:String>
+    <system:String x:Key="AICLIOptions.QuietMode">Quiet Mode (--quiet)</system:String>
+    <system:String x:Key="AICLIOptions.GeminiOptions">Gemini CLI Options</system:String>
+    <system:String x:Key="AICLIOptions.YoloMode">YOLO Mode (-y) - Skip all confirmations</system:String>
+    <system:String x:Key="AICLIOptions.AiderOptions">Aider Options</system:String>
+    <system:String x:Key="AICLIOptions.AutoCommits">Auto Commits (--auto-commits)</system:String>
+    <system:String x:Key="AICLIOptions.NoPretty">No Formatting (--no-pretty)</system:String>
+    <system:String x:Key="AICLIOptions.AdditionalFlags">Additional Flags (Optional)</system:String>
+    <system:String x:Key="AICLIOptions.AdditionalFlagsHint">e.g., --max-turns 10 --no-config</system:String>
+    <system:String x:Key="AICLIOptions.CommandPreviewEditable">(directly editable)</system:String>
+    <system:String x:Key="AICLIOptions.OK">OK</system:String>
+
+    <!-- TextInputDialog -->
+    <system:String x:Key="TextInput.Title">Input</system:String>
+    <system:String x:Key="TextInput.Prompt">Please enter:</system:String>
+    <system:String x:Key="TextInput.Hint">Input</system:String>
+    <system:String x:Key="TextInput.Cancel">Cancel</system:String>
+    <system:String x:Key="TextInput.OK">OK</system:String>
+
+    <!-- CommandConfirmDialog -->
+    <system:String x:Key="CommandConfirm.Title">Confirm Command</system:String>
+    <system:String x:Key="CommandConfirm.ExplanationHeader">Command Description</system:String>
+    <system:String x:Key="CommandConfirm.GeneratedCommand">Generated Command (Editable)</system:String>
+    <system:String x:Key="CommandConfirm.ReviewMessage">Review the command and edit if necessary before execution</system:String>
+    <system:String x:Key="CommandConfirm.Cancel">Cancel</system:String>
+    <system:String x:Key="CommandConfirm.Execute">Execute</system:String>
+
+    <!-- CloneRepositoryDialog -->
+    <system:String x:Key="CloneRepo.Title">Clone Repository</system:String>
+    <system:String x:Key="CloneRepo.Header">Clone Git Repository</system:String>
+    <system:String x:Key="CloneRepo.RepositoryURL">Repository URL</system:String>
+    <system:String x:Key="CloneRepo.URLHint">https://github.com/user/repo.git</system:String>
+    <system:String x:Key="CloneRepo.TargetFolder">Target Folder</system:String>
+    <system:String x:Key="CloneRepo.TargetHint">C:\Projects\my-repo</system:String>
+    <system:String x:Key="CloneRepo.Browse">Browse</system:String>
+    <system:String x:Key="CloneRepo.Tip">Folder name will be automatically set when you enter the repository URL.</system:String>
+    <system:String x:Key="CloneRepo.Cancel">Cancel</system:String>
+    <system:String x:Key="CloneRepo.Clone">Clone</system:String>
+
+    <!-- ViewModel Common -->
+    <system:String x:Key="ViewModel.NotConnected">Not connected</system:String>
+    <system:String x:Key="ViewModel.NewSession">New Session</system:String>
+    <system:String x:Key="ViewModel.NewTab">New Tab</system:String>
+    <system:String x:Key="ViewModel.SelectSessionType">Select session type</system:String>
+    <system:String x:Key="ViewModel.LocalTerminal">Local Terminal</system:String>
+    <system:String x:Key="ViewModel.NoAI">No AI</system:String>
+    <system:String x:Key="ViewModel.ConnectionFailed">Connection failed:\n{0}</system:String>
+    <system:String x:Key="ViewModel.ConnectionError">Connection Error</system:String>
+    <system:String x:Key="ViewModel.InteractiveMode">Interactive Mode (Press Ctrl+C to exit)</system:String>
+    <system:String x:Key="ViewModel.Connecting">Connecting...</system:String>
+    <system:String x:Key="ViewModel.Disconnected">Disconnected</system:String>
+    <system:String x:Key="ViewModel.DisconnectedSuffix"> (Disconnected)</system:String>
+
+    <!-- OrchestratorWindow Code-behind -->
+    <system:String x:Key="Orchestrator.ProjectPathRequired">Enter project path.</system:String>
+    <system:String x:Key="Orchestrator.FolderNotExist">Project folder does not exist.</system:String>
+    <system:String x:Key="Orchestrator.StateLoaded">State loaded - Auto refreshing</system:String>
+    <system:String x:Key="Orchestrator.NoState">No orchestrator state (execution required)</system:String>
+    <system:String x:Key="Orchestrator.Running">Running orchestrator...</system:String>
+    <system:String x:Key="Orchestrator.Launched">Orchestrator launched</system:String>
+    <system:String x:Key="Orchestrator.LaunchFailed">Launch failed: {0}</system:String>
+    <system:String x:Key="Orchestrator.ExecutionFailed">Execution failed</system:String>
+    <system:String x:Key="Orchestrator.ErrorOccurred">Error: {0}</system:String>
+    <system:String x:Key="Orchestrator.ErrorStatus">Error occurred</system:String>
+    <system:String x:Key="Orchestrator.Building">Building MCP server...</system:String>
+    <system:String x:Key="Orchestrator.BuildComplete">MCP server build complete</system:String>
+    <system:String x:Key="Orchestrator.BuildFailed">Build failed:\n{0}</system:String>
+    <system:String x:Key="Orchestrator.BuildError">Build error: {0}</system:String>
+    <system:String x:Key="Orchestrator.BuildErrorStatus">Build error</system:String>
+    <system:String x:Key="Orchestrator.McpReady">MCP server ready</system:String>
+    <system:String x:Key="Orchestrator.McpBuildRequired">MCP server build required</system:String>
+    <system:String x:Key="Orchestrator.NoTasks">No tasks</system:String>
+    <system:String x:Key="Orchestrator.AllComplete">All tasks complete!</system:String>
+    <system:String x:Key="Orchestrator.InProgress">In progress... ({0} working)</system:String>
+
+    <!-- AI CLI Info -->
+    <system:String x:Key="AICLI.Claude.Description">Anthropic's AI coding assistant</system:String>
+    <system:String x:Key="AICLI.Claude.InstallDesc">Requires Node.js 18+</system:String>
+    <system:String x:Key="AICLI.Codex.Description">OpenAI's code generation CLI</system:String>
+    <system:String x:Key="AICLI.Codex.InstallDesc">Requires Node.js 22+</system:String>
+    <system:String x:Key="AICLI.Gemini.Description">Google's Gemini AI CLI</system:String>
+    <system:String x:Key="AICLI.Gemini.InstallDesc">Requires Node.js 18+</system:String>
+    <system:String x:Key="AICLI.Aider.Description">Open-source AI pair programming</system:String>
+    <system:String x:Key="AICLI.Aider.InstallDesc">Requires Python 3.9+</system:String>
+    <system:String x:Key="AICLI.Custom.Name">Custom</system:String>
+    <system:String x:Key="AICLI.Custom.Description">User-defined AI CLI command</system:String>
+    <system:String x:Key="AICLI.Custom.InstallDesc">Enter the command for your custom installed CLI</system:String>
+
+    <!-- ProfileEditorDialog -->
+    <system:String x:Key="ProfileEditor.WindowTitle">Edit Server Profile</system:String>
+    <system:String x:Key="ProfileEditor.NewProfile">New Server Profile</system:String>
+    <system:String x:Key="ProfileEditor.ProfileName">Profile Name</system:String>
+    <system:String x:Key="ProfileEditor.Host">Host (IP or Domain)</system:String>
+    <system:String x:Key="ProfileEditor.Port">Port</system:String>
+    <system:String x:Key="ProfileEditor.Username">Username</system:String>
+    <system:String x:Key="ProfileEditor.AuthMethod">Authentication Method</system:String>
+    <system:String x:Key="ProfileEditor.Password">Password</system:String>
+    <system:String x:Key="ProfileEditor.SSHKey">SSH Key</system:String>
+    <system:String x:Key="ProfileEditor.KeyPath">SSH Key Path</system:String>
+    <system:String x:Key="ProfileEditor.Passphrase">Passphrase (Optional)</system:String>
+    <system:String x:Key="ProfileEditor.AddToFavorites">Add to Favorites</system:String>
+    <system:String x:Key="ProfileEditor.Notes">Notes (Optional)</system:String>
+
+    <!-- HistorySearchPopup -->
+    <system:String x:Key="HistorySearch.WindowTitle">Command History Search</system:String>
+    <system:String x:Key="HistorySearch.SearchHint">Enter search term... (Ctrl+R)</system:String>
+    <system:String x:Key="HistorySearch.Success">Success</system:String>
+    <system:String x:Key="HistorySearch.Failed">Failed</system:String>
+    <system:String x:Key="HistorySearch.SelectHelp">↑↓ Select</system:String>
+    <system:String x:Key="HistorySearch.UseHelp">Enter to Use</system:String>
+    <system:String x:Key="HistorySearch.CloseHelp">Esc to Close</system:String>
+
+    <!-- WelcomePanel Additional -->
+    <system:String x:Key="Welcome.NotInstalled">Not Installed</system:String>
+    <system:String x:Key="Welcome.Install">Install</system:String>
+    <system:String x:Key="Welcome.OfficialWebsite">Official Website</system:String>
+    <system:String x:Key="Welcome.Loading">Loading...</system:String>
+    <system:String x:Key="Welcome.RemoveFromList">Remove from list</system:String>
+
+    <!-- WorkflowParameterDialog -->
+    <system:String x:Key="WorkflowParam.Title">Workflow Parameter Input</system:String>
+    <system:String x:Key="WorkflowParam.Header">Workflow Parameters</system:String>
+    <system:String x:Key="WorkflowParam.SnippetName">Snippet Name</system:String>
+    <system:String x:Key="WorkflowParam.Command">Command</system:String>
+    <system:String x:Key="WorkflowParam.Required"> (Required)</system:String>
+    <system:String x:Key="WorkflowParam.PreviewTitle">Final Command Preview</system:String>
+
+    <!-- FileViewerPanel -->
+    <system:String x:Key="FileViewer.DragToResize">Drag to resize</system:String>
+    <system:String x:Key="FileViewer.SelectFile">Select a file</system:String>
+    <system:String x:Key="FileViewer.OpenWithDefault">Open with default program</system:String>
+    <system:String x:Key="FileViewer.Close">Close</system:String>
+    <system:String x:Key="FileViewer.EmptyMessage">Select a file to display it here</system:String>
+
+    <!-- FileTreePanel -->
+    <system:String x:Key="FileTree.Title">File Explorer</system:String>
+    <system:String x:Key="FileTree.Refresh">Refresh</system:String>
+    <system:String x:Key="FileTree.ShowHidden">Show hidden files</system:String>
+    <system:String x:Key="FileTree.CollapsePanel">Close panel</system:String>
+    <system:String x:Key="FileTree.GoUp">Parent folder</system:String>
+    <system:String x:Key="FileTree.Loading">Loading...</system:String>
+    <system:String x:Key="FileTree.DragToResize">Drag to resize</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Open">Open</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Edit">Edit</system:String>
+    <system:String x:Key="FileTree.ContextMenu.OpenInTerminal">Open in terminal</system:String>
+    <system:String x:Key="FileTree.ContextMenu.NewFolder">New Folder</system:String>
+    <system:String x:Key="FileTree.ContextMenu.NewFile">New File</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Rename">Rename (F2)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Delete">Delete (Delete)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Copy">Copy (Ctrl+C)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Cut">Cut (Ctrl+X)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.Paste">Paste (Ctrl+V)</system:String>
+    <system:String x:Key="FileTree.ContextMenu.CopyPath">Copy Path</system:String>
+
+    <!-- CommandPalette -->
+    <system:String x:Key="CommandPalette.SearchHint">&gt; Search commands, snippets, history...</system:String>
+    <system:String x:Key="CommandPalette.FilterAll">All</system:String>
+    <system:String x:Key="CommandPalette.FilterHistory">History</system:String>
+    <system:String x:Key="CommandPalette.FilterSnippets">Snippets</system:String>
+    <system:String x:Key="CommandPalette.FilterActions">Actions</system:String>
+    <system:String x:Key="CommandPalette.NoResults">No results found</system:String>
+    <system:String x:Key="CommandPalette.HelpSelectKey">↑↓ Select</system:String>
+    <system:String x:Key="CommandPalette.HelpExecuteKey">Enter Execute</system:String>
+    <system:String x:Key="CommandPalette.HelpCloseKey">Esc Close</system:String>
+
+    <!-- CommandBlock Template -->
+    <system:String x:Key="CommandBlock.Cache">Cache:</system:String>
+    <system:String x:Key="CommandBlock.ExecutionResult">Execution Result</system:String>
+    <system:String x:Key="CommandBlock.ServerResponse">Server Response</system:String>
+    <system:String x:Key="CommandBlock.NoOutput">(No output)</system:String>
+
+    <!-- CommandManager Additional Buttons -->
+    <system:String x:Key="CommandManager.Close">Close</system:String>
+    <system:String x:Key="CommandManager.BackToList">List</system:String>
+    <system:String x:Key="CommandManager.Save">Save</system:String>
+    <system:String x:Key="CommandManager.Delete">Delete</system:String>
+
+</ResourceDictionary>

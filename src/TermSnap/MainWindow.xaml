@@ -5,13 +5,14 @@
         xmlns:views="clr-namespace:TermSnap.Views"
         xmlns:vm="clr-namespace:TermSnap.ViewModels"
         Title="TermSnap"
-        Height="750" Width="1100"
+        Height="850" Width="1300"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource BackgroundBrush}">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
-        
+        <views:TypeToBoolConverter x:Key="TypeToBoolConverter"/>
+
         <!-- 세션 선택 화면용 DataTemplate -->
         <DataTemplate x:Key="SelectorTemplate" DataType="{x:Type vm:NewSessionSelectorViewModel}">
             <views:NewSessionSelectorView DataContext="{Binding}"/>
@@ -69,6 +70,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- 상단 탭 바 -->
@@ -100,11 +102,11 @@
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
                                                 <Setter Property="Kind" Value="Server"/>
-                                                <Setter Property="Foreground" Value="#4FC3F7"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding Type}" Value="Local">
                                                         <Setter Property="Kind" Value="Console"/>
-                                                        <Setter Property="Foreground" Value="#4CAF50"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -119,7 +121,7 @@
                                             Padding="0"
                                             FontSize="9"
                                             Background="Transparent"
-                                            Foreground="#666666"
+                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                             BorderThickness="0"
                                             VerticalAlignment="Center"
                                             Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -142,8 +144,8 @@
                             Padding="8,6"
                             Margin="4,0,0,0"
                             Cursor="Hand"
-                            ToolTip="새 SSH 연결 (Ctrl+T)">
-                        <materialDesign:PackIcon Kind="Plus" Width="16" Height="16" Foreground="#666666"/>
+                            ToolTip="{DynamicResource MainWindow.NewTabTooltip}">
+                        <materialDesign:PackIcon Kind="Plus" Width="16" Height="16" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
                 </StackPanel>
 
@@ -154,7 +156,7 @@
                             CornerRadius="4"
                             Padding="8,4"
                             Margin="0,0,12,0"
-                            ToolTip="설정에서 AI 제공자 변경 가능">
+                            ToolTip="{DynamicResource MainWindow.AIProviderTooltip}">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="Robot"
                                                      Width="14" Height="14"
@@ -173,7 +175,7 @@
                             BorderThickness="0"
                             Padding="8,6"
                             Cursor="Hand"
-                            ToolTip="히스토리 (Ctrl+Shift+H)">
+                            ToolTip="{DynamicResource MainWindow.HistoryTooltip}">
                         <materialDesign:PackIcon Kind="History" Width="18" Height="18" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
 
@@ -182,7 +184,7 @@
                             BorderThickness="0"
                             Padding="8,6"
                             Cursor="Hand"
-                            ToolTip="Q&amp;A 지식베이스">
+                            ToolTip="{DynamicResource MainWindow.QATooltip}">
                         <materialDesign:PackIcon Kind="Database" Width="18" Height="18" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
 
@@ -191,7 +193,7 @@
                             BorderThickness="0"
                             Padding="8,6"
                             Cursor="Hand"
-                            ToolTip="설정 (Ctrl+,)">
+                            ToolTip="{DynamicResource MainWindow.SettingsTooltip}">
                         <materialDesign:PackIcon Kind="Cog" Width="18" Height="18" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
                 </StackPanel>
@@ -200,48 +202,370 @@
 
         <!-- 메인 컨텐츠 영역 -->
         <Grid Grid.Row="1" x:Name="MainContentGrid">
-            <!-- 단일 모드 - ContentControl로 선택된 세션 표시 -->
-            <ContentControl x:Name="MainContentControl"
-                            Content="{Binding SelectedSession}"
-                            ContentTemplateSelector="{StaticResource SessionTemplateSelector}"
-                            Visibility="Collapsed"/>
-            
-            <!-- 수평 분할 모드 -->
-            <Grid x:Name="HorizontalSplitGrid" Visibility="Collapsed">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="300"/>
-                    <ColumnDefinition Width="5"/>
-                    <ColumnDefinition Width="*" MinWidth="300"/>
-                </Grid.ColumnDefinitions>
-                
-                <ContentControl Grid.Column="0" 
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 파일 트리 패널 (좌측) -->
+            <views:FileTreePanel x:Name="FileTreePanelControl"
+                                 Grid.Column="0"
+                                 Width="280"
+                                 VerticalAlignment="Stretch"
+                                 BorderBrush="#4A4A4A"
+                                 BorderThickness="0,0,2,0"
+                                 Visibility="Collapsed"/>
+
+            <!-- 세션 컨텐츠 영역 -->
+            <Grid Grid.Column="1">
+                <!-- 단일 모드 - ContentControl로 선택된 세션 표시 -->
+                <ContentControl x:Name="MainContentControl"
                                 Content="{Binding SelectedSession}"
-                                ContentTemplateSelector="{StaticResource SessionTemplateSelector}"/>
-                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
-                              Background="{DynamicResource BorderBrush}" Cursor="SizeWE"/>
-                <ContentControl Grid.Column="2" 
-                                Content="{Binding SecondarySession}"
-                                ContentTemplateSelector="{StaticResource SessionTemplateSelector}"/>
+                                ContentTemplateSelector="{StaticResource SessionTemplateSelector}"
+                                Visibility="Collapsed"/>
+
+                <!-- 수평 분할 모드 -->
+                <Grid x:Name="HorizontalSplitGrid" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="300"/>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="*" MinWidth="300"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ContentControl Grid.Column="0"
+                                    Content="{Binding SelectedSession}"
+                                    ContentTemplateSelector="{StaticResource SessionTemplateSelector}"/>
+                    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                                  Background="{DynamicResource BorderBrush}" Cursor="SizeWE"/>
+                    <ContentControl Grid.Column="2"
+                                    Content="{Binding SecondarySession}"
+                                    ContentTemplateSelector="{StaticResource SessionTemplateSelector}"/>
+                </Grid>
+
+                <!-- 수직 분할 모드 -->
+                <Grid x:Name="VerticalSplitGrid" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" MinHeight="200"/>
+                        <RowDefinition Height="5"/>
+                        <RowDefinition Height="*" MinHeight="200"/>
+                    </Grid.RowDefinitions>
+
+                    <ContentControl Grid.Row="0"
+                                    Content="{Binding SelectedSession}"
+                                    ContentTemplateSelector="{StaticResource SessionTemplateSelector}"/>
+                    <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
+                                  Background="{DynamicResource BorderBrush}" Cursor="SizeNS"/>
+                    <ContentControl Grid.Row="2"
+                                    Content="{Binding SecondarySession}"
+                                    ContentTemplateSelector="{StaticResource SessionTemplateSelector}"/>
+                </Grid>
             </Grid>
-            
-            <!-- 수직 분할 모드 -->
-            <Grid x:Name="VerticalSplitGrid" Visibility="Collapsed">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" MinHeight="200"/>
-                    <RowDefinition Height="5"/>
-                    <RowDefinition Height="*" MinHeight="200"/>
-                </Grid.RowDefinitions>
-                
-                <ContentControl Grid.Row="0" 
-                                Content="{Binding SelectedSession}"
-                                ContentTemplateSelector="{StaticResource SessionTemplateSelector}"/>
-                <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
-                              Background="{DynamicResource BorderBrush}" Cursor="SizeNS"/>
-                <ContentControl Grid.Row="2" 
-                                Content="{Binding SecondarySession}"
-                                ContentTemplateSelector="{StaticResource SessionTemplateSelector}"/>
-            </Grid>
+
+            <!-- 스니펫 패널 (우측, 로컬 터미널 전용) -->
+            <Border Grid.Column="2"
+                    x:Name="SnippetPanel"
+                    Width="280"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1,0,0,0"
+                    Visibility="Collapsed">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 패널 헤더 -->
+                    <Border Grid.Row="0"
+                            Background="{DynamicResource PrimaryLightBrush}"
+                            Padding="12,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CodeBraces"
+                                                         Width="18" Height="18"
+                                                         VerticalAlignment="Center"
+                                                         Foreground="{DynamicResource PrimaryBrush}"/>
+                                <TextBlock Text="명령어 스니펫"
+                                           FontWeight="Bold"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="6,0,0,0"/>
+                            </StackPanel>
+
+                            <!-- 닫기 버튼 -->
+                            <Button Grid.Column="1"
+                                    Command="{Binding ToggleSnippetPanelCommand}"
+                                    ToolTip="패널 닫기"
+                                    Style="{StaticResource MaterialDesignIconButton}"
+                                    Width="28" Height="28"
+                                    Padding="0">
+                                <materialDesign:PackIcon Kind="Close"
+                                                         Width="18" Height="18"
+                                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- 스니펫 목록 -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding CurrentSession.LocalSnippets}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="8,4"
+                                            CornerRadius="6"
+                                            Cursor="Hand"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1"
+                                            Tag="{Binding}">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding DataContext.CurrentSession.UseSnippetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CommandParameter="{Binding}"/>
+                                        </Border.InputBindings>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource PrimaryLightBrush}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid Margin="10,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- 스니펫 이름 -->
+                                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                                       Text="{Binding Name}"
+                                                       FontWeight="Bold"
+                                                       FontSize="13"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+
+                                            <!-- 사용 횟수 -->
+                                            <StackPanel Grid.Row="0" Grid.Column="1" Grid.RowSpan="2"
+                                                        Orientation="Vertical"
+                                                        VerticalAlignment="Center"
+                                                        Margin="8,0,0,0">
+                                                <materialDesign:PackIcon Kind="Counter"
+                                                                         Width="14" Height="14"
+                                                                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                <TextBlock Text="{Binding UseCount}"
+                                                           FontSize="11"
+                                                           FontWeight="Bold"
+                                                           Foreground="{DynamicResource PrimaryBrush}"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,2,0,0"/>
+                                            </StackPanel>
+
+                                            <!-- 명령어 -->
+                                            <TextBlock Grid.Row="1" Grid.Column="0"
+                                                       Text="{Binding Command}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       FontFamily="Consolas"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Margin="0,4,0,0"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
         </Grid>
+
+        <!-- 전역 하단 상태 바 -->
+        <materialDesign:ColorZone Grid.Row="2"
+                                   Mode="PrimaryLight"
+                                   Padding="10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 현재 디렉토리 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="Folder"
+                                            Width="16"
+                                            Height="16"
+                                            VerticalAlignment="Center"
+                                            Foreground="{DynamicResource PrimaryBrush}"
+                                            Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding CurrentDirectory}"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               FontFamily="Consolas"/>
+                </StackPanel>
+
+                <!-- 공용 도구 버튼들 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0">
+                    <!-- 파일 트리 토글 -->
+                    <Button Command="{Binding ToggleFileTreeCommand}"
+                            ToolTip="파일 탐색기"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="32" Height="32"
+                            Padding="4"
+                            Margin="0,0,4,0">
+                        <materialDesign:PackIcon Kind="FileTree" Width="18" Height="18"/>
+                    </Button>
+
+                    <!-- 스니펫 패널 토글 -->
+                    <Button Command="{Binding ToggleSnippetPanelCommand}"
+                            ToolTip="스니펫 패널"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="32" Height="32"
+                            Padding="4"
+                            Margin="0,0,4,0">
+                        <materialDesign:PackIcon Kind="CodeBraces" Width="18" Height="18"/>
+                    </Button>
+
+                    <!-- Block UI 토글 -->
+                    <Button Command="{Binding ToggleBlockUICommand}"
+                            ToolTip="블록 UI 모드"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="32" Height="32"
+                            Padding="4"
+                            Margin="0,0,4,0">
+                        <materialDesign:PackIcon Kind="ViewAgendaOutline" Width="18" Height="18"/>
+                    </Button>
+
+                    <Rectangle Width="1" Fill="{DynamicResource BorderBrush}" Margin="8,4"/>
+
+                    <!-- 출력 지우기 -->
+                    <Button Command="{Binding ClearOutputCommand}"
+                            ToolTip="출력 지우기"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="32" Height="32"
+                            Padding="4"
+                            Margin="0,0,4,0">
+                        <materialDesign:PackIcon Kind="Eraser" Width="20" Height="20"/>
+                    </Button>
+                </StackPanel>
+
+                <!-- SSH 전용 버튼들 (IsServerSession일 때만 표시) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsServerSession}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <Rectangle Width="1" Fill="{DynamicResource BorderBrush}" Margin="0,4,8,4"/>
+
+                    <!-- 파일 전송 -->
+                    <Button Command="{Binding CurrentSession.OpenFileTransferCommand}"
+                            ToolTip="파일 전송"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="32" Height="32"
+                            Padding="4"
+                            Margin="0,0,4,0">
+                        <materialDesign:PackIcon Kind="FolderNetwork" Width="20" Height="20"/>
+                    </Button>
+
+                    <!-- 로그 뷰어 -->
+                    <Button Command="{Binding CurrentSession.OpenLogViewerCommand}"
+                            ToolTip="로그 뷰어"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="32" Height="32"
+                            Padding="4"
+                            Margin="0,0,4,0">
+                        <materialDesign:PackIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
+                    </Button>
+
+                    <!-- 서버 모니터 -->
+                    <Button Command="{Binding CurrentSession.OpenMonitorCommand}"
+                            ToolTip="서버 모니터링"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="32" Height="32"
+                            Padding="4"
+                            Margin="0,0,4,0">
+                        <materialDesign:PackIcon Kind="MonitorDashboard" Width="20" Height="20"/>
+                    </Button>
+                </StackPanel>
+
+                <!-- 연결 상태 -->
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="10,0">
+                    <materialDesign:PackIcon Kind="Circle"
+                                            Width="12"
+                                            Height="12"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,5,0">
+                        <materialDesign:PackIcon.Style>
+                            <Style TargetType="materialDesign:PackIcon">
+                                <Setter Property="Foreground" Value="Red"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                        <Setter Property="Foreground" Value="Green"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </materialDesign:PackIcon.Style>
+                    </materialDesign:PackIcon>
+
+                    <!-- 리소스 사용량 -->
+                    <materialDesign:PackIcon Kind="Memory"
+                                             Width="16" Height="16"
+                                             VerticalAlignment="Center"
+                                             Foreground="#1976D2"
+                                             Margin="8,0,4,0"
+                                             ToolTip="메모리 사용량"/>
+                    <TextBlock VerticalAlignment="Center"
+                               FontFamily="Consolas"
+                               FontSize="12"
+                               Margin="0,0,12,0">
+                        <Run Text="{Binding MemoryUsageMB, Mode=OneWay, StringFormat='{}{0:N0}'}" Foreground="#1565C0"/>
+                        <Run Text="MB" Foreground="#1565C0"/>
+                    </TextBlock>
+
+                    <materialDesign:PackIcon Kind="Cpu64Bit"
+                                             Width="16" Height="16"
+                                             VerticalAlignment="Center"
+                                             Foreground="#388E3C"
+                                             Margin="0,0,4,0"
+                                             ToolTip="CPU 사용률"/>
+                    <TextBlock VerticalAlignment="Center"
+                               FontFamily="Consolas"
+                               FontSize="12">
+                        <Run Text="{Binding CpuUsage, Mode=OneWay, StringFormat='{}{0:F1}'}" Foreground="#2E7D32"/>
+                        <Run Text="%" Foreground="#2E7D32"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- 진행 상태 바 -->
+                <ProgressBar Grid.Column="5"
+                             Width="100"
+                             IsIndeterminate="True"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisConverter}}"/>
+            </Grid>
+        </materialDesign:ColorZone>
     </Grid>
 
     <Window.InputBindings>

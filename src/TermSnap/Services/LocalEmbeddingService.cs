@@ -458,12 +458,39 @@ public class LocalEmbeddingService : IEmbeddingService
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-        _isReady = false;
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
 
-        _session?.Dispose();
-        _session = null;
-        _vocab = null;
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // 관리 리소스 정리
+            try
+            {
+                _isReady = false;
+
+                // ONNX Runtime 세션 정리 (중요!)
+                _session?.Dispose();
+                _session = null;
+
+                _vocab?.Clear();
+                _vocab = null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LocalEmbeddingService] Dispose 중 오류: {ex.Message}");
+            }
+        }
+
+        _disposed = true;
+    }
+
+    ~LocalEmbeddingService()
+    {
+        Dispose(false);
     }
 }

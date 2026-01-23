@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using TermSnap.Services;
 
 namespace TermSnap.Models;
 
@@ -197,7 +198,9 @@ public class CommandBlock : INotifyPropertyChanged
     /// <summary>
     /// 응답 레이블 (로컬: "실행 결과", 서버: "서버 응답")
     /// </summary>
-    public string ResponseLabel => IsLocalSession ? "실행 결과" : "서버 응답";
+    public string ResponseLabel => IsLocalSession
+        ? LocalizationService.Instance.GetString("CommandBlock.ExecutionResult")
+        : LocalizationService.Instance.GetString("CommandBlock.ServerResponse");
 
     /// <summary>
     /// 응답 아이콘 (로컬: Console, 서버: ServerOutline)

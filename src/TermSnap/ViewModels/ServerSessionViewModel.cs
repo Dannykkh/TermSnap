@@ -26,8 +26,8 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     private string _userInput = string.Empty;
     private bool _isConnected = false;
     private bool _isBusy = false;
-    private string _statusMessage = "연결되지 않음";
-    private string _tabHeader = "새 세션";
+    private string _statusMessage = LocalizationService.Instance.GetString("ViewModel.NotConnected");
+    private string _tabHeader = LocalizationService.Instance.GetString("ViewModel.NewSession");
     private string _currentDirectory = "~";
     private bool _useShellStream = false; // ShellStream 모드 사용 여부 (false = CreateCommand 사용, pm2 등 호환성 향상)
     private ObservableCollection<FrequentCommand> _frequentCommands = new();
@@ -35,6 +35,7 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     private bool _useAISuggestion = true; // AI 추천/변환 사용 여부
     private bool _isFileTreeVisible = false; // 파일 트리 패널 표시 여부
     private string? _fileTreeCurrentPath = null; // 파일 트리 현재 경로
+    private bool _showSnippetPanel = false; // 스니펫 패널 표시 여부 (서버 세션에서는 사용 안 함)
 
     // Ring Buffer 설정 - 메모리 누수 방지
     private const int MaxMessages = 500;        // 최대 메시지 수
@@ -93,6 +94,15 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     {
         get => _fileTreeCurrentPath;
         set { _fileTreeCurrentPath = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// 스니펫 패널 표시 여부 (서버 세션에서는 사용 안 함)
+    /// </summary>
+    public bool ShowSnippetPanel
+    {
+        get => _showSnippetPanel;
+        set { _showSnippetPanel = value; OnPropertyChanged(); }
     }
 
     /// <summary>
@@ -210,6 +220,7 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     public ICommand OpenLogViewerCommand { get; }
     public ICommand UseFrequentCommandCmd { get; }
     public ICommand ShowCommandDetailCmd { get; }
+    public ICommand ToggleFileTreeCommand { get; }
 
     public ServerSessionViewModel(AppConfig config)
     {
@@ -224,6 +235,7 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
         OpenLogViewerCommand = new RelayCommand(() => OpenLogViewer(), () => IsConnected);
         UseFrequentCommandCmd = new RelayCommand<FrequentCommand>(cmd => { if (cmd != null) UseFrequentCommand(cmd); });
         ShowCommandDetailCmd = new RelayCommand<FrequentCommand>(cmd => { if (cmd != null) ShowCommandDetail(cmd); });
+        ToggleFileTreeCommand = new RelayCommand(() => IsFileTreeVisible = !IsFileTreeVisible);
 
         AddMessage("세션이 준비되었습니다. 서버에 연결해주세요.", false, MessageType.Info);
     }
@@ -943,5 +955,25 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     public void Dispose()
     {
         Disconnect();
+
+        // 큰 컬렉션 정리 (메모리 누수 방지)
+        try
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                Messages?.Clear();
+                CommandBlocks?.Clear();
+                FrequentCommands?.Clear();
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ServerSessionViewModel] Dispose 중 컬렉션 정리 오류: {ex.Message}");
+        }
+
+        // 이벤트 핸들러 정리 (메모리 누수 방지)
+        PropertyChanged = null;
+        Activated = null;
+        Deactivated = null;
     }
 }

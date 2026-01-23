@@ -84,9 +84,9 @@ public partial class CommandManagerWindow : Window
 
         if (mode == WindowMode.Search)
         {
-            Title = "명령어 검색";
+            Title = LocalizationService.Instance.GetString("CommandManager.SearchTitle");
             TitleIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.Magnify;
-            TitleText.Text = "명령어 검색";
+            TitleText.Text = LocalizationService.Instance.GetString("CommandManager.SearchTitle");
 
             SearchPanel.Visibility = Visibility.Visible;
             ResultsListBox.Visibility = Visibility.Visible;
@@ -97,9 +97,9 @@ public partial class CommandManagerWindow : Window
         }
         else
         {
-            Title = "명령어 상세";
+            Title = LocalizationService.Instance.GetString("CommandManager.DetailTitle");
             TitleIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.CodeBraces;
-            TitleText.Text = "명령어 상세";
+            TitleText.Text = LocalizationService.Instance.GetString("CommandManager.DetailTitle");
 
             SearchPanel.Visibility = Visibility.Collapsed;
             ResultsListBox.Visibility = Visibility.Collapsed;
@@ -122,10 +122,10 @@ public partial class CommandManagerWindow : Window
         _currentCommand = command;
         DetailDescription.Text = command.Description ?? "";
         DetailCommand.Text = command.Command ?? "";
-        DetailUseCount.Text = $"총 {command.TotalUseCount}회 사용";
+        DetailUseCount.Text = string.Format(LocalizationService.Instance.GetString("CommandManager.TotalUseCount"), command.TotalUseCount);
         DetailLastUsed.Text = command.LastUsed != default
-            ? $"마지막 사용: {command.LastUsed:yyyy-MM-dd HH:mm}"
-            : "사용 기록 없음";
+            ? string.Format(LocalizationService.Instance.GetString("CommandManager.LastUsedTime"), command.LastUsed)
+            : LocalizationService.Instance.GetString("CommandManager.NoUsageHistory");
         ResultCountText.Text = "";
     }
 
@@ -170,15 +170,15 @@ public partial class CommandManagerWindow : Window
     {
         if (_filteredCommands.Count > 0)
         {
-            ResultCountText.Text = $"{_filteredCommands.Count}개 결과 (전체 {_allCommands.Count}개 중)";
+            ResultCountText.Text = string.Format(LocalizationService.Instance.GetString("CommandManager.ResultCount"), _filteredCommands.Count, _allCommands.Count);
         }
         else if (string.IsNullOrEmpty(SearchTextBox.Text))
         {
-            ResultCountText.Text = $"전체 {_allCommands.Count}개의 명령어";
+            ResultCountText.Text = string.Format(LocalizationService.Instance.GetString("CommandManager.TotalCommands"), _allCommands.Count);
         }
         else
         {
-            ResultCountText.Text = "검색 결과 없음";
+            ResultCountText.Text = LocalizationService.Instance.GetString("CommandManager.NoResults");
         }
     }
 
@@ -208,8 +208,11 @@ public partial class CommandManagerWindow : Window
         }
         else
         {
-            MessageBox.Show("명령어를 선택해주세요.", "알림",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("CommandManager.SelectCommand"),
+                LocalizationService.Instance.GetString("Common.Notification"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
     }
 
@@ -278,8 +281,11 @@ public partial class CommandManagerWindow : Window
 
         if (string.IsNullOrWhiteSpace(DetailCommand.Text))
         {
-            MessageBox.Show("명령어를 입력해주세요.", "알림",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("CommandManager.EnterCommand"),
+                LocalizationService.Instance.GetString("Common.Notification"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
@@ -288,8 +294,11 @@ public partial class CommandManagerWindow : Window
 
         _onSave?.Invoke(_currentCommand);
 
-        MessageBox.Show("저장되었습니다.", "알림",
-            MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(
+            LocalizationService.Instance.GetString("CommandManager.SaveSuccess"),
+            LocalizationService.Instance.GetString("Common.Notification"),
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
     }
 
     private void DeleteButton_Click(object sender, RoutedEventArgs e)
@@ -297,8 +306,8 @@ public partial class CommandManagerWindow : Window
         if (_currentCommand == null) return;
 
         var result = MessageBox.Show(
-            $"'{_currentCommand.Description}'을(를) 삭제하시겠습니까?",
-            "삭제 확인",
+            string.Format(LocalizationService.Instance.GetString("CommandManager.DeleteConfirm"), _currentCommand.Description),
+            LocalizationService.Instance.GetString("CommandManager.DeleteTitle"),
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
@@ -315,16 +324,22 @@ public partial class CommandManagerWindow : Window
         var command = DetailCommand.Text?.Trim();
         if (string.IsNullOrEmpty(command))
         {
-            MessageBox.Show("명령어를 먼저 입력해주세요.", "알림",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("CommandManager.EnterCommandFirst"),
+                LocalizationService.Instance.GetString("Common.Notification"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
         var aiProvider = AIProviderManager.Instance.CurrentProvider;
         if (aiProvider == null)
         {
-            MessageBox.Show("AI 제공자가 설정되지 않았습니다.\n설정에서 API 키를 입력해주세요.", "알림",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("CommandManager.AIProviderNotSet"),
+                LocalizationService.Instance.GetString("Common.Notification"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
@@ -334,15 +349,18 @@ public partial class CommandManagerWindow : Window
             if (sender is System.Windows.Controls.Button btn)
                 btn.IsEnabled = false;
 
-            DetailDescription.Text = "AI가 설명을 생성하는 중...";
+            DetailDescription.Text = LocalizationService.Instance.GetString("CommandManager.GeneratingAI");
 
             var explanation = await aiProvider.ExplainCommand(command);
             DetailDescription.Text = explanation;
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"AI 설명 생성 실패: {ex.Message}", "오류",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("CommandManager.AIGenerationFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
             DetailDescription.Text = "";
         }
         finally

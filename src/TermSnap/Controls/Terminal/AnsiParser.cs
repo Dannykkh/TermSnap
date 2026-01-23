@@ -153,13 +153,13 @@ public class AnsiParser
                 _state = ParserState.Normal;
                 break;
 
-            case '7': // Save cursor
-                // TODO: 커서 위치 저장
+            case '7': // Save cursor (ESC 7)
+                _buffer.SaveCursor();
                 _state = ParserState.Normal;
                 break;
 
-            case '8': // Restore cursor
-                // TODO: 커서 위치 복원
+            case '8': // Restore cursor (ESC 8)
+                _buffer.RestoreCursor();
                 _state = ParserState.Normal;
                 break;
 
@@ -280,34 +280,28 @@ public class AnsiParser
                 }
                 break;
 
-            case 'L': // Insert Lines
-                // TODO: 줄 삽입
+            case 'L': // Insert Lines (CSI L)
+                _buffer.InsertLines(p1 == 0 ? 1 : p1);
                 break;
 
-            case 'M': // Delete Lines
-                // TODO: 줄 삭제
+            case 'M': // Delete Lines (CSI M)
+                _buffer.DeleteLines(p1 == 0 ? 1 : p1);
                 break;
 
-            case 'P': // Delete Characters
-                // TODO: 문자 삭제
+            case 'P': // Delete Characters (CSI P)
+                _buffer.DeleteChars(p1 == 0 ? 1 : p1);
                 break;
 
             case 'S': // Scroll Up
                 _buffer.ScrollUp(p1 == 0 ? 1 : p1);
                 break;
 
-            case 'T': // Scroll Down
-                // TODO: 아래로 스크롤
+            case 'T': // Scroll Down (CSI T)
+                _buffer.ScrollDown(p1 == 0 ? 1 : p1);
                 break;
 
-            case 'X': // Erase Characters
-                for (int i = 0; i < (p1 == 0 ? 1 : p1); i++)
-                {
-                    if (_buffer.CursorX + i < _buffer.Columns)
-                    {
-                        // 현재 커서 위치부터 n개 문자 지우기
-                    }
-                }
+            case 'X': // Erase Characters (CSI X)
+                _buffer.EraseChars(p1 == 0 ? 1 : p1);
                 break;
 
             case 'd': // Vertical Position Absolute
@@ -323,15 +317,29 @@ public class AnsiParser
                 break;
 
             case 'r': // Set Scrolling Region
-                // TODO: 스크롤 영역 설정
+                if (_params.Count == 0)
+                {
+                    // 파라미터 없음 = 전체 화면으로 리셋
+                    _buffer.ResetScrollingRegion();
+                }
+                else if (_params.Count == 2)
+                {
+                    // CSI top;bottom r
+                    _buffer.SetScrollingRegion(p1, p2);
+                }
+                else if (_params.Count == 1)
+                {
+                    // CSI top r (bottom은 화면 끝)
+                    _buffer.SetScrollingRegion(p1, 0);
+                }
                 break;
 
-            case 's': // Save Cursor Position
-                // TODO: 커서 위치 저장
+            case 's': // Save Cursor Position (CSI s)
+                _buffer.SaveCursor();
                 break;
 
-            case 'u': // Restore Cursor Position
-                // TODO: 커서 위치 복원
+            case 'u': // Restore Cursor Position (CSI u)
+                _buffer.RestoreCursor();
                 break;
 
             case 'h': // Set Mode
@@ -342,8 +350,8 @@ public class AnsiParser
                 ProcessSetMode(false);
                 break;
 
-            case '@': // Insert Characters
-                // TODO: 문자 삽입
+            case '@': // Insert Characters (CSI @)
+                _buffer.InsertChars(p1 == 0 ? 1 : p1);
                 break;
 
             case '`': // Horizontal Position Absolute
@@ -357,8 +365,11 @@ public class AnsiParser
         if (_params.Count == 0)
         {
             _buffer.ResetStyle();
+            System.Diagnostics.Debug.WriteLine("[SGR] Reset style");
             return;
         }
+
+        System.Diagnostics.Debug.WriteLine($"[SGR] Params: {string.Join(", ", _params)}");
 
         for (int i = 0; i < _params.Count; i++)
         {
@@ -368,35 +379,44 @@ public class AnsiParser
             {
                 case 0: // Reset
                     _buffer.ResetStyle();
+                    System.Diagnostics.Debug.WriteLine("[SGR] Reset");
                     break;
 
                 case 1: // Bold
                     _buffer.CurrentBold = true;
+                    System.Diagnostics.Debug.WriteLine("[SGR] Bold ON");
                     break;
 
                 case 4: // Underline
                     _buffer.CurrentUnderline = true;
+                    System.Diagnostics.Debug.WriteLine("[SGR] Underline ON");
                     break;
 
                 case 7: // Inverse
                     _buffer.CurrentInverse = true;
+                    System.Diagnostics.Debug.WriteLine("[SGR] Inverse ON");
                     break;
 
                 case 22: // Normal intensity
                     _buffer.CurrentBold = false;
+                    System.Diagnostics.Debug.WriteLine("[SGR] Bold OFF");
                     break;
 
                 case 24: // Underline off
                     _buffer.CurrentUnderline = false;
+                    System.Diagnostics.Debug.WriteLine("[SGR] Underline OFF");
                     break;
 
                 case 27: // Inverse off
                     _buffer.CurrentInverse = false;
+                    System.Diagnostics.Debug.WriteLine("[SGR] Inverse OFF");
                     break;
 
                 // Foreground colors (30-37)
                 case >= 30 and <= 37:
-                    _buffer.CurrentForeground = TerminalColors.GetColor(p - 30);
+                    var fgColor = TerminalColors.GetColor(p - 30);
+                    _buffer.CurrentForeground = fgColor;
+                    System.Diagnostics.Debug.WriteLine($"[SGR] Foreground color: {p} -> {fgColor}");
                     break;
 
                 case 38: // Extended foreground color
@@ -469,6 +489,31 @@ public class AnsiParser
             {
                 case 25: // Cursor visibility
                     _buffer.CursorVisible = enable;
+                    break;
+
+                case 1000: // Mouse tracking (X10 compatibility mode)
+                    _buffer.MouseTrackingEnabled = enable;
+                    System.Diagnostics.Debug.WriteLine($"[Mouse] Normal tracking: {enable}");
+                    break;
+
+                case 1002: // Mouse button event tracking
+                    _buffer.MouseButtonTracking = enable;
+                    System.Diagnostics.Debug.WriteLine($"[Mouse] Button tracking: {enable}");
+                    break;
+
+                case 1003: // Mouse any event tracking
+                    _buffer.MouseAnyEventTracking = enable;
+                    System.Diagnostics.Debug.WriteLine($"[Mouse] Any event tracking: {enable}");
+                    break;
+
+                case 1004: // Mouse focus event tracking
+                    _buffer.MouseFocusTracking = enable;
+                    System.Diagnostics.Debug.WriteLine($"[Mouse] Focus tracking: {enable}");
+                    break;
+
+                case 1006: // SGR mouse mode
+                    _buffer.MouseSgrMode = enable;
+                    System.Diagnostics.Debug.WriteLine($"[Mouse] SGR mode: {enable}");
                     break;
 
                 case 1049: // Alternate screen buffer

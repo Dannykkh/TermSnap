@@ -54,8 +54,8 @@ public partial class FileTransferWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"SFTP 연결 실패:\n{ex.Message}",
-                "연결 오류",
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.SFTPConnectionFailed"), ex.Message),
+                LocalizationService.Instance.GetString("FileTransfer.ConnectionError"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Close();
@@ -70,13 +70,17 @@ public partial class FileTransferWindow : Window
             FilesDataGrid.ItemsSource = _currentFiles;
             _currentPath = path;
             PathTextBox.Text = _currentPath;
-            CountTextBlock.Text = $"전체 {_currentFiles.Count}개 ({_currentFiles.Count(f => f.IsDirectory)}개 폴더, {_currentFiles.Count(f => !f.IsDirectory)}개 파일)";
+            CountTextBlock.Text = string.Format(
+                LocalizationService.Instance.GetString("FileTransfer.FileCount"),
+                _currentFiles.Count,
+                _currentFiles.Count(f => f.IsDirectory),
+                _currentFiles.Count(f => !f.IsDirectory));
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"디렉토리 로드 실패:\n{ex.Message}",
-                "오류",
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.DirectoryLoadFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -87,11 +91,17 @@ public partial class FileTransferWindow : Window
         Dispatcher.Invoke(() =>
         {
             TransferProgressBar.Value = e.ProgressPercentage;
-            TransferStatusText.Text = e.IsUpload ? $"업로드 중: {e.FileName}" : $"다운로드 중: {e.FileName}";
+            TransferStatusText.Text = e.IsUpload
+                ? string.Format(LocalizationService.Instance.GetString("FileTransfer.Uploading"), e.FileName)
+                : string.Format(LocalizationService.Instance.GetString("FileTransfer.Downloading"), e.FileName);
 
             var totalMB = e.TotalBytes / (1024.0 * 1024.0);
             var transferredMB = e.TransferredBytes / (1024.0 * 1024.0);
-            TransferDetailsText.Text = $"{transferredMB:F2} / {totalMB:F2} MB ({e.ProgressPercentage:F1}%)";
+            TransferDetailsText.Text = string.Format(
+                LocalizationService.Instance.GetString("FileTransfer.TransferDetails"),
+                transferredMB,
+                totalMB,
+                e.ProgressPercentage);
         });
     }
 
@@ -121,8 +131,8 @@ public partial class FileTransferWindow : Window
         if (file.Size > 5 * 1024 * 1024)
         {
             var result = MessageBox.Show(
-                $"파일 크기가 {file.SizeFormatted}입니다.\n대용량 파일은 편집기에서 열기가 느릴 수 있습니다.\n계속하시겠습니까?",
-                "대용량 파일 경고",
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.LargeFileWarning"), file.SizeFormatted),
+                LocalizationService.Instance.GetString("FileTransfer.LargeFileWarningTitle"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
@@ -138,8 +148,8 @@ public partial class FileTransferWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"파일 편집기를 열 수 없습니다.\n{ex.Message}",
-                "오류",
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.CannotOpenEditor"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -212,8 +222,8 @@ public partial class FileTransferWindow : Window
                 await _sftpService.UploadFileAsync(localPath, remotePath);
 
                 MessageBox.Show(
-                    $"파일 업로드 완료:\n{fileName}",
-                    "업로드 성공",
+                    string.Format(LocalizationService.Instance.GetString("FileTransfer.UploadComplete"), fileName),
+                    LocalizationService.Instance.GetString("FileTransfer.UploadSuccess"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -233,16 +243,16 @@ public partial class FileTransferWindow : Window
                     Dispatcher.Invoke(() =>
                     {
                         TransferProgressBar.Value = percent;
-                        TransferStatusText.Text = $"업로드 중: {fileNames.Length}개 파일";
-                        TransferDetailsText.Text = $"{percent}% 완료";
+                        TransferStatusText.Text = string.Format(LocalizationService.Instance.GetString("FileTransfer.UploadMultipleFiles"), fileNames.Length);
+                        TransferDetailsText.Text = $"{percent}% " + LocalizationService.Instance.GetString("Common.Complete");
                     });
                 });
 
                 await _sftpService.UploadMultipleAsync(files, maxParallel: 4, progress);
 
                 MessageBox.Show(
-                    $"파일 업로드 완료:\n{fileNames.Length}개 파일",
-                    "업로드 성공",
+                    string.Format(LocalizationService.Instance.GetString("FileTransfer.UploadMultipleComplete"), fileNames.Length),
+                    LocalizationService.Instance.GetString("FileTransfer.UploadSuccess"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -252,8 +262,8 @@ public partial class FileTransferWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"파일 업로드 실패:\n{ex.Message}",
-                "오류",
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.UploadFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -273,7 +283,11 @@ public partial class FileTransferWindow : Window
 
         if (selectedFiles.Count == 0)
         {
-            MessageBox.Show("다운로드할 파일을 선택해주세요.\n(디렉토리는 다운로드할 수 없습니다)", "선택 필요", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("FileTransfer.SelectFilesToDownload"),
+                LocalizationService.Instance.GetString("History.SelectionRequired"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
             return;
         }
 
@@ -301,8 +315,8 @@ public partial class FileTransferWindow : Window
                 await _sftpService.DownloadFileAsync(selected.FullPath, localPath);
 
                 MessageBox.Show(
-                    $"파일 다운로드 완료:\n{selected.Name}",
-                    "다운로드 성공",
+                    string.Format(LocalizationService.Instance.GetString("FileTransfer.DownloadComplete"), selected.Name),
+                    LocalizationService.Instance.GetString("FileTransfer.DownloadSuccess"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -332,16 +346,16 @@ public partial class FileTransferWindow : Window
                     Dispatcher.Invoke(() =>
                     {
                         TransferProgressBar.Value = percent;
-                        TransferStatusText.Text = $"다운로드 중: {selectedFiles.Count}개 파일";
-                        TransferDetailsText.Text = $"{percent}% 완료";
+                        TransferStatusText.Text = string.Format(LocalizationService.Instance.GetString("FileTransfer.DownloadMultipleFiles"), selectedFiles.Count);
+                        TransferDetailsText.Text = $"{percent}% " + LocalizationService.Instance.GetString("Common.Complete");
                     });
                 });
 
                 await _sftpService.DownloadMultipleAsync(files, maxParallel: 4, progress);
 
                 MessageBox.Show(
-                    $"파일 다운로드 완료:\n{selectedFiles.Count}개 파일 → {targetFolder}",
-                    "다운로드 성공",
+                    string.Format(LocalizationService.Instance.GetString("FileTransfer.DownloadMultipleComplete"), selectedFiles.Count, targetFolder),
+                    LocalizationService.Instance.GetString("FileTransfer.DownloadSuccess"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -349,8 +363,8 @@ public partial class FileTransferWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"파일 다운로드 실패:\n{ex.Message}",
-                "오류",
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.DownloadFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -362,7 +376,9 @@ public partial class FileTransferWindow : Window
 
     private async void CreateFolderButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new TextInputDialog("새 폴더 이름", "폴더 생성");
+        var dialog = new TextInputDialog(
+            LocalizationService.Instance.GetString("FileTransfer.NewFolderName"),
+            LocalizationService.Instance.GetString("FileTransfer.CreateFolderTitle"));
         if (dialog.ShowDialog() != true)
             return;
 
@@ -375,12 +391,20 @@ public partial class FileTransferWindow : Window
         try
         {
             await _sftpService.CreateDirectoryAsync(remotePath);
-            MessageBox.Show($"폴더가 생성되었습니다:\n{folderName}", "성공", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.FolderCreated"), folderName),
+                LocalizationService.Instance.GetString("Common.Success"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
             await LoadDirectoryAsync(_currentPath);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"폴더 생성 실패:\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.FolderCreationFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -388,11 +412,18 @@ public partial class FileTransferWindow : Window
     {
         if (FilesDataGrid.SelectedItem is not RemoteFileInfo selected)
         {
-            MessageBox.Show("이름을 변경할 항목을 선택해주세요.", "선택 필요", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("FileTransfer.SelectItemToRename"),
+                LocalizationService.Instance.GetString("History.SelectionRequired"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
             return;
         }
 
-        var dialog = new TextInputDialog("새 이름", "이름 변경", selected.Name);
+        var dialog = new TextInputDialog(
+            LocalizationService.Instance.GetString("FileTransfer.NewName"),
+            LocalizationService.Instance.GetString("FileTransfer.RenameTitle"),
+            selected.Name);
         if (dialog.ShowDialog() != true)
             return;
 
@@ -405,12 +436,20 @@ public partial class FileTransferWindow : Window
         try
         {
             await _sftpService.RenameAsync(selected.FullPath, newPath);
-            MessageBox.Show($"이름이 변경되었습니다:\n{selected.Name} → {newName}", "성공", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.Renamed"), selected.Name, newName),
+                LocalizationService.Instance.GetString("Common.Success"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
             await LoadDirectoryAsync(_currentPath);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"이름 변경 실패:\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.RenameFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -418,13 +457,17 @@ public partial class FileTransferWindow : Window
     {
         if (FilesDataGrid.SelectedItem is not RemoteFileInfo selected)
         {
-            MessageBox.Show("삭제할 항목을 선택해주세요.", "선택 필요", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("FileTransfer.SelectItemToDelete"),
+                LocalizationService.Instance.GetString("History.SelectionRequired"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
             return;
         }
 
         var result = MessageBox.Show(
-            $"다음 항목을 삭제하시겠습니까?\n\n{selected.Name}",
-            "삭제 확인",
+            string.Format(LocalizationService.Instance.GetString("FileTransfer.ConfirmDelete"), selected.Name),
+            LocalizationService.Instance.GetString("FileTransfer.DeleteConfirmTitle"),
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
 
@@ -434,12 +477,20 @@ public partial class FileTransferWindow : Window
         try
         {
             await _sftpService.DeleteAsync(selected.FullPath, selected.IsDirectory);
-            MessageBox.Show($"삭제되었습니다:\n{selected.Name}", "성공", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.Deleted"), selected.Name),
+                LocalizationService.Instance.GetString("Common.Success"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
             await LoadDirectoryAsync(_currentPath);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"삭제 실패:\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("FileTransfer.DeleteFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using TermSnap.Services;
 
 namespace TermSnap.Models;
 
@@ -66,6 +67,7 @@ public class AppConfig
     public bool ShowCommandBeforeExecution { get; set; } = true; // 실행 전 명령어 표시
     public int MaxRetryAttempts { get; set; } = 3; // 최대 재시도 횟수
     public string Theme { get; set; } = "Dark"; // UI 테마 (기본값 다크)
+    public string? Language { get; set; } = "en-US"; // UI 언어 (en-US, ko-KR)
 
     // 임베딩 설정
     public EmbeddingSettings Embedding { get; set; } = new();
@@ -292,10 +294,10 @@ public class AICLISettings
                 Name = "Claude Code",
                 Command = "claude",
                 AutoModeFlag = "--dangerously-skip-permissions",
-                Description = "Anthropic의 AI 코딩 어시스턴트",
+                Description = LocalizationService.Instance.GetString("AICLI.Claude.Description"),
                 IconKind = "Robot",
                 InstallCommand = "npm install -g @anthropic-ai/claude-code",
-                InstallDescription = "Node.js 18+ 필요",
+                InstallDescription = LocalizationService.Instance.GetString("AICLI.Claude.InstallDesc"),
                 WebsiteUrl = "https://github.com/anthropics/claude-code"
             },
             new AICLIInfo
@@ -304,10 +306,10 @@ public class AICLISettings
                 Name = "Codex CLI",
                 Command = "codex",
                 AutoModeFlag = "--full-auto",
-                Description = "OpenAI의 코드 생성 CLI",
+                Description = LocalizationService.Instance.GetString("AICLI.Codex.Description"),
                 IconKind = "CodeBraces",
                 InstallCommand = "npm install -g @openai/codex",
-                InstallDescription = "Node.js 22+ 필요",
+                InstallDescription = LocalizationService.Instance.GetString("AICLI.Codex.InstallDesc"),
                 WebsiteUrl = "https://github.com/openai/codex"
             },
             new AICLIInfo
@@ -316,10 +318,10 @@ public class AICLISettings
                 Name = "Gemini CLI",
                 Command = "gemini",
                 AutoModeFlag = "-y",
-                Description = "Google의 Gemini AI CLI",
+                Description = LocalizationService.Instance.GetString("AICLI.Gemini.Description"),
                 IconKind = "Google",
                 InstallCommand = "npm install -g @anthropic/gemini-cli",
-                InstallDescription = "Node.js 18+ 필요",
+                InstallDescription = LocalizationService.Instance.GetString("AICLI.Gemini.InstallDesc"),
                 WebsiteUrl = "https://github.com/anthropics/gemini-cli"
             },
             new AICLIInfo
@@ -328,22 +330,22 @@ public class AICLISettings
                 Name = "Aider",
                 Command = "aider",
                 AutoModeFlag = "--yes",
-                Description = "오픈소스 AI 페어 프로그래밍",
+                Description = LocalizationService.Instance.GetString("AICLI.Aider.Description"),
                 IconKind = "AccountMultiple",
                 InstallCommand = "pip install aider-chat",
-                InstallDescription = "Python 3.9+ 필요",
+                InstallDescription = LocalizationService.Instance.GetString("AICLI.Aider.InstallDesc"),
                 WebsiteUrl = "https://github.com/paul-gauthier/aider"
             },
             new AICLIInfo
             {
                 Id = "custom",
-                Name = "커스텀",
+                Name = LocalizationService.Instance.GetString("AICLI.Custom.Name"),
                 Command = "",
                 AutoModeFlag = "",
-                Description = "사용자 정의 AI CLI 명령어",
+                Description = LocalizationService.Instance.GetString("AICLI.Custom.Description"),
                 IconKind = "Cog",
                 InstallCommand = "",
-                InstallDescription = "직접 설치한 CLI의 명령어를 입력하세요",
+                InstallDescription = LocalizationService.Instance.GetString("AICLI.Custom.InstallDesc"),
                 WebsiteUrl = ""
             }
         };

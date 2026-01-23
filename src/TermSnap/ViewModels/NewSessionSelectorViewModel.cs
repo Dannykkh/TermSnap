@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using TermSnap.Models;
+using TermSnap.Services;
 
 namespace TermSnap.ViewModels;
 
@@ -12,7 +13,7 @@ namespace TermSnap.ViewModels;
 /// </summary>
 public class NewSessionSelectorViewModel : ISessionViewModel, INotifyPropertyChanged
 {
-    private string _tabHeader = "새 탭";
+    private string _tabHeader = LocalizationService.Instance.GetString("ViewModel.NewTab");
     private string _userInput = string.Empty;
 
     /// <summary>
@@ -39,9 +40,12 @@ public class NewSessionSelectorViewModel : ISessionViewModel, INotifyPropertyCha
 
     public bool IsConnected => false;
     public bool IsBusy => false;
-    public string StatusMessage => "세션 타입을 선택하세요";
+    public string StatusMessage => LocalizationService.Instance.GetString("ViewModel.SelectSessionType");
     public string CurrentDirectory => string.Empty;
     public bool UseBlockUI { get; set; } = false;
+    public bool IsFileTreeVisible { get; set; } = false; // 세션 선택 화면에서는 파일 트리 표시 안 함
+    public string? FileTreeCurrentPath { get; set; } = null; // 세션 선택 화면에서는 파일 트리 경로 없음
+    public bool ShowSnippetPanel { get; set; } = false; // 세션 선택 화면에서는 스니펫 패널 표시 안 함
 
     public ObservableCollection<ChatMessage> Messages { get; } = new();
     public ObservableCollection<CommandBlock> CommandBlocks { get; } = new();

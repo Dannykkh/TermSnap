@@ -33,7 +33,7 @@ public partial class LogViewerWindow : Window
 
         LogListBox.ItemsSource = _filteredLogEntries;
 
-        Title = $"로그 뷰어 - {config.ProfileName}";
+        Title = $"{LocalizationService.Instance.GetString("LogViewer.Title")} - {config.ProfileName}";
 
         // 연결 시작
         _ = InitializeAsync();
@@ -43,15 +43,15 @@ public partial class LogViewerWindow : Window
     {
         try
         {
-            StatusText.Text = "연결 중...";
+            StatusText.Text = LocalizationService.Instance.GetString("LogViewer.Connecting");
             await _logService.ConnectAsync();
-            StatusText.Text = "연결됨 - 로그 파일을 선택하고 시작하세요";
+            StatusText.Text = LocalizationService.Instance.GetString("LogViewer.ConnectedSelect");
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"SSH 연결 실패:\n{ex.Message}",
-                "연결 오류",
+                string.Format(LocalizationService.Instance.GetString("LogViewer.ConnectionFailed"), ex.Message),
+                LocalizationService.Instance.GetString("FileTransfer.ConnectionError"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Close();
@@ -66,22 +66,25 @@ public partial class LogViewerWindow : Window
         var logPath = LogFileComboBox.Text?.Trim();
         if (string.IsNullOrEmpty(logPath))
         {
-            MessageBox.Show("로그 파일 경로를 입력하세요.", "입력 필요", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("LogViewer.EnterLogPath"),
+                LocalizationService.Instance.GetString("LogViewer.InputRequired"),
+                MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         try
         {
             StartButton.IsEnabled = false;
-            StatusText.Text = "스트리밍 시작 중...";
+            StatusText.Text = LocalizationService.Instance.GetString("LogViewer.StartingStream");
 
             await _logService.StartStreamingAsync(logPath);
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"로그 스트리밍 시작 실패:\n{ex.Message}",
-                "오류",
+                string.Format(LocalizationService.Instance.GetString("LogViewer.StreamStartFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             StartButton.IsEnabled = true;
@@ -96,14 +99,14 @@ public partial class LogViewerWindow : Window
         try
         {
             StopButton.IsEnabled = false;
-            StatusText.Text = "중지 중...";
+            StatusText.Text = LocalizationService.Instance.GetString("LogViewer.Stopping");
             await _logService.StopStreamingAsync();
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"로그 스트리밍 중지 실패:\n{ex.Message}",
-                "오류",
+                string.Format(LocalizationService.Instance.GetString("LogViewer.StopFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -177,12 +180,12 @@ public partial class LogViewerWindow : Window
             if (isStreaming)
             {
                 StatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(0, 200, 0));
-                StatusText.Text = "스트리밍 중...";
+                StatusText.Text = LocalizationService.Instance.GetString("LogViewer.Streaming");
             }
             else
             {
                 StatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(128, 128, 128));
-                StatusText.Text = "중지됨";
+                StatusText.Text = LocalizationService.Instance.GetString("LogViewer.Stopped");
             }
         });
     }
@@ -194,7 +197,7 @@ public partial class LogViewerWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
-            StatusText.Text = $"오류: {errorMessage}";
+            StatusText.Text = string.Format(LocalizationService.Instance.GetString("LogViewer.ErrorOccurred"), errorMessage);
         });
     }
 
@@ -280,8 +283,8 @@ public partial class LogViewerWindow : Window
     private void UpdateLineCount()
     {
         LineCountText.Text = _levelFilter.HasValue || !string.IsNullOrEmpty(_currentFilter)
-            ? $"{_filteredLogEntries.Count} / {_allLogEntries.Count} 줄"
-            : $"{_allLogEntries.Count} 줄";
+            ? string.Format(LocalizationService.Instance.GetString("LogViewer.LineCountWithFilter"), _filteredLogEntries.Count, _allLogEntries.Count)
+            : string.Format(LocalizationService.Instance.GetString("LogViewer.LineCountTotal"), _allLogEntries.Count);
     }
 
     protected override async void OnClosing(CancelEventArgs e)

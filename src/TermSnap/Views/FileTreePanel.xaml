@@ -60,7 +60,7 @@
                                              Width="18" Height="18"
                                              VerticalAlignment="Center"
                                              Foreground="{DynamicResource PrimaryBrush}"/>
-                    <TextBlock Text="파일 탐색기"
+                    <TextBlock Text="{DynamicResource FileTree.Title}"
                                FontWeight="SemiBold"
                                FontSize="12"
                                Foreground="{DynamicResource TextPrimaryBrush}"
@@ -71,7 +71,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <!-- 새로고침 -->
                     <Button x:Name="RefreshButton"
-                            ToolTip="새로고침"
+                            ToolTip="{DynamicResource FileTree.Refresh}"
                             Style="{StaticResource MaterialDesignToolButton}"
                             Width="24" Height="24"
                             Padding="0"
@@ -82,7 +82,7 @@
 
                     <!-- 숨김 파일 토글 -->
                     <ToggleButton x:Name="ShowHiddenToggle"
-                                  ToolTip="숨김 파일 표시"
+                                  ToolTip="{DynamicResource FileTree.ShowHidden}"
                                   Style="{StaticResource MaterialDesignToolForegroundButton}"
                                   Width="24" Height="24"
                                   Padding="0"
@@ -95,7 +95,7 @@
 
                     <!-- 접기 버튼 -->
                     <Button x:Name="CollapseButton"
-                            ToolTip="패널 닫기"
+                            ToolTip="{DynamicResource FileTree.CollapsePanel}"
                             Style="{StaticResource MaterialDesignToolButton}"
                             Width="24" Height="24"
                             Padding="0"
@@ -121,7 +121,7 @@
                 </Grid.ColumnDefinitions>
 
                 <Button x:Name="GoUpButton"
-                        ToolTip="상위 폴더"
+                        ToolTip="{DynamicResource FileTree.GoUp}"
                         Style="{StaticResource MaterialDesignToolButton}"
                         Width="24" Height="24"
                         Padding="0"
@@ -160,62 +160,62 @@
 
             <TreeView.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="열기" Click="ContextMenu_Open_Click">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.Open}" Click="ContextMenu_Open_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="OpenInNew"/>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Header="편집" Click="ContextMenu_Edit_Click">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.Edit}" Click="ContextMenu_Edit_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="Pencil"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
-                    <MenuItem Header="터미널에서 열기" Click="ContextMenu_OpenInTerminal_Click">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.OpenInTerminal}" Click="ContextMenu_OpenInTerminal_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="Console"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
-                    <MenuItem Header="새 폴더" Click="ContextMenu_NewFolder_Click">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.NewFolder}" Click="ContextMenu_NewFolder_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="FolderPlus"/>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Header="새 파일" Click="ContextMenu_NewFile_Click">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.NewFile}" Click="ContextMenu_NewFile_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="FilePlus"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
-                    <MenuItem Header="이름 변경 (F2)" Click="ContextMenu_Rename_Click">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.Rename}" Click="ContextMenu_Rename_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="RenameBox"/>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Header="삭제 (Delete)" Click="ContextMenu_Delete_Click" Foreground="{DynamicResource ErrorBrush}">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.Delete}" Click="ContextMenu_Delete_Click" Foreground="{DynamicResource ErrorBrush}">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="Delete" Foreground="{DynamicResource ErrorBrush}"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
-                    <MenuItem Header="복사 (Ctrl+C)" Click="ContextMenu_Copy_Click">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.Copy}" Click="ContextMenu_Copy_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="ContentCopy"/>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Header="잘라내기 (Ctrl+X)" Click="ContextMenu_Cut_Click">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.Cut}" Click="ContextMenu_Cut_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="ContentCut"/>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Header="붙여넣기 (Ctrl+V)" Click="ContextMenu_Paste_Click" x:Name="PasteMenuItem">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.Paste}" Click="ContextMenu_Paste_Click" x:Name="PasteMenuItem">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="ContentPaste"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
-                    <MenuItem Header="경로 복사" Click="ContextMenu_CopyPath_Click">
+                    <MenuItem Header="{DynamicResource FileTree.ContextMenu.CopyPath}" Click="ContextMenu_CopyPath_Click">
                         <MenuItem.Icon>
                             <materialDesign:PackIcon Kind="ClipboardText"/>
                         </MenuItem.Icon>
@@ -289,7 +289,7 @@
                 <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
                              IsIndeterminate="True"
                              Width="32" Height="32"/>
-                <TextBlock Text="로딩 중..."
+                <TextBlock Text="{DynamicResource FileTree.Loading}"
                            Margin="0,8,0,0"
                            Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
@@ -307,7 +307,7 @@
                 MouseLeftButtonDown="ResizeGrip_MouseLeftButtonDown"
                 MouseLeftButtonUp="ResizeGrip_MouseLeftButtonUp"
                 MouseMove="ResizeGrip_MouseMove"
-                ToolTip="드래그하여 너비 조절">
+                ToolTip="{DynamicResource FileTree.DragToResize}">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Background" Value="Transparent"/>

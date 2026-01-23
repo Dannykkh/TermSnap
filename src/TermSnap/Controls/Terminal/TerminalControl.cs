@@ -20,6 +20,7 @@ public class TerminalControl : FrameworkElement
     private readonly DispatcherTimer _cursorTimer;
     private readonly DispatcherTimer _resizeDebounceTimer;
     private readonly DispatcherTimer _renderThrottleTimer;
+    private readonly DispatcherTimer _cursorRestartTimer;
     private bool _cursorBlinkState = true;
     private int _pendingResizeCols;
     private int _pendingResizeRows;
@@ -45,6 +46,44 @@ public class TerminalControl : FrameworkElement
 
     // 자동 스크롤 제어
     private bool _autoScroll = true;  // 맨 아래로 자동 스크롤 여부
+
+    // 마우스 오버 상태 (스크롤 다운 버튼 표시용)
+    private bool _isMouseOver = false;
+    private Rect _scrollDownButtonRect;
+
+    // 스크롤 다운 버튼 렌더링용 재사용 가능한 리소스 (성능 최적화)
+    private static readonly SolidColorBrush ScrollButtonBackgroundBrush;
+    private static readonly Pen ScrollButtonBorderPen;
+    private static readonly SolidColorBrush ScrollButtonArrowBrush;
+
+    // Glyph 캐시 (성능 최적화)
+    private readonly Dictionary<GlyphCacheKey, FormattedText> _glyphCache = new();
+    private const int MaxGlyphCacheSize = 2000;  // 최대 캐시 크기
+
+    // Pen 캐시 (밑줄용)
+    private readonly Dictionary<Color, Pen> _penCache = new();
+    private const int MaxPenCacheSize = 256;
+
+    // Brush 캐시 (배경색용)
+    private readonly Dictionary<Color, SolidColorBrush> _brushCache = new();
+    private const int MaxBrushCacheSize = 256;
+
+    static TerminalControl()
+    {
+        // Frozen Brush 생성 (스레드 간 공유 가능, 성능 향상)
+        var bgBrush = new SolidColorBrush(Color.FromArgb(200, 46, 46, 46));
+        bgBrush.Freeze();
+        ScrollButtonBackgroundBrush = bgBrush;
+
+        var borderBrush = new SolidColorBrush(Color.FromArgb(220, 68, 68, 68));
+        borderBrush.Freeze();
+        ScrollButtonBorderPen = new Pen(borderBrush, 1);
+        ScrollButtonBorderPen.Freeze();
+
+        var arrowBrush = new SolidColorBrush(Color.FromArgb(230, 153, 153, 153));
+        arrowBrush.Freeze();
+        ScrollButtonArrowBrush = arrowBrush;
+    }
 
     // 텍스트 선택 상태
     private bool _isSelecting = false;
@@ -86,7 +125,7 @@ public class TerminalControl : FrameworkElement
 
     public TerminalControl()
     {
-        _buffer = new TerminalBuffer(120, 30);
+        _buffer = new TerminalBuffer(130, 40);
         _parser = new AnsiParser(_buffer);
 
         // 폰트 초기화
@@ -96,7 +135,7 @@ public class TerminalControl : FrameworkElement
         Focusable = true;
         FocusVisualStyle = null;
 
-        // 커서 깜빡임 타이머
+        // 커서 깜빡임 타이머 (사용하지 않음, Warp 스타일)
         _cursorTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(530)
@@ -121,7 +160,17 @@ public class TerminalControl : FrameworkElement
         };
         _renderThrottleTimer.Tick += OnRenderThrottleTimerTick;
 
-        // 버퍼 변경 시 렌더링 요청 (쓰로틀링 적용)
+        // 커서 재시작 타이머 (사용하지 않음, Warp 스타일)
+        _cursorRestartTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(300)
+        };
+        _cursorRestartTimer.Tick += (s, e) =>
+        {
+            _cursorRestartTimer.Stop();
+        };
+
+        // 버퍼 변경 시 렌더링 요청
         _buffer.BufferChanged += RequestRender;
 
         // IME 지원
@@ -133,7 +182,10 @@ public class TerminalControl : FrameworkElement
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        _cursorTimer.Start();
+        // Warp 스타일: 터미널 출력에는 커서를 표시하지 않음
+        // 입력창(InteractiveInputTextBox)에만 커서가 표시됨
+        _buffer.CursorVisible = false;
+
         Focus();
 
         // 폰트 업데이트 (OnRenderSizeChanged에서 ResizeToFit 호출됨)
@@ -171,6 +223,105 @@ public class TerminalControl : FrameworkElement
 
         _cellWidth = formattedText.Width;
         _cellHeight = formattedText.Height;
+
+        // 폰트 변경 시 Glyph 캐시 클리어
+        _glyphCache.Clear();
+        _penCache.Clear();
+        _brushCache.Clear();
+    }
+
+    /// <summary>
+    /// Brush 캐시에서 가져오기 (없으면 생성)
+    /// </summary>
+    private SolidColorBrush GetOrCreateBrush(Color color)
+    {
+        if (_brushCache.TryGetValue(color, out var cachedBrush))
+        {
+            return cachedBrush;
+        }
+
+        // 캐시 크기 제한
+        if (_brushCache.Count >= MaxBrushCacheSize)
+        {
+            _brushCache.Clear();
+            System.Diagnostics.Debug.WriteLine("[Brush Cache] Cleared all entries");
+        }
+
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+
+        _brushCache[color] = brush;
+        return brush;
+    }
+
+    /// <summary>
+    /// Pen 캐시에서 가져오기 (없으면 생성)
+    /// </summary>
+    private Pen GetOrCreatePen(Color color)
+    {
+        if (_penCache.TryGetValue(color, out var cachedPen))
+        {
+            return cachedPen;
+        }
+
+        // 캐시 크기 제한
+        if (_penCache.Count >= MaxPenCacheSize)
+        {
+            _penCache.Clear();
+            System.Diagnostics.Debug.WriteLine("[Pen Cache] Cleared all entries");
+        }
+
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        var pen = new Pen(brush, 1);
+        pen.Freeze();
+
+        _penCache[color] = pen;
+        return pen;
+    }
+
+    /// <summary>
+    /// Glyph 캐시에서 FormattedText 가져오기 (없으면 생성)
+    /// </summary>
+    private FormattedText GetOrCreateGlyphText(char character, Color foreground, bool bold, double pixelsPerDip)
+    {
+        var key = new GlyphCacheKey(character, foreground, bold, _fontSize);
+
+        // 캐시에 있으면 반환
+        if (_glyphCache.TryGetValue(key, out var cachedText))
+        {
+            return cachedText;
+        }
+
+        // 캐시 크기 제한 (LRU 대신 단순히 절반 비우기)
+        if (_glyphCache.Count >= MaxGlyphCacheSize)
+        {
+            // 캐시가 가득 찼을 때 절반 비우기 (간단한 전략)
+            var keysToRemove = _glyphCache.Keys.Take(MaxGlyphCacheSize / 2).ToArray();
+            foreach (var k in keysToRemove)
+            {
+                _glyphCache.Remove(k);
+            }
+            System.Diagnostics.Debug.WriteLine($"[Glyph Cache] Cleared {keysToRemove.Length} entries");
+        }
+
+        // 새로 생성
+        var fontWeight = bold ? FontWeights.Bold : FontWeights.Normal;
+        var typeface = new Typeface(FontFamily, FontStyles.Normal, fontWeight, FontStretches.Normal);
+
+        var formattedText = new FormattedText(
+            character.ToString(),
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            _fontSize,
+            new SolidColorBrush(foreground),
+            pixelsPerDip);
+
+        // FormattedText는 Freezable이 아니므로 그냥 저장
+        _glyphCache[key] = formattedText;
+
+        return formattedText;
     }
 
     /// <summary>
@@ -178,28 +329,43 @@ public class TerminalControl : FrameworkElement
     /// </summary>
     public void Write(string text)
     {
+        // 디버그 로깅 (처음 100자만)
+        var preview = text.Length > 100 ? text.Substring(0, 100) + "..." : text;
+        System.Diagnostics.Debug.WriteLine($"[TerminalControl.Write] Length: {text.Length}, Preview: '{preview}'");
+        System.Diagnostics.Debug.WriteLine($"[TerminalControl.Write] Bytes: {string.Join(" ", System.Text.Encoding.UTF8.GetBytes(text.Length > 50 ? text.Substring(0, 50) : text).Select(b => $"{b:X2}"))}");
+
         _parser.Parse(text);
 
         // 자동 스크롤이 활성화되어 있을 때만 맨 아래로 스크롤
         if (_autoScroll && _buffer.ScrollOffset != 0)
         {
             _buffer.ScrollOffset = 0;
-            InvalidateVisual();
         }
+
+        // 즉시 렌더링 요청
+        RequestRender();
     }
 
     /// <summary>
     /// 화면 크기에 맞게 버퍼 크기 조정 (디바운스 적용)
+    /// 단계별 크기를 사용하여 작은 윈도우 크기 변경 시 리사이즈 방지
     /// </summary>
     public void ResizeToFit()
     {
         if (_cellWidth <= 0 || _cellHeight <= 0) return;
 
-        int cols = Math.Max(1, (int)(ActualWidth / _cellWidth));
-        int rows = Math.Max(1, (int)(ActualHeight / _cellHeight));
+        // 실제 컨트롤 크기 기반으로 정확한 cols/rows 계산
+        int actualCols = Math.Max(1, (int)(ActualWidth / _cellWidth));
+        int actualRows = Math.Max(1, (int)(ActualHeight / _cellHeight));
+
+        // 단계별 크기로 변환 (작은 변경에도 리사이즈되지 않도록)
+        int cols = GetTieredColumns(actualCols);
+        int rows = GetTieredRows(actualRows);
 
         // 크기가 변경되지 않았으면 스킵
         if (cols == _buffer.Columns && rows == _buffer.Rows) return;
+
+        System.Diagnostics.Debug.WriteLine($"[ResizeToFit] Actual: {actualCols}x{actualRows} → Tiered: {cols}x{rows}");
 
         // 펜딩 크기 저장 및 디바운스 타이머 시작
         _pendingResizeCols = cols;
@@ -208,6 +374,34 @@ public class TerminalControl : FrameworkElement
         // 디바운스: 타이머 리셋
         _resizeDebounceTimer.Stop();
         _resizeDebounceTimer.Start();
+    }
+
+    /// <summary>
+    /// 단계별 columns 계산 (10칸 단위로 반올림)
+    /// </summary>
+    private int GetTieredColumns(int actualCols)
+    {
+        // 10칸 단위로 반올림 (더 유연한 크기 조정)
+        // 예: 82 → 80, 88 → 90, 125 → 130
+        int tierSize = 10;
+        int tiered = ((actualCols + tierSize / 2) / tierSize) * tierSize;
+
+        // 최소 80, 최대 200
+        return Math.Max(80, Math.Min(tiered, 200));
+    }
+
+    /// <summary>
+    /// 단계별 rows 계산 (5줄 단위로 반올림)
+    /// </summary>
+    private int GetTieredRows(int actualRows)
+    {
+        // 5줄 단위로 반올림 (더 유연한 크기 조정)
+        // 예: 34 → 35, 38 → 40, 43 → 45
+        int tierSize = 5;
+        int tiered = ((actualRows + tierSize / 2) / tierSize) * tierSize;
+
+        // 최소 24, 최대 60
+        return Math.Max(24, Math.Min(tiered, 60));
     }
 
     /// <summary>
@@ -220,26 +414,23 @@ public class TerminalControl : FrameworkElement
         if (_pendingResizeCols <= 0 || _pendingResizeRows <= 0) return;
         if (_pendingResizeCols == _buffer.Columns && _pendingResizeRows == _buffer.Rows) return;
 
+        System.Diagnostics.Debug.WriteLine($"[ResizeToFit] " +
+            $"OldBuffer: {_buffer.Columns}x{_buffer.Rows}, " +
+            $"NewBuffer: {_pendingResizeCols}x{_pendingResizeRows}, " +
+            $"ActualSize: {ActualWidth:F0}x{ActualHeight:F0}");
+
         // 버퍼 리사이즈 및 이벤트 발생
         _buffer.Resize(_pendingResizeCols, _pendingResizeRows);
         TerminalSizeChanged?.Invoke(_pendingResizeCols, _pendingResizeRows);
     }
 
     /// <summary>
-    /// 렌더링 요청 (쓰로틀링)
+    /// 렌더링 요청 (즉시 렌더링)
     /// </summary>
     private void RequestRender()
     {
-        if (!_renderPending)
-        {
-            _renderPending = true;
-
-            // 타이머가 실행 중이 아니면 시작
-            if (!_renderThrottleTimer.IsEnabled)
-            {
-                _renderThrottleTimer.Start();
-            }
-        }
+        // 즉시 렌더링 요청 (WPF가 자동으로 같은 프레임에 합침)
+        Dispatcher.BeginInvoke(InvalidateVisual, System.Windows.Threading.DispatcherPriority.Render);
     }
 
     /// <summary>
@@ -261,17 +452,37 @@ public class TerminalControl : FrameworkElement
 
     /// <summary>
     /// 즉시 리사이즈 (디바운스 없이)
+    /// 단계별 크기를 사용하여 작은 윈도우 크기 변경 시 리사이즈 방지
     /// </summary>
     public void ResizeToFitImmediate()
     {
         _resizeDebounceTimer.Stop();
 
-        if (_cellWidth <= 0 || _cellHeight <= 0) return;
+        if (_cellWidth <= 0 || _cellHeight <= 0)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ResizeToFitImmediate] 셀 크기 미설정: {_cellWidth}x{_cellHeight}");
+            return;
+        }
 
-        int cols = Math.Max(1, (int)(ActualWidth / _cellWidth));
-        int rows = Math.Max(1, (int)(ActualHeight / _cellHeight));
+        // 실제 컨트롤 크기 기반으로 정확한 cols/rows 계산
+        int actualCols = Math.Max(1, (int)(ActualWidth / _cellWidth));
+        int actualRows = Math.Max(1, (int)(ActualHeight / _cellHeight));
 
-        if (cols == _buffer.Columns && rows == _buffer.Rows) return;
+        // 단계별 크기로 변환
+        int cols = GetTieredColumns(actualCols);
+        int rows = GetTieredRows(actualRows);
+
+        if (cols == _buffer.Columns && rows == _buffer.Rows)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ResizeToFitImmediate] 크기 변경 없음: {cols}x{rows} (actual: {actualCols}x{actualRows})");
+            return;
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[ResizeToFitImmediate] " +
+            $"OldBuffer: {_buffer.Columns}x{_buffer.Rows}, " +
+            $"NewBuffer: {cols}x{rows} (actual: {actualCols}x{actualRows}), " +
+            $"ActualSize: {ActualWidth:F0}x{ActualHeight:F0}, " +
+            $"CellSize: {_cellWidth:F2}x{_cellHeight:F2}");
 
         _buffer.Resize(cols, rows);
         TerminalSizeChanged?.Invoke(cols, rows);
@@ -280,14 +491,22 @@ public class TerminalControl : FrameworkElement
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
         base.OnRenderSizeChanged(sizeInfo);
+
+        System.Diagnostics.Debug.WriteLine($"[OnRenderSizeChanged] " +
+            $"OldSize: {sizeInfo.PreviousSize.Width:F0}x{sizeInfo.PreviousSize.Height:F0}, " +
+            $"NewSize: {ActualWidth:F0}x{ActualHeight:F0}, " +
+            $"CellSize: {_cellWidth:F2}x{_cellHeight:F2}, " +
+            $"BufferSize: {_buffer.Columns}x{_buffer.Rows}");
+
         ResizeToFit();
     }
 
     protected override void OnRender(DrawingContext dc)
     {
-        // 배경
+        // 배경 (캐시된 브러시 사용)
+        var backgroundBrush = GetOrCreateBrush(TerminalColors.DefaultBackground);
         dc.DrawRectangle(
-            new SolidColorBrush(TerminalColors.DefaultBackground),
+            backgroundBrush,
             null,
             new Rect(0, 0, ActualWidth, ActualHeight));
 
@@ -338,24 +557,31 @@ public class TerminalControl : FrameworkElement
                 // Wide char는 2칸 너비
                 double cellRenderWidth = cell.IsWideChar ? _cellWidth * 2 : _cellWidth;
 
-                // 배경색
-                if (cell.Background != TerminalColors.DefaultBackground &&
+                // 커서 위치인지 확인
+                bool isCursor = scrollOffset == 0 && dataRow == _buffer.CursorY && col == _buffer.CursorX &&
+                                _buffer.CursorVisible && _cursorBlinkState;
+
+                // 배경색 (커서 위치가 아닐 때만)
+                if (!isCursor && cell.Background != TerminalColors.DefaultBackground &&
                     cell.Background != Colors.Transparent)
                 {
+                    var cellBackgroundBrush = GetOrCreateBrush(cell.Background);
                     dc.DrawRectangle(
-                        new SolidColorBrush(cell.Background),
+                        cellBackgroundBrush,
                         null,
                         new Rect(x, y, cellRenderWidth, _cellHeight));
                 }
 
                 // 커서 위치 표시 (스크롤백 보는 중에는 숨김)
-                if (scrollOffset == 0 && dataRow == _buffer.CursorY && col == _buffer.CursorX &&
-                    _buffer.CursorVisible && _cursorBlinkState)
+                if (isCursor)
                 {
+                    // 언더라인 커서 (셀 하단에 얇은 선)
+                    double cursorHeight = 2.0;
+                    var cursorBrush = GetOrCreateBrush(Color.FromArgb(220, 255, 255, 255));
                     dc.DrawRectangle(
-                        new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)),
+                        cursorBrush,
                         null,
-                        new Rect(x, y, cellRenderWidth, _cellHeight));
+                        new Rect(x, y + _cellHeight - cursorHeight, cellRenderWidth, cursorHeight));
                 }
 
                 // 호버된 링크인지 확인
@@ -366,22 +592,13 @@ public class TerminalControl : FrameworkElement
                 // 문자 렌더링
                 if (cell.Character != ' ' && cell.Character != '\0')
                 {
-                    var fontWeight = cell.Bold ? FontWeights.Bold : FontWeights.Normal;
-                    var typeface = new Typeface(FontFamily, FontStyles.Normal, fontWeight, FontStretches.Normal);
-
                     // 호버된 링크는 파란색으로 표시
                     var textColor = isHoveredLink
                         ? Color.FromRgb(100, 149, 237)  // CornflowerBlue
                         : cell.Foreground;
 
-                    var formattedText = new FormattedText(
-                        cell.Character.ToString(),
-                        CultureInfo.CurrentCulture,
-                        FlowDirection.LeftToRight,
-                        typeface,
-                        _fontSize,
-                        new SolidColorBrush(textColor),
-                        pixelsPerDip);
+                    // Glyph 캐시에서 가져오기 (성능 최적화)
+                    var formattedText = GetOrCreateGlyphText(cell.Character, textColor, cell.Bold, pixelsPerDip);
 
                     dc.DrawText(formattedText, new Point(x, y));
 
@@ -391,8 +608,9 @@ public class TerminalControl : FrameworkElement
                         var underlineColor = isHoveredLink
                             ? Color.FromRgb(100, 149, 237)
                             : cell.Foreground;
+                        var underlinePen = GetOrCreatePen(underlineColor);
                         dc.DrawLine(
-                            new Pen(new SolidColorBrush(underlineColor), 1),
+                            underlinePen,
                             new Point(x, y + _cellHeight - 2),
                             new Point(x + cellRenderWidth, y + _cellHeight - 2));
                     }
@@ -412,8 +630,9 @@ public class TerminalControl : FrameworkElement
                 Brushes.Yellow,
                 pixelsPerDip);
 
+            var indicatorBgBrush = GetOrCreateBrush(Color.FromArgb(180, 0, 0, 0));
             dc.DrawRectangle(
-                new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
+                indicatorBgBrush,
                 null,
                 new Rect(ActualWidth - indicatorText.Width - 20, 5, indicatorText.Width + 10, indicatorText.Height + 4));
 
@@ -424,6 +643,12 @@ public class TerminalControl : FrameworkElement
         if (_isSelecting || !string.IsNullOrEmpty(_selectedText))
         {
             RenderSelection(dc);
+        }
+
+        // 스크롤 다운 버튼 표시 (마우스 오버 + 스크롤 위치가 위쪽일 때)
+        if (_isMouseOver && scrollOffset > 0)
+        {
+            RenderScrollDownButton(dc, pixelsPerDip);
         }
     }
 
@@ -447,8 +672,8 @@ public class TerminalControl : FrameworkElement
             (startCol, endCol) = (endCol, startCol);
         }
 
-        // 선택 영역 하이라이트
-        var selectionBrush = new SolidColorBrush(Color.FromArgb(80, 100, 149, 237));  // 반투명 파란색
+        // 선택 영역 하이라이트 (캐시된 브러시 사용)
+        var selectionBrush = GetOrCreateBrush(Color.FromArgb(80, 100, 149, 237));
 
         for (int row = startRow; row <= endRow && row < _buffer.Rows; row++)
         {
@@ -466,6 +691,39 @@ public class TerminalControl : FrameworkElement
                 dc.DrawRectangle(selectionBrush, null, new Rect(x, y, width, _cellHeight));
             }
         }
+    }
+
+    /// <summary>
+    /// 스크롤 다운 버튼 렌더링 (오른쪽 아래, 다크 테마)
+    /// </summary>
+    private void RenderScrollDownButton(DrawingContext dc, double pixelsPerDip)
+    {
+        // 버튼 크기 및 위치
+        const double buttonSize = 36;
+        const double margin = 16;
+        double x = ActualWidth - buttonSize - margin;
+        double y = ActualHeight - buttonSize - margin;
+
+        _scrollDownButtonRect = new Rect(x, y, buttonSize, buttonSize);
+
+        // 둥근 사각형 배경 (재사용 가능한 Brush 사용)
+        const double radius = 6.0;
+        dc.DrawRoundedRectangle(ScrollButtonBackgroundBrush, ScrollButtonBorderPen, _scrollDownButtonRect, radius, radius);
+
+        // 아래 화살표 아이콘 (↓) - FormattedText는 캐싱하지 않음 (위치가 동적)
+        double centerX = x + buttonSize / 2;
+        double centerY = y + buttonSize / 2;
+
+        var scrollText = new FormattedText(
+            "↓",
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            _typeface,
+            20,
+            ScrollButtonArrowBrush,
+            pixelsPerDip);
+
+        dc.DrawText(scrollText, new Point(centerX - scrollText.Width / 2, centerY - scrollText.Height / 2));
     }
 
     #region 키보드 입력
@@ -605,12 +863,35 @@ public class TerminalControl : FrameworkElement
 
     #region 마우스 입력
 
+    // 마우스 트래킹 상태
+    private bool _lastMouseButtonLeft = false;
+    private bool _lastMouseButtonMiddle = false;
+    private bool _lastMouseButtonRight = false;
+
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonDown(e);
         Focus();
 
         var position = e.GetPosition(this);
+
+        // 스크롤 다운 버튼 클릭 체크
+        if (_isMouseOver && _buffer.ScrollOffset > 0 && _scrollDownButtonRect.Contains(position))
+        {
+            ScrollToBottom();
+            _autoScroll = true;  // 자동 스크롤 재활성화
+            e.Handled = true;
+            return;
+        }
+
+        // 마우스 트래킹이 활성화되어 있으면 ConPTY로 전송
+        if (_buffer.MouseTrackingEnabled || _buffer.MouseButtonTracking)
+        {
+            SendMouseEvent(position, 0, true);
+            _lastMouseButtonLeft = true;
+            e.Handled = true;
+            return;
+        }
 
         // Ctrl+Click 링크 열기
         if (Keyboard.Modifiers == ModifierKeys.Control)
@@ -639,6 +920,17 @@ public class TerminalControl : FrameworkElement
 
         var position = e.GetPosition(this);
 
+        // 마우스 트래킹 - any event tracking 모드
+        if (_buffer.MouseAnyEventTracking)
+        {
+            int button = _lastMouseButtonLeft ? 0 : _lastMouseButtonMiddle ? 1 : _lastMouseButtonRight ? 2 : -1;
+            if (button >= 0)
+            {
+                SendMouseEvent(position, button + 32, true); // +32 = motion indicator
+            }
+            return;
+        }
+
         // 텍스트 선택 중이면 끝점 업데이트
         if (_isSelecting)
         {
@@ -655,6 +947,17 @@ public class TerminalControl : FrameworkElement
     {
         base.OnMouseLeftButtonUp(e);
 
+        var position = e.GetPosition(this);
+
+        // 마우스 트래킹이 활성화되어 있으면 릴리스 이벤트 전송
+        if (_buffer.MouseTrackingEnabled || _buffer.MouseButtonTracking)
+        {
+            SendMouseEvent(position, 3, false); // 3 = release
+            _lastMouseButtonLeft = false;
+            e.Handled = true;
+            return;
+        }
+
         if (_isSelecting)
         {
             _isSelecting = false;
@@ -668,10 +971,19 @@ public class TerminalControl : FrameworkElement
         }
     }
 
+    protected override void OnMouseEnter(MouseEventArgs e)
+    {
+        base.OnMouseEnter(e);
+        _isMouseOver = true;
+        InvalidateVisual();
+    }
+
     protected override void OnMouseLeave(MouseEventArgs e)
     {
         base.OnMouseLeave(e);
+        _isMouseOver = false;
         ClearLinkHover();
+        InvalidateVisual();
     }
 
     /// <summary>
@@ -993,13 +1305,56 @@ public class TerminalControl : FrameworkElement
         return (null, 0, 0);
     }
 
+    protected override void OnMouseRightButtonDown(MouseButtonEventArgs e)
+    {
+        base.OnMouseRightButtonDown(e);
+
+        var position = e.GetPosition(this);
+
+        // 마우스 트래킹이 활성화되어 있으면 ConPTY로 전송
+        if (_buffer.MouseTrackingEnabled || _buffer.MouseButtonTracking)
+        {
+            SendMouseEvent(position, 2, true); // 2 = right button
+            _lastMouseButtonRight = true;
+            e.Handled = true;
+        }
+    }
+
+    protected override void OnMouseRightButtonUp(MouseButtonEventArgs e)
+    {
+        base.OnMouseRightButtonUp(e);
+
+        var position = e.GetPosition(this);
+
+        // 마우스 트래킹이 활성화되어 있으면 릴리스 이벤트 전송
+        if (_buffer.MouseTrackingEnabled || _buffer.MouseButtonTracking)
+        {
+            SendMouseEvent(position, 3, false); // 3 = release
+            _lastMouseButtonRight = false;
+            e.Handled = true;
+        }
+    }
+
     protected override void OnMouseWheel(MouseWheelEventArgs e)
     {
         base.OnMouseWheel(e);
 
+        var position = e.GetPosition(this);
+
+        // 마우스 트래킹이 활성화되어 있으면 휠 이벤트 전송
+        if (_buffer.MouseTrackingEnabled || _buffer.MouseButtonTracking)
+        {
+            int button = e.Delta > 0 ? 64 : 65; // 64 = wheel up, 65 = wheel down
+            SendMouseEvent(position, button, true);
+            e.Handled = true;
+            return;
+        }
+
         // 스크롤백 처리
+        // e.Delta > 0: 휠 위로 = 위로 스크롤 (과거 내용) = 오프셋 증가
+        // e.Delta < 0: 휠 아래로 = 아래로 스크롤 (최신 내용) = 오프셋 감소
         int scrollAmount = e.Delta > 0 ? 3 : -3;  // 한 번에 3줄씩
-        int newOffset = _buffer.ScrollOffset - scrollAmount;
+        int newOffset = _buffer.ScrollOffset + scrollAmount;
 
         // 범위 제한: 0 ~ ScrollbackCount
         newOffset = Math.Max(0, Math.Min(newOffset, _buffer.ScrollbackCount));
@@ -1015,6 +1370,43 @@ public class TerminalControl : FrameworkElement
         }
 
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// 마우스 이벤트를 xterm escape sequence로 변환하여 전송
+    /// </summary>
+    private void SendMouseEvent(Point position, int button, bool pressed)
+    {
+        if (_cellWidth <= 0 || _cellHeight <= 0) return;
+
+        // 셀 좌표 계산 (1-based)
+        int col = (int)(position.X / _cellWidth) + 1;
+        int row = (int)(position.Y / _cellHeight) + 1;
+
+        // 범위 체크
+        col = Math.Max(1, Math.Min(col, _buffer.Columns));
+        row = Math.Max(1, Math.Min(row, _buffer.Rows));
+
+        string sequence;
+
+        if (_buffer.MouseSgrMode)
+        {
+            // SGR mode: ESC [ < Cb ; Cx ; Cy M/m
+            char terminator = pressed ? 'M' : 'm';
+            sequence = $"\x1b[<{button};{col};{row}{terminator}";
+        }
+        else
+        {
+            // Normal mode: ESC [ M Cb Cx Cy
+            // Cb, Cx, Cy는 각각 32를 더한 값
+            char cb = (char)(button + 32);
+            char cx = (char)(col + 32);
+            char cy = (char)(row + 32);
+            sequence = $"\x1b[M{cb}{cx}{cy}";
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[Mouse] Sending: button={button}, col={col}, row={row}, sequence bytes={string.Join(" ", System.Text.Encoding.UTF8.GetBytes(sequence).Select(b => $"{b:X2}"))}");
+        InputReceived?.Invoke(sequence);
     }
 
     #endregion
@@ -1180,5 +1572,42 @@ public class LinkClickedEventArgs : EventArgs
     {
         LinkType = linkType;
         Value = value;
+    }
+}
+
+/// <summary>
+/// Glyph 캐시 키 (문자 + 스타일 조합)
+/// </summary>
+internal struct GlyphCacheKey : IEquatable<GlyphCacheKey>
+{
+    public char Character { get; }
+    public Color Foreground { get; }
+    public bool Bold { get; }
+    public double FontSize { get; }
+
+    public GlyphCacheKey(char character, Color foreground, bool bold, double fontSize)
+    {
+        Character = character;
+        Foreground = foreground;
+        Bold = bold;
+        FontSize = fontSize;
+    }
+
+    public bool Equals(GlyphCacheKey other)
+    {
+        return Character == other.Character &&
+               Foreground.Equals(other.Foreground) &&
+               Bold == other.Bold &&
+               FontSize.Equals(other.FontSize);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is GlyphCacheKey other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Character, Foreground, Bold, FontSize);
     }
 }

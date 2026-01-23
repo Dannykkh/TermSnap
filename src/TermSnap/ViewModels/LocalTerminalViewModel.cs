@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -7,7 +6,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -16,6 +14,8 @@ using TermSnap.Core;
 using TermSnap.Core.Sessions;
 using TermSnap.Models;
 using TermSnap.Services;
+using TermSnap.ViewModels.OutputHandlers;
+using TermSnap.ViewModels.Managers;
 using static TermSnap.Services.ShellDetectionService;
 
 namespace TermSnap.ViewModels;
@@ -31,8 +31,8 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     private string _userInput = string.Empty;
     private bool _isConnected = false;
     private bool _isBusy = false;
-    private string _statusMessage = "연결되지 않음";
-    private string _tabHeader = "로컬 터미널";
+    private string _statusMessage = LocalizationService.Instance.GetString("ViewModel.NotConnected");
+    private string _tabHeader = LocalizationService.Instance.GetString("ViewModel.LocalTerminal");
     private string _currentDirectory = string.Empty;
     private string? _gitBranch = null;  // Git 브랜치 이름 (없으면 null)
     private LocalSession.LocalShellType _shellType;
@@ -42,6 +42,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     private bool _showSnippetPanel = false; // 스니펫 패널 표시 여부
     private DetectedShell? _selectedShell; // 선택된 쉘 정보
     private bool _isInteractiveMode = false; // 인터랙티브 모드 (claude, vim 등)
+    private string _interactiveStatusMessage = string.Empty; // 인터랙티브 상태 메시지
     private bool _isFileTreeVisible = false; // 파일 트리 패널 표시 여부
     private bool _isFileViewerVisible = false; // 파일 뷰어 패널 표시 여부
     private string? _fileTreeCurrentPath = null; // 파일 트리 현재 경로
@@ -51,13 +52,6 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     private DispatcherTimer? _elapsedTimer;
     private string _aicliElapsedTime = string.Empty;
     private string _aicliProgramName = string.Empty;
-
-    // 리소스 모니터링
-    private DispatcherTimer? _resourceMonitorTimer;
-    private DateTime _lastCpuTime = DateTime.MinValue;
-    private TimeSpan _lastTotalProcessorTime = TimeSpan.Zero;
-    private double _cpuUsage = 0;
-    private long _memoryUsageMB = 0;
 
     // 인터랙티브 모드 원시 출력 이벤트 (터미널 컨트롤용)
     public event Action<string>? RawOutputReceived;
@@ -81,19 +75,15 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         "bash", "zsh", "fish", "sh"
     };
 
-    // 출력 쓰로틀링을 위한 버퍼
-    private readonly ConcurrentQueue<string> _outputBuffer = new();
-    private readonly ConcurrentQueue<string> _errorBuffer = new();
-    private Timer? _flushTimer;
-    private const int FlushIntervalMs = 50; // 50ms마다 버퍼 플러시
-    private const int MaxBufferSize = 100; // 즉시 플러시 트리거 크기
+    // 출력 핸들러 (인터랙티브/비인터랙티브 모드 분리)
+    private IOutputHandler? _outputHandler;
+    private InteractiveOutputHandler? _interactiveHandler;
+    private NonInteractiveOutputHandler? _nonInteractiveHandler;
     private CommandBlock? _currentBlock;
 
-    // 명령어 히스토리
-    private readonly List<string> _commandHistory = new();
-    private int _historyIndex = -1;
-    private string _savedInput = string.Empty; // 히스토리 탐색 전 입력 저장
-    private const int MaxHistorySize = 100;
+    // 관리자 클래스들
+    private readonly HistoryManager _historyManager = new();
+    private readonly SnippetManager _snippetManager = new();
 
     // Ring Buffer 설정 - 메모리 누수 방지
     private const int MaxMessages = 500;        // 최대 메시지 수
@@ -156,7 +146,10 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         {
             _isInteractiveMode = value;
             OnPropertyChanged();
-            StatusMessage = value ? "인터랙티브 모드 (Ctrl+C로 종료)" : $"{_selectedShell?.DisplayName ?? "터미널"} - {CurrentDirectory}";
+            StatusMessage = value ? LocalizationService.Instance.GetString("ViewModel.InteractiveMode") : $"{_selectedShell?.DisplayName ?? LocalizationService.Instance.GetString("ViewModel.LocalTerminal")} - {CurrentDirectory}";
+
+            // 출력 핸들러 전환
+            SwitchOutputHandler(value);
 
             // 경과 시간 타이머 시작/중지
             if (value)
@@ -168,6 +161,15 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
                 StopElapsedTimer();
             }
         }
+    }
+
+    /// <summary>
+    /// 인터랙티브 상태 메시지 (Warp 스타일)
+    /// </summary>
+    public string InteractiveStatusMessage
+    {
+        get => _interactiveStatusMessage;
+        set { _interactiveStatusMessage = value; OnPropertyChanged(); }
     }
 
     /// <summary>
@@ -216,27 +218,9 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     }
 
     /// <summary>
-    /// CPU 사용률 (%)
-    /// </summary>
-    public double CpuUsage
-    {
-        get => _cpuUsage;
-        private set { _cpuUsage = value; OnPropertyChanged(); }
-    }
-
-    /// <summary>
-    /// 메모리 사용량 (MB)
-    /// </summary>
-    public long MemoryUsageMB
-    {
-        get => _memoryUsageMB;
-        private set { _memoryUsageMB = value; OnPropertyChanged(); }
-    }
-
-    /// <summary>
     /// 로컬 터미널 스니펫 목록
     /// </summary>
-    public ObservableCollection<CommandSnippet> LocalSnippets { get; } = new();
+    public ObservableCollection<CommandSnippet> LocalSnippets => _snippetManager.Snippets;
 
     public string TabHeader
     {
@@ -277,7 +261,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             OnPropertyChanged();
 
             // Git 브랜치 업데이트
-            GitBranch = GetGitBranch(value);
+            GitBranch = GitBranchDetector.GetBranch(value);
         }
     }
 
@@ -306,6 +290,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     public ICommand SendMessageCommand { get; }
     public ICommand DisconnectCommand { get; }
     public ICommand ClearOutputCommand { get; }
+    public ICommand ToggleFileTreeCommand { get; }
 
     public LocalTerminalViewModel(LocalSession.LocalShellType shellType = LocalSession.LocalShellType.PowerShell)
     {
@@ -315,9 +300,10 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         SendMessageCommand = new RelayCommand(async () => await ExecuteCommand(), () => CanSendMessage);
         DisconnectCommand = new RelayCommand(() => Disconnect(), () => IsConnected);
         ClearOutputCommand = new RelayCommand(() => ClearOutput());
+        ToggleFileTreeCommand = new RelayCommand(() => IsFileTreeVisible = !IsFileTreeVisible);
 
         // 로컬 스니펫 로드
-        LoadLocalSnippets();
+        _snippetManager.Load();
 
         // 기본 쉘 감지
         _selectedShell = ShellDetectionService.Instance.GetDefaultShell();
@@ -327,11 +313,12 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             _tabHeader = _selectedShell.DisplayName;
         }
 
-        // 리소스 모니터링 타이머 시작
-        StartResourceMonitoring();
+        // 출력 핸들러 초기화
+        InitializeOutputHandlers();
 
         AddMessage("로컬 터미널이 준비되었습니다.", false, MessageType.Info);
     }
+
 
     /// <summary>
     /// 쉘 설정 (WelcomePanel에서 호출)
@@ -352,42 +339,11 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     public DetectedShell? SelectedShell => _selectedShell;
 
     /// <summary>
-    /// 로컬 스니펫 로드
-    /// </summary>
-    private void LoadLocalSnippets()
-    {
-        try
-        {
-            var config = ConfigService.Load();
-            var snippets = config.LocalSnippets ?? new List<CommandSnippet>();
-
-            LocalSnippets.Clear();
-            foreach (var snippet in snippets.OrderByDescending(s => s.UseCount).ThenByDescending(s => s.LastUsedAt))
-            {
-                LocalSnippets.Add(snippet);
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"로컬 스니펫 로드 실패: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 스니펫 저장
+    /// 스니펫 저장 (외부 호출용)
     /// </summary>
     public void SaveLocalSnippets()
     {
-        try
-        {
-            var config = ConfigService.Load();
-            config.LocalSnippets = LocalSnippets.ToList();
-            ConfigService.Save(config);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"로컬 스니펫 저장 실패: {ex.Message}");
-        }
+        _snippetManager.Save();
     }
 
     /// <summary>
@@ -395,8 +351,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     /// </summary>
     public void AddSnippet(CommandSnippet snippet)
     {
-        LocalSnippets.Insert(0, snippet);
-        SaveLocalSnippets();
+        _snippetManager.Add(snippet);
     }
 
     /// <summary>
@@ -404,8 +359,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     /// </summary>
     public void RemoveSnippet(CommandSnippet snippet)
     {
-        LocalSnippets.Remove(snippet);
-        SaveLocalSnippets();
+        _snippetManager.Remove(snippet);
     }
 
     /// <summary>
@@ -413,16 +367,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     /// </summary>
     public void UseSnippet(CommandSnippet snippet)
     {
-        snippet.IncrementUseCount();
-        SaveLocalSnippets();
-
-        // 정렬 업데이트
-        var sorted = LocalSnippets.OrderByDescending(s => s.UseCount).ThenByDescending(s => s.LastUsedAt).ToList();
-        LocalSnippets.Clear();
-        foreach (var s in sorted)
-        {
-            LocalSnippets.Add(s);
-        }
+        _snippetManager.Use(snippet);
     }
 
     #region 명령어 히스토리
@@ -432,22 +377,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     /// </summary>
     public string? NavigateHistoryUp()
     {
-        if (_commandHistory.Count == 0) return null;
-
-        // 처음 탐색 시작할 때 현재 입력 저장
-        if (_historyIndex == -1)
-        {
-            _savedInput = UserInput;
-            _historyIndex = _commandHistory.Count;
-        }
-
-        if (_historyIndex > 0)
-        {
-            _historyIndex--;
-            return _commandHistory[_historyIndex];
-        }
-
-        return _commandHistory.Count > 0 ? _commandHistory[0] : null;
+        return _historyManager.NavigateUp(UserInput);
     }
 
     /// <summary>
@@ -455,18 +385,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     /// </summary>
     public string? NavigateHistoryDown()
     {
-        if (_historyIndex == -1) return null;
-
-        _historyIndex++;
-
-        if (_historyIndex >= _commandHistory.Count)
-        {
-            // 마지막까지 내려왔으면 저장된 입력 복원
-            _historyIndex = -1;
-            return _savedInput;
-        }
-
-        return _commandHistory[_historyIndex];
+        return _historyManager.NavigateDown();
     }
 
     /// <summary>
@@ -474,8 +393,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     /// </summary>
     public void ResetHistoryNavigation()
     {
-        _historyIndex = -1;
-        _savedInput = string.Empty;
+        _historyManager.ResetNavigation();
     }
 
     /// <summary>
@@ -483,21 +401,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     /// </summary>
     private void AddToHistory(string command)
     {
-        if (string.IsNullOrWhiteSpace(command)) return;
-
-        // 중복 제거 (마지막 명령어와 같으면 추가 안 함)
-        if (_commandHistory.Count > 0 && _commandHistory[^1] == command)
-            return;
-
-        _commandHistory.Add(command);
-
-        // 최대 크기 초과 시 오래된 것 삭제
-        while (_commandHistory.Count > MaxHistorySize)
-        {
-            _commandHistory.RemoveAt(0);
-        }
-
-        ResetHistoryNavigation();
+        _historyManager.Add(command);
     }
 
     #endregion
@@ -524,8 +428,8 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         IsBusy = true;
         var shellName = _selectedShell?.DisplayName ?? GetShellDisplayName(_shellType);
         Debug.WriteLine($"[ConnectAsync] _selectedShell: {_selectedShell?.DisplayName ?? "NULL"}, Path: {_selectedShell?.Path ?? "NULL"}");
-        StatusMessage = "로컬 셸 시작 중...";
-        AddMessage($"{shellName} 시작 중...", false, MessageType.Info);
+        StatusMessage = LocalizationService.Instance.GetString("LocalTerminal.Starting");
+        AddMessage(string.Format(LocalizationService.Instance.GetString("LocalTerminal.ShellStarting"), shellName), false, MessageType.Info);
 
         try
         {
@@ -557,12 +461,15 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
                 CurrentDirectory = _session.CurrentDirectory;
                 StatusMessage = $"{shellName} - {CurrentDirectory}";
                 TabHeader = $"{shellName}";
-                AddMessage($"✓ {shellName} 시작됨", false, MessageType.Success);
-                AddMessage($"📁 현재 디렉토리: {CurrentDirectory}", false, MessageType.Info);
+                AddMessage(string.Format(LocalizationService.Instance.GetString("LocalTerminal.ShellStarted"), shellName), false, MessageType.Success);
+                AddMessage(string.Format(LocalizationService.Instance.GetString("LocalTerminal.CurrentDirectoryInfo"), CurrentDirectory), false, MessageType.Info);
+
+                // 환영 박스 표시
+                ShowWelcomeBox(shellName);
             }
             else
             {
-                AddMessage("로컬 셸 시작 실패", false, MessageType.Error);
+                AddMessage(LocalizationService.Instance.GetString("LocalTerminal.StartFailed"), false, MessageType.Error);
             }
         }
         catch (Exception ex)
@@ -583,118 +490,10 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         if (string.IsNullOrEmpty(e.Data))
             return;
 
-        // 인터랙티브 모드에서는 원시 출력을 터미널 컨트롤로 전달
-        if (_isInteractiveMode)
-        {
-            Application.Current?.Dispatcher?.BeginInvoke(() =>
-            {
-                RawOutputReceived?.Invoke(e.RawData ?? e.Data);
-            });
-            return;
-        }
-
-        // 버퍼에 출력 추가 (쓰로틀링)
-        if (e.IsError)
-        {
-            _errorBuffer.Enqueue(e.Data);
-        }
-        else
-        {
-            _outputBuffer.Enqueue(e.Data);
-        }
-
-        // 버퍼가 너무 크면 즉시 플러시
-        if (_outputBuffer.Count + _errorBuffer.Count > MaxBufferSize)
-        {
-            FlushOutputBuffer();
-        }
+        // 핸들러에 위임
+        _outputHandler?.HandleOutput(e);
     }
 
-    /// <summary>
-    /// 버퍼 플러시 타이머 시작
-    /// </summary>
-    private void StartFlushTimer()
-    {
-        _flushTimer?.Dispose();
-        _flushTimer = new Timer(_ => FlushOutputBuffer(), null, FlushIntervalMs, FlushIntervalMs);
-    }
-
-    /// <summary>
-    /// 버퍼 플러시 타이머 중지
-    /// </summary>
-    private void StopFlushTimer()
-    {
-        _flushTimer?.Dispose();
-        _flushTimer = null;
-        // 남은 버퍼 모두 플러시
-        FlushOutputBuffer();
-    }
-
-    /// <summary>
-    /// 출력 버퍼를 UI에 플러시
-    /// </summary>
-    private void FlushOutputBuffer()
-    {
-        System.Diagnostics.Debug.WriteLine($"[FlushOutputBuffer] Output count: {_outputBuffer.Count}, Error count: {_errorBuffer.Count}, CurrentBlock: {_currentBlock != null}");
-
-        if (_outputBuffer.IsEmpty && _errorBuffer.IsEmpty)
-            return;
-
-        var outputLines = new StringBuilder();
-        var errorLines = new StringBuilder();
-
-        // 출력 버퍼에서 모든 라인 수집
-        while (_outputBuffer.TryDequeue(out var line))
-        {
-            outputLines.AppendLine(line);
-        }
-
-        // 에러 버퍼에서 모든 라인 수집
-        while (_errorBuffer.TryDequeue(out var line))
-        {
-            errorLines.AppendLine(line);
-        }
-
-        if (outputLines.Length == 0 && errorLines.Length == 0)
-            return;
-
-        Application.Current?.Dispatcher?.BeginInvoke(() =>
-        {
-            var outputText = outputLines.ToString().TrimEnd();
-            var errorText = errorLines.ToString().TrimEnd();
-
-            System.Diagnostics.Debug.WriteLine($"[FlushOutputBuffer UI] OutputText length: {outputText.Length}, ErrorText length: {errorText.Length}");
-            System.Diagnostics.Debug.WriteLine($"[FlushOutputBuffer UI] OutputText: '{outputText.Substring(0, Math.Min(100, outputText.Length))}'");
-
-            // Block UI 모드에서 현재 블록에 출력 추가
-            if (_currentBlock != null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[FlushOutputBuffer UI] Adding to block, current output length: {_currentBlock.Output?.Length ?? 0}");
-                if (outputLines.Length > 0)
-                {
-                    _currentBlock.Output += outputText + "\n";
-                }
-                if (errorLines.Length > 0)
-                {
-                    _currentBlock.Error += errorText + "\n";
-                }
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[FlushOutputBuffer UI] _currentBlock is NULL!");
-            }
-
-            // 터미널 뷰 (Messages)에도 항상 추가
-            if (outputLines.Length > 0)
-            {
-                AddMessage(outputText, false, MessageType.Normal);
-            }
-            if (errorLines.Length > 0)
-            {
-                AddMessage(errorText, false, MessageType.Error);
-            }
-        }, System.Windows.Threading.DispatcherPriority.Background);
-    }
 
     private void OnStateChanged(object? sender, ConnectionState state)
     {
@@ -704,12 +503,44 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             StatusMessage = state switch
             {
                 ConnectionState.Connected => $"{GetShellDisplayName(_shellType)} - {CurrentDirectory}",
-                ConnectionState.Connecting => "연결 중...",
-                ConnectionState.Disconnected => "연결 해제됨",
+                ConnectionState.Connecting => LocalizationService.Instance.GetString("ViewModel.Connecting"),
+                ConnectionState.Disconnected => LocalizationService.Instance.GetString("ViewModel.Disconnected"),
                 ConnectionState.Error => "오류 발생",
                 _ => "알 수 없음"
             };
         });
+    }
+
+    /// <summary>
+    /// 출력 핸들러 초기화
+    /// </summary>
+    private void InitializeOutputHandlers()
+    {
+        // 인터랙티브 핸들러
+        _interactiveHandler = new InteractiveOutputHandler();
+        _interactiveHandler.RawOutputReceived += (data) => RawOutputReceived?.Invoke(data);
+
+        // 비인터랙티브 핸들러
+        _nonInteractiveHandler = new NonInteractiveOutputHandler();
+        _nonInteractiveHandler.AddMessageCallback = (content, type) => AddMessage(content, false, type);
+
+        // 기본적으로 비인터랙티브 모드 사용
+        _outputHandler = _nonInteractiveHandler;
+    }
+
+    /// <summary>
+    /// 출력 핸들러 전환 (인터랙티브 <-> 비인터랙티브)
+    /// </summary>
+    private void SwitchOutputHandler(bool toInteractive)
+    {
+        if (toInteractive)
+        {
+            _outputHandler = _interactiveHandler;
+        }
+        else
+        {
+            _outputHandler = _nonInteractiveHandler;
+        }
     }
 
     /// <summary>
@@ -746,7 +577,31 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         var programName = GetProgramName(command);
         var isInteractiveProgram = !string.IsNullOrEmpty(programName) && InteractivePrograms.Contains(programName);
 
-        // 항상 블록 생성 (블록보기/터미널보기 모두 CommandBlocks 사용)
+        // ✅ 인터랙티브 프로그램이면 블록/타이머 없이 바로 실행
+        if (isInteractiveProgram)
+        {
+            System.Diagnostics.Debug.WriteLine("[ExecuteCommand] 인터랙티브 프로그램 감지, 즉시 모드 전환");
+            AICLIProgramName = programName ?? "터미널";
+
+            IsInteractiveMode = true;
+            IsBusy = true;
+            StatusMessage = "인터랙티브 모드 실행 중...";
+
+            try
+            {
+                await _session.SendRawInputAsync(command);
+                IsBusy = false;
+                return;  // ✅ 블록 생성이나 타이머 시작 없이 종료
+            }
+            catch (Exception ex)
+            {
+                IsBusy = false;
+                AddMessage($"명령어 실행 실패: {ex.Message}", false, MessageType.Error);
+                return;
+            }
+        }
+
+        // 비인터랙티브 모드: 블록 생성 및 타이머 시작
         _currentBlock = new CommandBlock
         {
             UserInput = command,
@@ -764,31 +619,18 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             AddMessage($"$ {command}", true);
         }
 
+        // 핸들러에 현재 블록 설정
+        _outputHandler?.SetCurrentBlock(_currentBlock);
+
         IsBusy = true;
         StatusMessage = "명령어 실행 중...";
         var stopwatch = Stopwatch.StartNew();
 
-        // 출력 버퍼 플러시 타이머 시작
-        StartFlushTimer();
-
         try
         {
-            // 인터랙티브 프로그램: 입력만 보내고 대기하지 않음
-            if (isInteractiveProgram)
-            {
-                await _session.SendRawInputAsync(command);
-                AICLIProgramName = programName ?? "터미널";
-                IsInteractiveMode = true;
-                // 블록은 Executing 상태로 유지 (출력 계속 수신)
-                IsBusy = false;
-                return;
-            }
 
             var result = await _session.ExecuteCommandAsync(command);
             stopwatch.Stop();
-
-            // 플러시 타이머 중지 및 잔여 버퍼 플러시
-            StopFlushTimer();
 
             CurrentDirectory = result.CurrentDirectory;
 
@@ -832,8 +674,6 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         }
         catch (Exception ex)
         {
-            StopFlushTimer();
-            
             if (_currentBlock != null)
             {
                 _currentBlock.Error = ex.Message;
@@ -866,8 +706,8 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         }
 
         IsConnected = false;
-        StatusMessage = "연결 해제됨";
-        TabHeader = $"{GetShellDisplayName(_shellType)} (연결 해제됨)";
+        StatusMessage = LocalizationService.Instance.GetString("ViewModel.Disconnected");
+        TabHeader = $"{GetShellDisplayName(_shellType)}{LocalizationService.Instance.GetString("ViewModel.DisconnectedSuffix")}";
         AddMessage("로컬 셸이 종료되었습니다.", false, MessageType.Info);
     }
 
@@ -944,17 +784,17 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             {
                 _currentBlock = new CommandBlock
                 {
-                    UserInput = $"[{shellName} 시작]",
+                    UserInput = string.Format(LocalizationService.Instance.GetString("LocalTerminal.ShellStartedBracket"), shellName),
                     GeneratedCommand = $"cd \"{folderPath}\"",
                     Status = BlockStatus.Executing,
                     CurrentDirectory = folderPath,
                     IsLocalSession = true
                 };
                 Application.Current.Dispatcher.Invoke(() => CommandBlocks.AddWithLimit(_currentBlock, MaxCommandBlocks, TrimCount));
-            }
 
-            // 플러시 타이머 시작 (초기 출력 캡처)
-            StartFlushTimer();
+                // 핸들러에 현재 블록 설정
+                _outputHandler?.SetCurrentBlock(_currentBlock);
+            }
 
             var result = await _session.ConnectAsync();
 
@@ -968,7 +808,6 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
 
                 // 잠시 대기하여 초기 출력 수집
                 await Task.Delay(300);
-                StopFlushTimer();
 
                 // 초기 블록 완료 처리
                 if (_currentBlock != null)
@@ -978,12 +817,12 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
                 }
 
                 StatusMessage = $"{shellName} - {CurrentDirectory}";
-                AddMessage($"✓ {shellName} 시작됨", MessageType.Success);
-                AddMessage($"📁 작업 폴더: {folderPath}", MessageType.Info);
+                AddMessage(string.Format(LocalizationService.Instance.GetString("LocalTerminal.ShellStarted"), shellName), MessageType.Success);
+                AddMessage(string.Format(LocalizationService.Instance.GetString("LocalTerminal.WorkingFolderInfo"), folderPath), MessageType.Info);
             }
             else
             {
-                AddMessage("로컬 셸 시작 실패", MessageType.Error);
+                AddMessage(LocalizationService.Instance.GetString("LocalTerminal.StartFailed"), MessageType.Error);
             }
         }
         else
@@ -1046,6 +885,48 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         }
     }
 
+    /// <summary>
+    /// 환영 박스 표시 (Claude Code CLI 스타일)
+    /// </summary>
+    private void ShowWelcomeBox(string shellName)
+    {
+        // 앱 버전 정보 가져오기
+        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        var versionString = $"v{version?.Major}.{version?.Minor}.{version?.Build ?? 0}";
+
+        // 박스 내용
+        var title = $"TermSnap {versionString}";
+        var shellInfo = $"{shellName}";
+        var dirInfo = $"Directory: {CurrentDirectory}";
+        var welcome = "로컬 터미널 세션에 오신 것을 환영합니다!";
+
+        // 박스 너비 계산 (가장 긴 줄 기준)
+        int maxLength = Math.Max(
+            Math.Max(title.Length, shellInfo.Length),
+            Math.Max(dirInfo.Length, welcome.Length)
+        ) + 4;  // 양쪽 여백
+
+        // 박스 그리기
+        var box = new StringBuilder();
+        box.AppendLine("┌" + new string('─', maxLength) + "┐");
+        box.AppendLine("│ " + title.PadRight(maxLength - 1) + "│");
+        box.AppendLine("│ " + shellInfo.PadRight(maxLength - 1) + "│");
+        box.AppendLine("│" + new string(' ', maxLength) + "│");
+        box.AppendLine("│ " + dirInfo.PadRight(maxLength - 1) + "│");
+        box.AppendLine("│" + new string(' ', maxLength) + "│");
+        box.AppendLine("│ " + welcome.PadRight(maxLength - 1) + "│");
+        box.AppendLine("└" + new string('─', maxLength) + "┘");
+
+        // UI 메시지로 추가 (ConPTY 출력이 아닌 UI 레이어)
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            AddMessage(box.ToString(), false, MessageType.Info);
+        });
+    }
+
+    /// <summary>
+    /// 추가 정보 박스 표시 (최근 세션, 릴리즈 뉴스)
+    /// </summary>
     #region AI CLI 경과 시간 타이머
 
     /// <summary>
@@ -1085,7 +966,16 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         if (_aicliStartTime.HasValue)
         {
             var elapsed = DateTime.Now - _aicliStartTime.Value;
-            AICLIElapsedTime = elapsed.ToString(@"hh\:mm\:ss");
+
+            // 24시간 이상이면 일자 포함, 미만이면 시:분:초만
+            if (elapsed.TotalDays >= 1)
+            {
+                AICLIElapsedTime = $"{(int)elapsed.TotalDays}d {elapsed:hh\\:mm\\:ss}";
+            }
+            else
+            {
+                AICLIElapsedTime = elapsed.ToString(@"hh\:mm\:ss");
+            }
         }
     }
 
@@ -1143,126 +1033,32 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
 
     public void Dispose()
     {
-        StopFlushTimer();
+        // 핸들러 정리
+        _outputHandler?.Dispose();
+        _interactiveHandler?.Dispose();
+        _nonInteractiveHandler?.Dispose();
+
+        // 타이머 정리
         StopElapsedTimer();
-        _resourceMonitorTimer?.Stop();
-        _resourceMonitorTimer = null;
         Disconnect();
-    }
 
-    /// <summary>
-    /// 지정된 디렉토리의 Git 브랜치를 가져옵니다
-    /// </summary>
-    /// <param name="directory">확인할 디렉토리 경로</param>
-    /// <returns>Git 브랜치 이름 (Git 저장소가 아니면 null)</returns>
-    private static string? GetGitBranch(string directory)
-    {
-        if (string.IsNullOrWhiteSpace(directory))
-            return null;
-
+        // 큰 컬렉션 정리 (메모리 누수 방지)
         try
         {
-            // .git 디렉토리가 있는지 확인 (상위 디렉토리까지 검색)
-            var currentDir = new System.IO.DirectoryInfo(directory);
-            while (currentDir != null)
+            Application.Current?.Dispatcher.Invoke(() =>
             {
-                var gitDir = System.IO.Path.Combine(currentDir.FullName, ".git");
-                if (System.IO.Directory.Exists(gitDir))
-                {
-                    // .git/HEAD 파일 읽기
-                    var headFile = System.IO.Path.Combine(gitDir, "HEAD");
-                    if (System.IO.File.Exists(headFile))
-                    {
-                        var headContent = System.IO.File.ReadAllText(headFile).Trim();
-
-                        // ref: refs/heads/main -> "main"
-                        if (headContent.StartsWith("ref: refs/heads/"))
-                        {
-                            return headContent.Substring("ref: refs/heads/".Length);
-                        }
-                        // detached HEAD (커밋 해시)
-                        else if (headContent.Length == 40) // SHA-1 해시
-                        {
-                            return headContent.Substring(0, 7); // 짧은 해시
-                        }
-                    }
-                    break;
-                }
-
-                currentDir = currentDir.Parent;
-            }
+                Messages?.Clear();
+                CommandBlocks?.Clear();
+            });
         }
-        catch
+        catch (Exception ex)
         {
-            // Git 브랜치를 가져오는 중 오류 발생 시 무시
+            System.Diagnostics.Debug.WriteLine($"[LocalTerminalViewModel] Dispose 중 컬렉션 정리 오류: {ex.Message}");
         }
 
-        return null;
+        // 이벤트 핸들러 정리 (메모리 누수 방지)
+        PropertyChanged = null;
+        Activated = null;
+        Deactivated = null;
     }
-
-    #region 리소스 모니터링
-
-    /// <summary>
-    /// 리소스 모니터링 타이머 시작
-    /// </summary>
-    private void StartResourceMonitoring()
-    {
-        _resourceMonitorTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(1) // 1초마다 업데이트
-        };
-        _resourceMonitorTimer.Tick += OnResourceMonitorTimerTick;
-        _resourceMonitorTimer.Start();
-
-        // 초기값 설정
-        UpdateResourceUsage();
-    }
-
-    /// <summary>
-    /// 리소스 모니터링 타이머 틱
-    /// </summary>
-    private void OnResourceMonitorTimerTick(object? sender, EventArgs e)
-    {
-        UpdateResourceUsage();
-    }
-
-    /// <summary>
-    /// 리소스 사용량 업데이트
-    /// </summary>
-    private void UpdateResourceUsage()
-    {
-        try
-        {
-            using var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
-
-            // 메모리 사용량 (MB)
-            MemoryUsageMB = currentProcess.WorkingSet64 / 1024 / 1024;
-
-            // CPU 사용률 계산
-            var currentTime = DateTime.UtcNow;
-            var currentTotalProcessorTime = currentProcess.TotalProcessorTime;
-
-            if (_lastCpuTime != DateTime.MinValue)
-            {
-                var timeDiff = (currentTime - _lastCpuTime).TotalMilliseconds;
-                var cpuDiff = (currentTotalProcessorTime - _lastTotalProcessorTime).TotalMilliseconds;
-
-                if (timeDiff > 0)
-                {
-                    // CPU 사용률 = (프로세스 CPU 시간 증가량 / 실제 시간 증가량) / 코어 수 * 100
-                    var cpuPercentage = (cpuDiff / timeDiff / Environment.ProcessorCount) * 100;
-                    CpuUsage = Math.Round(Math.Min(100, Math.Max(0, cpuPercentage)), 1);
-                }
-            }
-
-            _lastCpuTime = currentTime;
-            _lastTotalProcessorTime = currentTotalProcessorTime;
-        }
-        catch
-        {
-            // 리소스 정보를 가져오는 중 오류 발생 시 무시
-        }
-    }
-
-    #endregion
 }

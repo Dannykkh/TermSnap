@@ -115,8 +115,8 @@ public partial class SnippetManagerWindow : Window
         if (snippet != null)
         {
             var result = MessageBox.Show(
-                $"'{snippet.Name}' 스니펫을 삭제하시겠습니까?",
-                "삭제 확인",
+                string.Format(LocalizationService.Instance.GetString("SnippetManager.DeleteConfirm"), snippet.Name),
+                LocalizationService.Instance.GetString("FileTransfer.DeleteConfirmTitle"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
@@ -169,7 +169,7 @@ public partial class SnippetEditDialog : Window
 
         if (existing != null)
         {
-            Title = "스니펫 편집";
+            Title = LocalizationService.Instance.GetString("SnippetManager.EditTitle");
             Snippet = existing;
             NameTextBox.Text = existing.Name;
             DescriptionTextBox.Text = existing.Description;
@@ -179,7 +179,7 @@ public partial class SnippetEditDialog : Window
         }
         else
         {
-            Title = "새 스니펫";
+            Title = LocalizationService.Instance.GetString("SnippetManager.NewSnippetTitle");
             Snippet = new CommandSnippet();
             CategoryComboBox.SelectedIndex = 0; // "일반" 선택
         }
@@ -206,7 +206,7 @@ public partial class SnippetEditDialog : Window
         // 헤더
         var headerText = new TextBlock
         {
-            Text = "스니펫 정보 입력",
+            Text = LocalizationService.Instance.GetString("SnippetManager.SnippetInfo"),
             FontSize = 18,
             FontWeight = FontWeights.Medium,
             Margin = new Thickness(0, 0, 0, 16),
@@ -224,19 +224,19 @@ public partial class SnippetEditDialog : Window
         var stackPanel = new StackPanel { Margin = new Thickness(0, 0, 8, 0) };
 
         // 이름 입력
-        stackPanel.Children.Add(CreateLabeledTextBox("이름 *", out NameTextBox));
+        stackPanel.Children.Add(CreateLabeledTextBox(LocalizationService.Instance.GetString("SnippetManager.NameRequired"), out NameTextBox));
 
         // 설명 입력
-        stackPanel.Children.Add(CreateLabeledTextBox("설명", out DescriptionTextBox));
+        stackPanel.Children.Add(CreateLabeledTextBox(LocalizationService.Instance.GetString("SnippetManager.DescriptionField"), out DescriptionTextBox));
 
         // 명령어 입력 (멀티라인)
-        stackPanel.Children.Add(CreateLabeledTextBox("명령어 *", out CommandTextBox, isMultiline: true, height: 80));
+        stackPanel.Children.Add(CreateLabeledTextBox(LocalizationService.Instance.GetString("SnippetManager.CommandRequired"), out CommandTextBox, isMultiline: true, height: 80));
 
         // 카테고리 선택 (ComboBox)
         stackPanel.Children.Add(CreateCategoryComboBox());
 
         // 태그 입력
-        stackPanel.Children.Add(CreateLabeledTextBox("태그 (쉼표로 구분)", out TagsTextBox));
+        stackPanel.Children.Add(CreateLabeledTextBox(LocalizationService.Instance.GetString("SnippetManager.TagsField"), out TagsTextBox));
 
         scrollViewer.Content = stackPanel;
         Grid.SetRow(scrollViewer, 1);
@@ -252,7 +252,7 @@ public partial class SnippetEditDialog : Window
 
         var cancelButton = new Button
         {
-            Content = "취소",
+            Content = LocalizationService.Instance.GetString("Common.Cancel"),
             Width = 90,
             Height = 36,
             Margin = new Thickness(0, 0, 12, 0),
@@ -262,7 +262,7 @@ public partial class SnippetEditDialog : Window
 
         var saveButton = new Button
         {
-            Content = "저장",
+            Content = LocalizationService.Instance.GetString("ServerSession.Save"),
             Width = 90,
             Height = 36,
             Style = (Style)FindResource("MaterialDesignRaisedButton")
@@ -323,7 +323,7 @@ public partial class SnippetEditDialog : Window
 
         var labelBlock = new TextBlock
         {
-            Text = "카테고리",
+            Text = LocalizationService.Instance.GetString("SnippetManager.CategoryField"),
             FontSize = 12,
             Margin = new Thickness(0, 0, 0, 6),
             Foreground = (System.Windows.Media.Brush)FindResource("MaterialDesignBody")
@@ -339,8 +339,9 @@ public partial class SnippetEditDialog : Window
         };
 
         // 카테고리 목록 구성: "일반" + 기존 카테고리들
-        var categories = new List<string> { "일반" };
-        foreach (var cat in _existingCategories.Where(c => c != "일반" && c != "전체"))
+        var generalCategory = LocalizationService.Instance.GetString("SnippetManager.General");
+        var categories = new List<string> { generalCategory };
+        foreach (var cat in _existingCategories.Where(c => c != "일반" && c != generalCategory && c != "전체"))
         {
             if (!categories.Contains(cat))
                 categories.Add(cat);
@@ -348,14 +349,14 @@ public partial class SnippetEditDialog : Window
         CategoryComboBox.ItemsSource = categories;
 
         // 힌트 텍스트 설정
-        MaterialDesignThemes.Wpf.HintAssist.SetHint(CategoryComboBox, "선택하거나 새 카테고리 입력");
+        MaterialDesignThemes.Wpf.HintAssist.SetHint(CategoryComboBox, LocalizationService.Instance.GetString("SnippetManager.CategoryHintText"));
 
         container.Children.Add(CategoryComboBox);
 
         // 안내 텍스트
         var hintText = new TextBlock
         {
-            Text = "기존 카테고리를 선택하거나 새로운 카테고리를 직접 입력할 수 있습니다.",
+            Text = LocalizationService.Instance.GetString("SnippetManager.CategoryHelp"),
             FontSize = 11,
             Margin = new Thickness(0, 4, 0, 0),
             Foreground = (System.Windows.Media.Brush)FindResource("MaterialDesignBodyLight")
@@ -369,14 +370,20 @@ public partial class SnippetEditDialog : Window
     {
         if (string.IsNullOrWhiteSpace(NameTextBox.Text))
         {
-            MessageBox.Show("이름을 입력해주세요.", "입력 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("SnippetManager.EnterName"),
+                LocalizationService.Instance.GetString("QAManager.ValidationError"),
+                MessageBoxButton.OK, MessageBoxImage.Warning);
             NameTextBox.Focus();
             return;
         }
 
         if (string.IsNullOrWhiteSpace(CommandTextBox.Text))
         {
-            MessageBox.Show("명령어를 입력해주세요.", "입력 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("SnippetManager.EnterCommandText"),
+                LocalizationService.Instance.GetString("QAManager.ValidationError"),
+                MessageBoxButton.OK, MessageBoxImage.Warning);
             CommandTextBox.Focus();
             return;
         }
@@ -390,7 +397,7 @@ public partial class SnippetEditDialog : Window
 
         // ComboBox에서 선택하거나 입력한 값 가져오기
         var categoryText = CategoryComboBox.Text;
-        Snippet.Category = string.IsNullOrWhiteSpace(categoryText) ? "일반" : categoryText.Trim();
+        Snippet.Category = string.IsNullOrWhiteSpace(categoryText) ? LocalizationService.Instance.GetString("SnippetManager.General") : categoryText.Trim();
 
         Snippet.Tags.Clear();
         if (!string.IsNullOrWhiteSpace(TagsTextBox.Text))

@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        Title="입력"
+        Title="{DynamicResource TextInput.Title}"
         Height="200"
         Width="400"
         WindowStartupLocation="CenterOwner"
@@ -19,7 +19,7 @@
         <!-- 프롬프트 텍스트 -->
         <TextBlock Grid.Row="0"
                    x:Name="PromptTextBlock"
-                   Text="입력하세요:"
+                   Text="{DynamicResource TextInput.Prompt}"
                    FontSize="14"
                    Foreground="{DynamicResource MaterialDesignBody}"
                    Margin="0,0,0,15"/>
@@ -27,7 +27,7 @@
         <!-- 입력 -->
         <TextBox Grid.Row="1"
                  x:Name="InputTextBox"
-                 materialDesign:HintAssist.Hint="입력"
+                 materialDesign:HintAssist.Hint="{DynamicResource TextInput.Hint}"
                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                  FontSize="14"
                  Foreground="{DynamicResource MaterialDesignBody}"
@@ -43,12 +43,12 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,20,0,0">
-            <Button Content="취소"
+            <Button Content="{DynamicResource TextInput.Cancel}"
                     Width="100"
                     Margin="0,0,10,0"
                     Click="CancelButton_Click"
                     Style="{StaticResource MaterialDesignOutlinedButton}"/>
-            <Button Content="확인"
+            <Button Content="{DynamicResource TextInput.OK}"
                     Width="100"
                     Click="OkButton_Click"
                     Style="{StaticResource MaterialDesignRaisedButton}"/>

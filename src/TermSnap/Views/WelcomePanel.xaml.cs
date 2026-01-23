@@ -82,7 +82,9 @@ public partial class WelcomePanel : UserControl
         if (defaultShell != null)
         {
             SelectedShell = defaultShell;
-            SelectedShellText.Text = $"{defaultShell.DisplayName} 선택됨 (기본)";
+            SelectedShellText.Text = string.Format(
+                LocalizationService.Instance.GetString("Welcome.ShellSelected"),
+                defaultShell.DisplayName);
             SelectedShellBorder.Visibility = Visibility.Visible;
         }
     }
@@ -94,7 +96,9 @@ public partial class WelcomePanel : UserControl
     {
         System.Diagnostics.Debug.WriteLine($"[SelectShell] {shell.DisplayName} - {shell.Path}");
         SelectedShell = shell;
-        SelectedShellText.Text = $"{shell.DisplayName} 선택됨 ({shell.Path})";
+        SelectedShellText.Text = string.Format(
+            LocalizationService.Instance.GetString("Welcome.ShellSelectedWithPath"),
+            shell.DisplayName, shell.Path);
         SelectedShellBorder.Visibility = Visibility.Visible;
         ShellSelected?.Invoke(this, shell);
     }
@@ -158,7 +162,7 @@ public partial class WelcomePanel : UserControl
     {
         var dialog = new System.Windows.Forms.FolderBrowserDialog
         {
-            Description = "작업할 폴더를 선택하세요",
+            Description = LocalizationService.Instance.GetString("Welcome.SelectFolder"),
             ShowNewFolderButton = true,
             UseDescriptionForTitle = true
         };
@@ -202,7 +206,7 @@ public partial class WelcomePanel : UserControl
     {
         var dialog = new System.Windows.Forms.FolderBrowserDialog
         {
-            Description = "새 프로젝트를 만들 위치를 선택하세요",
+            Description = LocalizationService.Instance.GetString("Welcome.SelectNewProjectLocation"),
             ShowNewFolderButton = true,
             UseDescriptionForTitle = true
         };
@@ -210,7 +214,9 @@ public partial class WelcomePanel : UserControl
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
         {
             // 프로젝트 이름 입력 대화상자
-            var nameDialog = new TextInputDialog("새 프로젝트", "프로젝트 이름을 입력하세요:");
+            var nameDialog = new TextInputDialog(
+                LocalizationService.Instance.GetString("Welcome.NewProjectTitle"),
+                LocalizationService.Instance.GetString("Welcome.EnterProjectName"));
             nameDialog.Owner = Window.GetWindow(this);
 
             if (nameDialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(nameDialog.InputText))
@@ -226,7 +232,9 @@ public partial class WelcomePanel : UserControl
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"프로젝트 폴더를 만들 수 없습니다: {ex.Message}", "오류",
+                    MessageBox.Show(
+                        string.Format(LocalizationService.Instance.GetString("Welcome.CannotCreateFolder"), ex.Message),
+                        LocalizationService.Instance.GetString("Common.Error"),
                         MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -249,8 +257,8 @@ public partial class WelcomePanel : UserControl
             else
             {
                 var result = MessageBox.Show(
-                    $"폴더가 존재하지 않습니다:\n{folder.Path}\n\n목록에서 제거하시겠습니까?",
-                    "폴더를 찾을 수 없음",
+                    string.Format(LocalizationService.Instance.GetString("Welcome.FolderNotFound"), folder.Path),
+                    LocalizationService.Instance.GetString("Welcome.FolderNotFoundTitle"),
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
 
@@ -282,8 +290,8 @@ public partial class WelcomePanel : UserControl
     private void ClearRecentButton_Click(object sender, RoutedEventArgs e)
     {
         var result = MessageBox.Show(
-            "최근 폴더 목록을 모두 지우시겠습니까?",
-            "확인",
+            LocalizationService.Instance.GetString("Welcome.ConfirmClearRecent"),
+            LocalizationService.Instance.GetString("Welcome.Confirm"),
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
@@ -410,12 +418,14 @@ public partial class WelcomePanel : UserControl
         if (!string.IsNullOrEmpty(cli.AutoModeFlag))
         {
             ModeAutoRadio.IsEnabled = true;
-            ModeAutoRadio.Content = $"자동 모드 ({cli.AutoModeFlag})";
+            ModeAutoRadio.Content = string.Format(
+                LocalizationService.Instance.GetString("Welcome.AutoModeWithFlag"),
+                cli.AutoModeFlag);
         }
         else
         {
             ModeAutoRadio.IsEnabled = false;
-            ModeAutoRadio.Content = "자동 모드 (미지원)";
+            ModeAutoRadio.Content = LocalizationService.Instance.GetString("Welcome.AutoModeNotSupported");
             ModeNormalRadio.IsChecked = true;
         }
 
@@ -434,11 +444,11 @@ public partial class WelcomePanel : UserControl
     {
         if (ModeAutoRadio.IsChecked == true)
         {
-            ModeDescText.Text = "권한 확인 없이 자동으로 작업을 수행합니다 (주의 필요)";
+            ModeDescText.Text = LocalizationService.Instance.GetString("Welcome.ModeDescription.Auto");
         }
         else
         {
-            ModeDescText.Text = "각 작업마다 권한 확인이 필요합니다 (안전)";
+            ModeDescText.Text = LocalizationService.Instance.GetString("Welcome.ModeDescription.Normal");
         }
         UpdateCommandPreview();
     }
@@ -484,8 +494,8 @@ public partial class WelcomePanel : UserControl
             // 버전 정보 표시 시도
             var version = GetCLIVersion(cli.Command);
             InstalledVersionText.Text = !string.IsNullOrEmpty(version)
-                ? $"설치됨 ({version})"
-                : "설치됨";
+                ? string.Format(LocalizationService.Instance.GetString("Welcome.InstalledWithVersion"), version)
+                : LocalizationService.Instance.GetString("Welcome.Installed");
         }
         else
         {
@@ -585,10 +595,9 @@ public partial class WelcomePanel : UserControl
         if (_selectedAICLI == null || string.IsNullOrEmpty(_selectedAICLI.InstallCommand)) return;
 
         var result = MessageBox.Show(
-            $"{_selectedAICLI.Name}을(를) 설치하시겠습니까?\n\n" +
-            $"실행할 명령어:\n{_selectedAICLI.InstallCommand}\n\n" +
-            $"요구사항: {_selectedAICLI.InstallDescription}",
-            "AI CLI 설치",
+            string.Format(LocalizationService.Instance.GetString("Welcome.InstallConfirm"),
+                _selectedAICLI.Name, _selectedAICLI.InstallCommand, _selectedAICLI.InstallDescription),
+            LocalizationService.Instance.GetString("Welcome.InstallTitle"),
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
@@ -620,7 +629,9 @@ public partial class WelcomePanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"웹사이트를 열 수 없습니다: {ex.Message}", "오류",
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("Welcome.CannotOpenWebsite"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

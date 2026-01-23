@@ -50,7 +50,7 @@
                              Background="White"
                              Padding="10,8"
                              BorderThickness="0"
-                             materialDesign:HintAssist.Hint="> 명령어, 스니펫, 히스토리 검색..."
+                             materialDesign:HintAssist.Hint="{DynamicResource CommandPalette.SearchHint}"
                              TextChanged="SearchTextBox_TextChanged"/>
 
                     <Button Grid.Column="2"
@@ -66,16 +66,16 @@
             <!-- 필터 탭 -->
             <Border Grid.Row="0" VerticalAlignment="Bottom" Margin="15,-30,15,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <RadioButton x:Name="FilterAll" Content="전체" IsChecked="True" 
+                    <RadioButton x:Name="FilterAll" Content="{DynamicResource CommandPalette.FilterAll}" IsChecked="True"
                                  Style="{StaticResource MaterialDesignTabRadioButton}"
                                  Margin="0,0,5,0" Checked="Filter_Changed"/>
-                    <RadioButton x:Name="FilterHistory" Content="히스토리" 
+                    <RadioButton x:Name="FilterHistory" Content="{DynamicResource CommandPalette.FilterHistory}"
                                  Style="{StaticResource MaterialDesignTabRadioButton}"
                                  Margin="5,0" Checked="Filter_Changed"/>
-                    <RadioButton x:Name="FilterSnippets" Content="스니펫" 
+                    <RadioButton x:Name="FilterSnippets" Content="{DynamicResource CommandPalette.FilterSnippets}"
                                  Style="{StaticResource MaterialDesignTabRadioButton}"
                                  Margin="5,0" Checked="Filter_Changed"/>
-                    <RadioButton x:Name="FilterActions" Content="액션" 
+                    <RadioButton x:Name="FilterActions" Content="{DynamicResource CommandPalette.FilterActions}"
                                  Style="{StaticResource MaterialDesignTabRadioButton}"
                                  Margin="5,0,0,0" Checked="Filter_Changed"/>
                 </StackPanel>
@@ -87,6 +87,8 @@
                      Margin="0,40,0,0"
                      BorderThickness="0"
                      VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     ScrollViewer.CanContentScroll="True"
                      MouseDoubleClick="ResultsListBox_MouseDoubleClick">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
@@ -141,8 +143,8 @@
             </ListBox>
 
             <!-- 결과 없음 -->
-            <StackPanel Grid.Row="1" 
-                        VerticalAlignment="Center" 
+            <StackPanel Grid.Row="1"
+                        VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         x:Name="NoResultsPanel"
                         Visibility="Collapsed">
@@ -150,7 +152,7 @@
                                          Width="48" Height="48"
                                          Foreground="#BDBDBD"
                                          HorizontalAlignment="Center"/>
-                <TextBlock Text="검색 결과가 없습니다"
+                <TextBlock Text="{DynamicResource CommandPalette.NoResults}"
                            FontSize="14"
                            Foreground="#9E9E9E"
                            Margin="0,12,0,0"
@@ -161,14 +163,14 @@
             <Border Grid.Row="2" Background="#F5F5F5" Padding="15,10" CornerRadius="0,0,6,6">
                 <Grid>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="↑↓ 선택" FontSize="11" Foreground="#757575"/>
+                        <TextBlock Text="{DynamicResource CommandPalette.HelpSelectKey}" FontSize="11" Foreground="#757575"/>
                         <TextBlock Text="•" Margin="10,0" FontSize="11" Foreground="#BDBDBD"/>
-                        <TextBlock Text="Enter 실행" FontSize="11" Foreground="#757575"/>
+                        <TextBlock Text="{DynamicResource CommandPalette.HelpExecuteKey}" FontSize="11" Foreground="#757575"/>
                         <TextBlock Text="•" Margin="10,0" FontSize="11" Foreground="#BDBDBD"/>
-                        <TextBlock Text="Esc 닫기" FontSize="11" Foreground="#757575"/>
+                        <TextBlock Text="{DynamicResource CommandPalette.HelpCloseKey}" FontSize="11" Foreground="#757575"/>
                     </StackPanel>
-                    <TextBlock HorizontalAlignment="Right" 
-                               FontSize="11" 
+                    <TextBlock HorizontalAlignment="Right"
+                               FontSize="11"
                                Foreground="#9E9E9E"
                                x:Name="ResultCountText"/>
                 </Grid>

@@ -32,7 +32,7 @@ public partial class ServerMonitorWindow : Window
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _monitorService = new ServerMonitorService(sshService);
 
-        Title = $"서버 모니터링 - {config.ProfileName}";
+        Title = $"{LocalizationService.Instance.GetString("ServerMonitor.Title")} - {config.ProfileName}";
 
         _ = LoadDataAsync();
     }
@@ -51,8 +51,8 @@ public partial class ServerMonitorWindow : Window
             else
             {
                 MessageBox.Show(
-                    $"서버 통계를 가져올 수 없습니다:\n{stats.ErrorMessage}",
-                    "오류",
+                    string.Format(LocalizationService.Instance.GetString("ServerMonitor.LoadError"), stats.ErrorMessage),
+                    LocalizationService.Instance.GetString("Common.Error"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -63,13 +63,13 @@ public partial class ServerMonitorWindow : Window
             // 상위 프로세스 로드
             await LoadTopProcessesAsync();
 
-            LastUpdatedText.Text = $"마지막 업데이트: {DateTime.Now:HH:mm:ss}";
+            LastUpdatedText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.LastUpdated"), DateTime.Now);
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"데이터 로드 실패:\n{ex.Message}",
-                "오류",
+                string.Format(LocalizationService.Instance.GetString("ServerMonitor.LoadFailed"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -80,27 +80,27 @@ public partial class ServerMonitorWindow : Window
         // CPU
         CpuPercentText.Text = $"{stats.CpuUsage:F1}%";
         CpuProgressBar.Value = stats.CpuUsage;
-        ProcessCountText.Text = $"프로세스: {stats.ProcessCount}";
+        ProcessCountText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.ProcessCountLabel"), stats.ProcessCount);
 
         // 메모리
         MemoryPercentText.Text = $"{stats.MemoryUsage:F1}%";
         MemoryProgressBar.Value = stats.MemoryUsage;
-        MemoryDetailText.Text = $"사용: {stats.UsedMemory} / 전체: {stats.TotalMemory}";
+        MemoryDetailText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.MemoryUsageDetail"), stats.UsedMemory, stats.TotalMemory);
 
         // 디스크
         DiskPercentText.Text = $"{stats.DiskUsage:F1}%";
         DiskProgressBar.Value = stats.DiskUsage;
-        DiskDetailText.Text = $"사용: {stats.UsedDisk} / 전체: {stats.TotalDisk}";
+        DiskDetailText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.DiskUsageDetail"), stats.UsedDisk, stats.TotalDisk);
 
         // 시스템 정보
-        OsInfoText.Text = $"OS: {stats.OsInfo}";
-        KernelVersionText.Text = $"Kernel: {stats.KernelVersion}";
-        UptimeText.Text = $"Uptime: {stats.Uptime}";
+        OsInfoText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.OSInfoLabel"), stats.OsInfo);
+        KernelVersionText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.KernelVersionLabel"), stats.KernelVersion);
+        UptimeText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.UptimeLabel"), stats.Uptime);
 
         // 네트워크
-        NetworkRxText.Text = $"수신: {stats.NetworkRx}";
-        NetworkTxText.Text = $"송신: {stats.NetworkTx}";
-        LoadAverageText.Text = $"Load: {stats.LoadAverage}";
+        NetworkRxText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.NetworkRxLabel"), stats.NetworkRx);
+        NetworkTxText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.NetworkTxLabel"), stats.NetworkTx);
+        LoadAverageText.Text = string.Format(LocalizationService.Instance.GetString("ServerMonitor.LoadAverageLabel"), stats.LoadAverage);
     }
 
     private async Task LoadServicesAsync()

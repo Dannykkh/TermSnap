@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        Title="Claude Code 실행 옵션"
+        Title="{DynamicResource ClaudeOptions.Title}"
         Height="600" Width="500"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
@@ -20,9 +20,9 @@
 
         <!-- 헤더 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock Text="Claude Code 실행 옵션"
+            <TextBlock Text="{DynamicResource ClaudeOptions.Title}"
                        Style="{StaticResource MaterialDesignHeadline6TextBlock}"/>
-            <TextBlock Text="실행할 옵션을 선택하세요"
+            <TextBlock Text="{DynamicResource ClaudeOptions.Subtitle}"
                        Foreground="{DynamicResource MaterialDesignBodyLight}"
                        FontSize="12"
                        Margin="0,4,0,0"/>
@@ -33,7 +33,7 @@
             <StackPanel>
 
                 <!-- 권한 모드 -->
-                <TextBlock Text="권한 모드"
+                <TextBlock Text="{DynamicResource ClaudeOptions.PermissionMode}"
                            FontWeight="SemiBold"
                            FontSize="13"
                            Margin="0,0,0,8"/>
@@ -41,12 +41,12 @@
                           Style="{StaticResource MaterialDesignOutlinedComboBox}"
                           Margin="0,0,0,16"
                           SelectionChanged="OnOptionChanged">
-                    <ComboBoxItem Content="일반 모드 (권한 확인)" Tag="" IsSelected="True"/>
-                    <ComboBoxItem Content="자동 모드 (권한 스킵)" Tag="--dangerously-skip-permissions"/>
+                    <ComboBoxItem Content="{DynamicResource ClaudeOptions.NormalMode}" Tag="" IsSelected="True"/>
+                    <ComboBoxItem Content="{DynamicResource ClaudeOptions.AutoMode}" Tag="--dangerously-skip-permissions"/>
                 </ComboBox>
 
                 <!-- 모델 선택 -->
-                <TextBlock Text="모델"
+                <TextBlock Text="{DynamicResource ClaudeOptions.Model}"
                            FontWeight="SemiBold"
                            FontSize="13"
                            Margin="0,0,0,8"/>
@@ -54,7 +54,7 @@
                           Style="{StaticResource MaterialDesignOutlinedComboBox}"
                           Margin="0,0,0,16"
                           SelectionChanged="OnOptionChanged">
-                    <ComboBoxItem Content="기본값 (설정된 모델)" Tag="" IsSelected="True"/>
+                    <ComboBoxItem Content="{DynamicResource ClaudeOptions.DefaultModel}" Tag="" IsSelected="True"/>
                     <ComboBoxItem Content="Claude Sonnet 4" Tag="--model claude-sonnet-4-20250514"/>
                     <ComboBoxItem Content="Claude Opus 4" Tag="--model claude-opus-4-20250514"/>
                     <ComboBoxItem Content="Claude 3.5 Sonnet" Tag="--model claude-3-5-sonnet-20241022"/>
@@ -62,7 +62,7 @@
                 </ComboBox>
 
                 <!-- 출력 형식 -->
-                <TextBlock Text="출력 형식"
+                <TextBlock Text="{DynamicResource ClaudeOptions.OutputFormat}"
                            FontWeight="SemiBold"
                            FontSize="13"
                            Margin="0,0,0,8"/>
@@ -70,14 +70,14 @@
                           Style="{StaticResource MaterialDesignOutlinedComboBox}"
                           Margin="0,0,0,16"
                           SelectionChanged="OnOptionChanged">
-                    <ComboBoxItem Content="대화형 (기본)" Tag="" IsSelected="True"/>
-                    <ComboBoxItem Content="텍스트만 출력 (--print)" Tag="--print"/>
-                    <ComboBoxItem Content="JSON 출력" Tag="--output-format json"/>
-                    <ComboBoxItem Content="스트림 JSON" Tag="--output-format stream-json"/>
+                    <ComboBoxItem Content="{DynamicResource ClaudeOptions.InteractiveDefault}" Tag="" IsSelected="True"/>
+                    <ComboBoxItem Content="{DynamicResource ClaudeOptions.TextOnly}" Tag="--print"/>
+                    <ComboBoxItem Content="{DynamicResource ClaudeOptions.JSONOutput}" Tag="--output-format json"/>
+                    <ComboBoxItem Content="{DynamicResource ClaudeOptions.StreamJSON}" Tag="--output-format stream-json"/>
                 </ComboBox>
 
                 <!-- 최대 턴 수 -->
-                <TextBlock Text="최대 턴 수"
+                <TextBlock Text="{DynamicResource ClaudeOptions.MaxTurns}"
                            FontWeight="SemiBold"
                            FontSize="13"
                            Margin="0,0,0,8"/>
@@ -99,45 +99,45 @@
                                VerticalAlignment="Center"
                                Margin="8,0,0,0"/>
                 </Grid>
-                <TextBlock Text="0 = 무제한"
+                <TextBlock Text="{DynamicResource ClaudeOptions.UnlimitedTurns}"
                            FontSize="11"
                            Foreground="{DynamicResource MaterialDesignBodyLight}"
                            Margin="0,-12,0,16"/>
 
                 <!-- 추가 옵션 체크박스 -->
-                <TextBlock Text="추가 옵션"
+                <TextBlock Text="{DynamicResource ClaudeOptions.AdditionalOptions}"
                            FontWeight="SemiBold"
                            FontSize="13"
                            Margin="0,0,0,8"/>
 
                 <CheckBox x:Name="VerboseCheck"
-                          Content="상세 출력 (--verbose)"
+                          Content="{DynamicResource ClaudeOptions.VerboseOutput}"
                           Margin="0,0,0,8"
                           Click="OnOptionChanged"/>
 
                 <CheckBox x:Name="NoConfigCheck"
-                          Content="설정 파일 무시 (--no-config)"
+                          Content="{DynamicResource ClaudeOptions.IgnoreConfig}"
                           Margin="0,0,0,8"
                           Click="OnOptionChanged"/>
 
                 <CheckBox x:Name="ResumeCheck"
-                          Content="이전 대화 이어하기 (--resume)"
+                          Content="{DynamicResource ClaudeOptions.ResumePrevious}"
                           Margin="0,0,0,8"
                           Click="OnOptionChanged"/>
 
                 <CheckBox x:Name="ContinueCheck"
-                          Content="가장 최근 대화 계속 (--continue)"
+                          Content="{DynamicResource ClaudeOptions.ContinueRecent}"
                           Margin="0,0,0,16"
                           Click="OnOptionChanged"/>
 
                 <!-- 시스템 프롬프트 -->
-                <TextBlock Text="시스템 프롬프트 (선택사항)"
+                <TextBlock Text="{DynamicResource ClaudeOptions.SystemPrompt}"
                            FontWeight="SemiBold"
                            FontSize="13"
                            Margin="0,0,0,8"/>
                 <TextBox x:Name="SystemPromptTextBox"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                         materialDesign:HintAssist.Hint="예: You are a helpful coding assistant..."
+                         materialDesign:HintAssist.Hint="{DynamicResource ClaudeOptions.SystemPromptHint}"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
                          Height="60"
@@ -146,13 +146,13 @@
                          TextChanged="OnOptionChanged"/>
 
                 <!-- 초기 프롬프트 -->
-                <TextBlock Text="초기 프롬프트 (선택사항)"
+                <TextBlock Text="{DynamicResource ClaudeOptions.InitialPrompt}"
                            FontWeight="SemiBold"
                            FontSize="13"
                            Margin="0,0,0,8"/>
                 <TextBox x:Name="InitialPromptTextBox"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                         materialDesign:HintAssist.Hint="실행 시 바로 전달할 프롬프트..."
+                         materialDesign:HintAssist.Hint="{DynamicResource ClaudeOptions.InitialPromptHint}"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
                          Height="60"
@@ -175,7 +175,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Text="실행 명령어"
+                <TextBlock Text="{DynamicResource ClaudeOptions.CommandPreview}"
                            FontWeight="SemiBold"
                            FontSize="11"
                            Foreground="{DynamicResource MaterialDesignBodyLight}"
@@ -202,20 +202,20 @@
             </Grid.ColumnDefinitions>
 
             <Button Grid.Column="0"
-                    Content="복사"
+                    Content="{DynamicResource ClaudeOptions.Copy}"
                     Style="{StaticResource MaterialDesignOutlinedButton}"
                     Click="CopyCommand_Click"
-                    ToolTip="명령어를 클립보드에 복사"/>
+                    ToolTip="{DynamicResource ClaudeOptions.CopyTooltip}"/>
 
             <Button Grid.Column="2"
-                    Content="취소"
+                    Content="{DynamicResource ClaudeOptions.Cancel}"
                     Style="{StaticResource MaterialDesignFlatButton}"
                     IsCancel="True"
                     Click="Cancel_Click"
                     Margin="0,0,8,0"/>
 
             <Button Grid.Column="3"
-                    Content="실행"
+                    Content="{DynamicResource ClaudeOptions.Run}"
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     IsDefault="True"
                     Click="Run_Click"/>

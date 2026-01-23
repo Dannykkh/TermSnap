@@ -20,29 +20,29 @@
 
             <!-- 타이틀 -->
             <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,20">
-                <TextBlock Text="새 세션 시작"
+                <TextBlock Text="{DynamicResource NewSession.Title}"
                            FontSize="28"
                            FontWeight="Light"
-                           Foreground="White"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
                            HorizontalAlignment="Center"/>
-                <TextBlock Text="어떤 작업을 하시겠습니까?"
+                <TextBlock Text="{DynamicResource NewSession.Subtitle}"
                            FontSize="14"
-                           Foreground="#808080"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
                            HorizontalAlignment="Center"
                            Margin="0,8,0,0"/>
             </StackPanel>
 
             <!-- 선택 카드들 -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
                 <!-- 로컬 터미널 카드 -->
                 <Border x:Name="LocalTerminalCard"
                         Background="#252526"
                         BorderBrush="#3C3C3C"
                         BorderThickness="1"
                         CornerRadius="12"
-                        Width="280"
-                        Height="320"
-                        Margin="15"
+                        Width="320"
+                        Height="360"
+                        Margin="20"
                         Cursor="Hand"
                         MouseEnter="Card_MouseEnter"
                         MouseLeave="Card_MouseLeave"
@@ -56,7 +56,7 @@
                         </Grid.RowDefinitions>
 
                         <!-- 아이콘 -->
-                        <Border Grid.Row="0" 
+                        <Border Grid.Row="0"
                                 Background="#2D3A2D"
                                 CornerRadius="50"
                                 Width="80" Height="80"
@@ -64,41 +64,41 @@
                                 Margin="0,10,0,20">
                             <materialDesign:PackIcon Kind="Console"
                                                      Width="40" Height="40"
-                                                     Foreground="#4CAF50"
+                                                     Foreground="{DynamicResource SuccessBrush}"
                                                      HorizontalAlignment="Center"
                                                      VerticalAlignment="Center"/>
                         </Border>
 
                         <!-- 제목 -->
                         <TextBlock Grid.Row="1"
-                                   Text="로컬 터미널"
+                                   Text="{DynamicResource NewSession.LocalTerminal}"
                                    FontSize="20"
                                    FontWeight="SemiBold"
-                                   Foreground="White"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                    HorizontalAlignment="Center"/>
 
                         <!-- 설명 -->
                         <TextBlock Grid.Row="2"
-                                   Text="PowerShell, CMD, WSL 또는 Git Bash를 사용하여 로컬 컴퓨터에서 작업합니다."
+                                   Text="{DynamicResource NewSession.LocalTerminal.Description}"
                                    FontSize="13"
-                                   Foreground="#AAAAAA"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    TextWrapping="Wrap"
                                    TextAlignment="Center"
                                    Margin="0,12,0,0"
                                    LineHeight="20"/>
 
                         <!-- 기능 태그 -->
-                        <WrapPanel Grid.Row="3" 
+                        <WrapPanel Grid.Row="3"
                                    HorizontalAlignment="Center"
                                    Margin="0,15,0,0">
                             <Border Background="#2D2D30" CornerRadius="4" Padding="8,4" Margin="3">
-                                <TextBlock Text="PowerShell" FontSize="11" Foreground="#4CAF50"/>
+                                <TextBlock Text="PowerShell" FontSize="11" Foreground="{DynamicResource SuccessBrush}"/>
                             </Border>
                             <Border Background="#2D2D30" CornerRadius="4" Padding="8,4" Margin="3">
-                                <TextBlock Text="CMD" FontSize="11" Foreground="#4CAF50"/>
+                                <TextBlock Text="CMD" FontSize="11" Foreground="{DynamicResource SuccessBrush}"/>
                             </Border>
                             <Border Background="#2D2D30" CornerRadius="4" Padding="8,4" Margin="3">
-                                <TextBlock Text="WSL" FontSize="11" Foreground="#4CAF50"/>
+                                <TextBlock Text="WSL" FontSize="11" Foreground="{DynamicResource SuccessBrush}"/>
                             </Border>
                         </WrapPanel>
                     </Grid>
@@ -110,9 +110,9 @@
                         BorderBrush="#3C3C3C"
                         BorderThickness="1"
                         CornerRadius="12"
-                        Width="280"
-                        Height="320"
-                        Margin="15"
+                        Width="320"
+                        Height="360"
+                        Margin="20"
                         Cursor="Hand"
                         MouseEnter="Card_MouseEnter"
                         MouseLeave="Card_MouseLeave"
@@ -126,7 +126,7 @@
                         </Grid.RowDefinitions>
 
                         <!-- 아이콘 -->
-                        <Border Grid.Row="0" 
+                        <Border Grid.Row="0"
                                 Background="#2D3544"
                                 CornerRadius="50"
                                 Width="80" Height="80"
@@ -134,41 +134,41 @@
                                 Margin="0,10,0,20">
                             <materialDesign:PackIcon Kind="Server"
                                                      Width="40" Height="40"
-                                                     Foreground="#4FC3F7"
+                                                     Foreground="{DynamicResource PrimaryBrush}"
                                                      HorizontalAlignment="Center"
                                                      VerticalAlignment="Center"/>
                         </Border>
 
                         <!-- 제목 -->
                         <TextBlock Grid.Row="1"
-                                   Text="SSH 서버 연결"
+                                   Text="{DynamicResource NewSession.SSHServer}"
                                    FontSize="20"
                                    FontWeight="SemiBold"
-                                   Foreground="White"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                    HorizontalAlignment="Center"/>
 
                         <!-- 설명 -->
                         <TextBlock Grid.Row="2"
-                                   Text="원격 Linux 서버에 SSH로 연결하고 AI 어시스턴트의 도움을 받아 명령어를 실행합니다."
+                                   Text="{DynamicResource NewSession.SSHServer.Description}"
                                    FontSize="13"
-                                   Foreground="#AAAAAA"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    TextWrapping="Wrap"
                                    TextAlignment="Center"
                                    Margin="0,12,0,0"
                                    LineHeight="20"/>
 
                         <!-- 기능 태그 -->
-                        <WrapPanel Grid.Row="3" 
+                        <WrapPanel Grid.Row="3"
                                    HorizontalAlignment="Center"
                                    Margin="0,15,0,0">
                             <Border Background="#2D2D30" CornerRadius="4" Padding="8,4" Margin="3">
-                                <TextBlock Text="SSH" FontSize="11" Foreground="#4FC3F7"/>
+                                <TextBlock Text="SSH" FontSize="11" Foreground="{DynamicResource PrimaryBrush}"/>
                             </Border>
                             <Border Background="#2D2D30" CornerRadius="4" Padding="8,4" Margin="3">
-                                <TextBlock Text="SFTP" FontSize="11" Foreground="#4FC3F7"/>
+                                <TextBlock Text="SFTP" FontSize="11" Foreground="{DynamicResource PrimaryBrush}"/>
                             </Border>
                             <Border Background="#2D2D30" CornerRadius="4" Padding="8,4" Margin="3">
-                                <TextBlock Text="AI" FontSize="11" Foreground="#4FC3F7"/>
+                                <TextBlock Text="AI" FontSize="11" Foreground="{DynamicResource PrimaryBrush}"/>
                             </Border>
                         </WrapPanel>
                     </Grid>
@@ -179,12 +179,12 @@
         <!-- 하단 단축키 힌트 -->
         <Border Grid.Row="1" Background="#252526" Padding="20,12">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <TextBlock Foreground="#666666" FontSize="12">
-                    <Run Text="단축키: "/>
-                    <Run Text="Ctrl+`" Foreground="#4CAF50"/>
-                    <Run Text=" 로컬 터미널  |  "/>
-                    <Run Text="Ctrl+T" Foreground="#4FC3F7"/>
-                    <Run Text=" SSH 연결"/>
+                <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12">
+                    <Run Text="{DynamicResource NewSession.Shortcuts}"/>
+                    <Run Text="Ctrl+`" Foreground="{DynamicResource SuccessBrush}"/>
+                    <Run Text="{DynamicResource NewSession.LocalTerminalShortcut}"/>
+                    <Run Text="Ctrl+T" Foreground="{DynamicResource PrimaryBrush}"/>
+                    <Run Text="{DynamicResource NewSession.SSHShortcut}"/>
                 </TextBlock>
             </StackPanel>
         </Border>

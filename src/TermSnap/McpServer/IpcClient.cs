@@ -22,6 +22,7 @@ public class IpcClient : IDisposable
     private StreamWriter? _writer;
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private bool _isConnected;
+    private bool _disposed;
 
     public bool IsConnected => _isConnected && _pipe?.IsConnected == true;
 
@@ -238,9 +239,43 @@ public class IpcClient : IDisposable
 
     public void Dispose()
     {
-        _sendLock.Dispose();
-        _reader?.Dispose();
-        _writer?.Dispose();
-        _pipe?.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // 관리 리소스 정리
+            try
+            {
+                _isConnected = false;
+
+                _sendLock?.Dispose();
+
+                _reader?.Dispose();
+                _reader = null;
+
+                _writer?.Dispose();
+                _writer = null;
+
+                _pipe?.Dispose();
+                _pipe = null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[IpcClient] Dispose 중 오류: {ex.Message}");
+            }
+        }
+
+        _disposed = true;
+    }
+
+    ~IpcClient()
+    {
+        Dispose(false);
     }
 }

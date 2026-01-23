@@ -6,9 +6,11 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using TermSnap.Core.Sessions;
 using TermSnap.Models;
 using TermSnap.Services;
+using TermSnap.ViewModels.Managers;
 
 namespace TermSnap.ViewModels;
 
@@ -20,6 +22,10 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly AppConfig _config;
     private ISessionViewModel? _selectedSession;
     private ISessionViewModel? _previousSession;
+
+    // 리소스 모니터 (전체 프로그램 공통)
+    private readonly ResourceMonitor _resourceMonitor = new();
+    private DispatcherTimer? _resourceMonitorTimer;
 
     public ObservableCollection<ISessionViewModel> Sessions { get; } = new();
 
@@ -40,6 +46,10 @@ public class MainViewModel : INotifyPropertyChanged
 
             OnPropertyChanged();
             OnPropertyChanged(nameof(CurrentSession));
+            OnPropertyChanged(nameof(CurrentDirectory));
+            OnPropertyChanged(nameof(IsConnected));
+            OnPropertyChanged(nameof(IsBusy));
+            OnPropertyChanged(nameof(IsServerSession));
         }
     }
 
@@ -47,6 +57,66 @@ public class MainViewModel : INotifyPropertyChanged
     /// 현재 선택된 세션 (SelectedSession의 별칭, 키보드 단축키 호환용)
     /// </summary>
     public ISessionViewModel? CurrentSession => SelectedSession;
+
+    /// <summary>
+    /// CPU 사용률 (%)
+    /// </summary>
+    public double CpuUsage => _resourceMonitor.CpuUsage;
+
+    /// <summary>
+    /// 메모리 사용량 (MB)
+    /// </summary>
+    public long MemoryUsageMB => _resourceMonitor.MemoryUsageMB;
+
+    /// <summary>
+    /// 현재 세션의 현재 디렉토리
+    /// </summary>
+    public string CurrentDirectory
+    {
+        get
+        {
+            if (CurrentSession is LocalTerminalViewModel localVm)
+                return localVm.CurrentDirectory;
+            if (CurrentSession is ServerSessionViewModel serverVm)
+                return serverVm.CurrentDirectory;
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// 현재 세션의 연결 상태
+    /// </summary>
+    public bool IsConnected
+    {
+        get
+        {
+            if (CurrentSession is LocalTerminalViewModel localVm)
+                return localVm.IsConnected;
+            if (CurrentSession is ServerSessionViewModel serverVm)
+                return serverVm.IsConnected;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 현재 세션의 Busy 상태
+    /// </summary>
+    public bool IsBusy
+    {
+        get
+        {
+            if (CurrentSession is LocalTerminalViewModel localVm)
+                return localVm.IsBusy;
+            if (CurrentSession is ServerSessionViewModel serverVm)
+                return serverVm.IsBusy;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 현재 세션이 SSH 세션인지 여부
+    /// </summary>
+    public bool IsServerSession => CurrentSession is ServerSessionViewModel;
 
     public ICommand NewTabCommand { get; }
     public ICommand CloseTabCommand { get; }
@@ -125,6 +195,26 @@ public class MainViewModel : INotifyPropertyChanged
     /// </summary>
     public ICommand UnsplitCommand { get; }
 
+    /// <summary>
+    /// 파일 트리 토글 (공용)
+    /// </summary>
+    public ICommand ToggleFileTreeCommand { get; }
+
+    /// <summary>
+    /// 스니펫 패널 토글 (공용)
+    /// </summary>
+    public ICommand ToggleSnippetPanelCommand { get; }
+
+    /// <summary>
+    /// 블록 UI 토글 (공용)
+    /// </summary>
+    public ICommand ToggleBlockUICommand { get; }
+
+    /// <summary>
+    /// 출력 지우기 (공용)
+    /// </summary>
+    public ICommand ClearOutputCommand { get; }
+
     private bool _isSplitMode;
     private ISessionViewModel? _secondarySession;
     private Views.SplitPaneContainer.SplitOrientation _splitOrientation = Views.SplitPaneContainer.SplitOrientation.None;
@@ -177,7 +267,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             if (_config.SelectedProvider == AIProviderType.None)
             {
-                return "AI 없음";
+                return LocalizationService.Instance.GetString("ViewModel.NoAI");
             }
 
             var providerName = _config.SelectedProvider switch
@@ -231,14 +321,75 @@ public class MainViewModel : INotifyPropertyChanged
         // 키보드 단축키 호환용 별칭 커맨드
         AddNewSessionCommand = new RelayCommand(() => CreateNewTab());
         CloseSessionCommand = new RelayCommand<ISessionViewModel>(session => CloseTab(session));
-        ConnectSessionCommand = new RelayCommand<ServerSessionViewModel>(session => 
+        ConnectSessionCommand = new RelayCommand<ServerSessionViewModel>(session =>
         {
             if (session != null)
                 _ = ConnectToServerAsync(session);
         });
 
+        // 공용 하단 바 커맨드
+        ToggleFileTreeCommand = new RelayCommand(() =>
+        {
+            if (CurrentSession is LocalTerminalViewModel localVm)
+                localVm.IsFileTreeVisible = !localVm.IsFileTreeVisible;
+            else if (CurrentSession is ServerSessionViewModel serverVm)
+                serverVm.IsFileTreeVisible = !serverVm.IsFileTreeVisible;
+        });
+
+        ToggleSnippetPanelCommand = new RelayCommand(() =>
+        {
+            if (CurrentSession is LocalTerminalViewModel localVm)
+                localVm.ShowSnippetPanel = !localVm.ShowSnippetPanel;
+        });
+
+        ToggleBlockUICommand = new RelayCommand(() =>
+        {
+            if (CurrentSession != null)
+                CurrentSession.UseBlockUI = !CurrentSession.UseBlockUI;
+        });
+
+        ClearOutputCommand = new RelayCommand(() =>
+        {
+            if (CurrentSession is LocalTerminalViewModel localVm)
+                localVm.ClearOutputCommand?.Execute(null);
+            else if (CurrentSession is ServerSessionViewModel serverVm)
+            {
+                serverVm.Messages.Clear();
+                serverVm.CommandBlocks.Clear();
+            }
+        });
+
         // 첫 번째 탭 생성 (세션 선택 화면 표시)
         CreateNewTab();
+
+        // 리소스 모니터링 시작 (전체 프로그램 공통)
+        StartResourceMonitoring();
+    }
+
+    /// <summary>
+    /// 리소스 모니터링 타이머 시작
+    /// </summary>
+    private void StartResourceMonitoring()
+    {
+        _resourceMonitorTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1) // 1초마다 업데이트
+        };
+        _resourceMonitorTimer.Tick += OnResourceMonitorTimerTick;
+        _resourceMonitorTimer.Start();
+
+        // 초기값 설정
+        _resourceMonitor.Update();
+    }
+
+    /// <summary>
+    /// 리소스 모니터링 타이머 틱
+    /// </summary>
+    private void OnResourceMonitorTimerTick(object? sender, EventArgs e)
+    {
+        _resourceMonitor.Update();
+        OnPropertyChanged(nameof(CpuUsage));
+        OnPropertyChanged(nameof(MemoryUsageMB));
     }
 
     /// <summary>
@@ -372,8 +523,8 @@ public class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"연결 실패:\n{ex.Message}",
-                "연결 오류",
+                string.Format(LocalizationService.Instance.GetString("ViewModel.ConnectionFailed"), ex.Message),
+                LocalizationService.Instance.GetString("ViewModel.ConnectionError"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }

@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -34,6 +35,36 @@ public partial class LocalTerminalView : UserControl
         this.DataContextChanged += OnDataContextChanged;
         this.Loaded += OnLoaded;
         this.Unloaded += OnUnloaded;
+        this.SizeChanged += OnViewSizeChanged;
+
+        // IME 상태 변경 이벤트 구독 (한영 전환 시 버튼 자동 업데이트)
+        InputLanguageManager.Current.InputLanguageChanged += OnInputLanguageChanged;
+    }
+
+    /// <summary>
+    /// 뷰 크기 변경 시 터미널 컨트롤 강제 갱신
+    /// </summary>
+    private void OnViewSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // 인터랙티브 모드일 때만 터미널 갱신
+        if (DataContext is LocalTerminalViewModel vm && vm.IsInteractiveMode)
+        {
+            // 크기 변경이 완료된 후 터미널 갱신
+            Dispatcher.BeginInvoke(() =>
+            {
+                TerminalCtrl?.InvalidateVisual();
+                TerminalCtrl?.ResizeToFitImmediate();
+            }, System.Windows.Threading.DispatcherPriority.Render);
+        }
+
+        // 파일 트리도 갱신
+        if (DataContext is LocalTerminalViewModel { IsFileTreeVisible: true })
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                // FileTreePanel은 MainWindow에서 관리
+            }, System.Windows.Threading.DispatcherPriority.Render);
+        }
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -47,28 +78,33 @@ public partial class LocalTerminalView : UserControl
         {
             RestoreUIState();
         }
+
+        // 한영 버튼 초기 상태 설정 및 모니터링 시작
+        UpdateImeButtonText();
+        StartImeMonitoring();
     }
 
     /// <summary>
-    /// ViewModel의 UI 상태를 복원 (Visibility만 즉시 변경, 데이터 로드 없음)
+    /// ViewModel의 UI 상태를 복원
     /// </summary>
     private void RestoreUIState()
     {
-        if (DataContext is LocalTerminalViewModel vm)
-        {
-            // 체크박스는 IsFileTreeVisible 바인딩으로 자동 복원됨
-
-            // 파일 트리: Visibility만 즉시 변경 (재로드 없음)
-            FileTreePanelControl.Visibility = vm.IsFileTreeVisible ? Visibility.Visible : Visibility.Collapsed;
-
-            // 파일 뷰어: Visibility만 즉시 변경
-            FileViewerPanelControl.Visibility = vm.IsFileViewerVisible ? Visibility.Visible : Visibility.Collapsed;
-            FileViewerSplitter.Visibility = vm.IsFileViewerVisible ? Visibility.Visible : Visibility.Collapsed;
-        }
+        // Visibility는 IsFileTreeVisible/IsFileViewerVisible 바인딩으로 자동 복원됨
+        // 추가적인 UI 복원 로직이 필요하면 여기에 추가
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        // IME 상태 변경 이벤트 구독 해제
+        InputLanguageManager.Current.InputLanguageChanged -= OnInputLanguageChanged;
+
+        // IME 타이머 정리
+        if (_imeCheckTimer != null)
+        {
+            _imeCheckTimer.Stop();
+            _imeCheckTimer = null;
+        }
+
         // 터미널 컨트롤 정리
         TerminalCtrl?.Dispose();
     }
@@ -265,6 +301,12 @@ public partial class LocalTerminalView : UserControl
 
                 await vm.OpenFolderAsync(path);
 
+                // 터미널 크기를 즉시 올바르게 설정 (출력 전에!)
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    TerminalCtrl?.ResizeToFitImmediate();
+                }, System.Windows.Threading.DispatcherPriority.Loaded);
+
                 // 파일 트리 자동 표시 (ViewModel만 업데이트하면 토글 버튼도 자동 업데이트됨)
                 vm.IsFileTreeVisible = true;
                 await ShowFileTreeAsync(path);
@@ -307,6 +349,10 @@ public partial class LocalTerminalView : UserControl
                             await vm.ExecuteCurrentInputAsync();
 
                             Debug.WriteLine("[FolderSelected] AI CLI 명령어 실행 완료");
+
+                            // 4. 단계별 크기 로직이 자동으로 적절한 크기를 설정함
+                            // Claude Code는 터미널 크기를 감지하면 자동으로 웰컴 박스를 그림
+                            await Task.Delay(500); // Claude Code 초기화 대기
                         }
                         catch (Exception ex)
                         {
@@ -449,7 +495,9 @@ public partial class LocalTerminalView : UserControl
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ClaudeRunRequested] 예외 발생: {ex.Message}\n{ex.StackTrace}");
-                MessageBox.Show($"AI CLI 실행 중 오류가 발생했습니다:\n{ex.Message}", "오류",
+                MessageBox.Show(
+                    string.Format(LocalizationService.Instance.GetString("LocalTerminal.AICLIError"), ex.Message),
+                    LocalizationService.Instance.GetString("Common.Error"),
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         };
@@ -478,6 +526,12 @@ public partial class LocalTerminalView : UserControl
         {
             newVm.Activated += OnViewModelActivated;
             newVm.Deactivated += OnViewModelDeactivated;
+            newVm.RawOutputReceived += OnRawOutputReceived;
+
+            // CommandBlocks와 Messages 이벤트 등록
+            newVm.CommandBlocks.CollectionChanged += OnCommandBlocksChanged;
+            newVm.Messages.CollectionChanged += OnMessagesChanged;
+            newVm.PropertyChanged += OnViewModelPropertyChanged;
         }
 
         SetupAutoScroll();
@@ -491,24 +545,65 @@ public partial class LocalTerminalView : UserControl
     /// </summary>
     private async void OnViewModelActivated(object? sender, EventArgs e)
     {
+        Debug.WriteLine("[OnViewModelActivated] 탭 활성화됨");
+
+        if (DataContext is not LocalTerminalViewModel vm) return;
+
         // UI 상태 복원 (Visibility)
         RestoreUIState();
 
-        // 파일 트리 경로 복원 (탭마다 독립적)
-        if (DataContext is LocalTerminalViewModel vm &&
-            vm.IsFileTreeVisible &&
-            !string.IsNullOrEmpty(vm.FileTreeCurrentPath) &&
-            _isFileTreeInitialized)
+        // 인터랙티브 모드일 때 터미널 컨트롤 강제 갱신
+        if (vm.IsInteractiveMode)
         {
+            Debug.WriteLine("[OnViewModelActivated] 인터랙티브 모드 - 터미널 강제 갱신");
+            Dispatcher.BeginInvoke(() =>
+            {
+                TerminalCtrl?.InvalidateVisual();
+                TerminalCtrl?.ResizeToFitImmediate();
+            }, System.Windows.Threading.DispatcherPriority.Render);
+        }
+
+        // 파일 트리 경로 복원 및 강제 새로고침 (탭마다 독립적)
+        if (vm.IsFileTreeVisible && _isFileTreeInitialized)
+        {
+            Debug.WriteLine($"[OnViewModelActivated] 파일 트리 갱신 중... Path: {vm.FileTreeCurrentPath}");
             try
             {
-                await FileTreePanelControl.NavigateToAsync(vm.FileTreeCurrentPath);
+                // UI 스레드에서 약간의 지연 후 갱신 (렌더링 완료 대기)
+                await Dispatcher.InvokeAsync(async () =>
+                {
+                    // 파일 트리가 초기화되어 있으면 명시적으로 UI 갱신
+                    if (!string.IsNullOrEmpty(vm.FileTreeCurrentPath))
+                    {
+                        // 경로가 저장되어 있으면 해당 경로로 이동
+                        // FileTreePanel은 MainWindow에서 관리
+                        // await FileTreePanelControl.NavigateToAsync(vm.FileTreeCurrentPath);
+                    }
+                    else
+                    {
+                        // 경로가 없으면 현재 표시된 경로를 새로고침
+                        // FileTreePanel은 MainWindow에서 관리
+                        // await FileTreePanelControl.RefreshAsync();
+                    }
+
+                    // 파일 트리 UI 강제 갱신
+                    // FileTreePanel은 MainWindow에서 관리
+                }, System.Windows.Threading.DispatcherPriority.Loaded);
+
+                Debug.WriteLine("[OnViewModelActivated] 파일 트리 갱신 완료");
             }
-            catch
+            catch (Exception ex)
             {
-                // 경로 이동 실패 시 무시 (경로가 삭제되었을 수 있음)
+                Debug.WriteLine($"[OnViewModelActivated] 파일 트리 갱신 실패: {ex.Message}");
             }
         }
+
+        // 블록 UI나 터미널 뷰도 강제 갱신
+        Dispatcher.BeginInvoke(() =>
+        {
+            BlockScrollViewer?.InvalidateVisual();
+            TerminalScrollViewer?.InvalidateVisual();
+        }, System.Windows.Threading.DispatcherPriority.Render);
 
         // 파일 워처 활성화
         ActivateFileWatcher();
@@ -559,6 +654,10 @@ public partial class LocalTerminalView : UserControl
     /// </summary>
     private void OnRawOutputReceived(string rawData)
     {
+        // 디버그 로깅
+        var preview = rawData.Length > 100 ? rawData.Substring(0, 100) + "..." : rawData;
+        System.Diagnostics.Debug.WriteLine($"[OnRawOutputReceived] Length: {rawData.Length}, Preview: '{preview}'");
+
         Dispatcher.BeginInvoke(() =>
         {
             TerminalCtrl?.Write(rawData);
@@ -662,6 +761,30 @@ public partial class LocalTerminalView : UserControl
     {
         if (DataContext is not LocalTerminalViewModel vm) return;
 
+        // Ctrl+K: CommandPalette 열기
+        if (e.Key == Key.K && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            ShowCommandPalette();
+            return;
+        }
+
+        // 한영 전환키 처리 (HangulMode, 우측 Alt)
+        if (e.Key == Key.HangulMode || e.Key == Key.HanjaMode ||
+            (e.Key == Key.RightAlt && e.SystemKey == Key.None))
+        {
+            e.Handled = true;
+            ToggleIme(InputTextBox);
+            return;
+        }
+
+        // 기타 IME 관련 키는 기본 동작 허용
+        if (e.Key == Key.ImeProcessed || e.Key == Key.JunjaMode ||
+            e.Key == Key.KanaMode || e.Key == Key.KanjiMode)
+        {
+            return;
+        }
+
         // 화살표 위: 이전 히스토리
         if (e.Key == Key.Up)
         {
@@ -698,6 +821,56 @@ public partial class LocalTerminalView : UserControl
                 HandleClipboardImage();
             }
             // 텍스트만 있는 경우는 기본 동작 (e.Handled = false)
+        }
+    }
+
+    /// <summary>
+    /// 입력창 텍스트 변경 시 - 슬래시 명령어 감지
+    /// </summary>
+    private void InputTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (DataContext is not LocalTerminalViewModel vm) return;
+
+        // `/`로 시작하면 CommandPalette 표시
+        if (!string.IsNullOrEmpty(vm.UserInput) && vm.UserInput.StartsWith("/"))
+        {
+            ShowCommandPalette();
+        }
+    }
+
+    /// <summary>
+    /// CommandPalette 표시
+    /// </summary>
+    private void ShowCommandPalette()
+    {
+        if (DataContext is not LocalTerminalViewModel vm) return;
+
+        try
+        {
+            var config = ConfigService.Load();
+            var palette = new CommandPalette(config);
+            palette.Owner = Window.GetWindow(this);
+
+            if (palette.ShowDialog() == true)
+            {
+                // 명령어가 선택되었으면 입력창에 설정
+                if (!string.IsNullOrEmpty(palette.SelectedCommand))
+                {
+                    vm.UserInput = palette.SelectedCommand;
+                    InputTextBox.Focus();
+                    InputTextBox.CaretIndex = InputTextBox.Text.Length;
+                }
+                // 액션이 선택되었으면 실행
+                else if (!string.IsNullOrEmpty(palette.SelectedAction))
+                {
+                    // 액션 실행 (필요시 구현)
+                    System.Diagnostics.Debug.WriteLine($"Action selected: {palette.SelectedAction}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"CommandPalette 표시 실패: {ex.Message}");
         }
     }
 
@@ -858,7 +1031,9 @@ public partial class LocalTerminalView : UserControl
             var imagePath = ClipboardService.SaveClipboardImage();
             if (string.IsNullOrEmpty(imagePath))
             {
-                MessageBox.Show("클립보드에서 이미지를 가져오는데 실패했습니다.", "오류",
+                MessageBox.Show(
+                    LocalizationService.Instance.GetString("ServerSession.ImagePasteError"),
+                    LocalizationService.Instance.GetString("Common.Error"),
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -891,12 +1066,16 @@ public partial class LocalTerminalView : UserControl
                 }
 
                 // 사용자에게 알림
-                vm.AddMessage($"이미지가 저장되었습니다: {imagePath}", Models.MessageType.Info);
+                vm.AddMessage(
+                    string.Format(LocalizationService.Instance.GetString("LocalTerminal.ImageSaved"), imagePath),
+                    Models.MessageType.Info);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"이미지 붙여넣기 중 오류가 발생했습니다: {ex.Message}", "오류",
+            MessageBox.Show(
+                string.Format(LocalizationService.Instance.GetString("LocalTerminal.ImagePasteException"), ex.Message),
+                LocalizationService.Instance.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -933,9 +1112,18 @@ public partial class LocalTerminalView : UserControl
     {
         if (DataContext is not LocalTerminalViewModel vm) return;
 
-        // IME 관련 키는 기본 동작 허용 (한영 전환 등)
-        if (e.Key == Key.ImeProcessed || e.Key == Key.HangulMode || e.Key == Key.JunjaMode ||
-            e.Key == Key.HanjaMode || e.Key == Key.KanaMode || e.Key == Key.KanjiMode)
+        // 한영 전환키 처리 (HangulMode, 우측 Alt)
+        if (e.Key == Key.HangulMode || e.Key == Key.HanjaMode ||
+            (e.Key == Key.RightAlt && e.SystemKey == Key.None))
+        {
+            e.Handled = true;
+            ToggleIme(InteractiveInputTextBox);
+            return;
+        }
+
+        // 기타 IME 관련 키는 기본 동작 허용
+        if (e.Key == Key.ImeProcessed || e.Key == Key.JunjaMode ||
+            e.Key == Key.KanaMode || e.Key == Key.KanjiMode)
         {
             return;
         }
@@ -945,7 +1133,9 @@ public partial class LocalTerminalView : UserControl
         {
             if (InteractiveInputTextBox.SelectedText.Length > 0)
             {
-                // 텍스트가 선택되어 있으면 기본 복사 동작 허용
+                // 텍스트가 선택되어 있으면 명시적으로 복사
+                e.Handled = true;
+                Clipboard.SetText(InteractiveInputTextBox.SelectedText);
                 return;
             }
             // 선택된 텍스트가 없으면 Ctrl+C를 프로세스에 전송
@@ -954,7 +1144,7 @@ public partial class LocalTerminalView : UserControl
             return;
         }
 
-        // Ctrl+V: 이미지가 있으면 이미지 처리, 텍스트는 기본 붙여넣기 동작
+        // Ctrl+V: 이미지가 있으면 이미지 처리, 텍스트는 명시적으로 붙여넣기
         if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
         {
             if (ClipboardService.HasImage())
@@ -963,8 +1153,24 @@ public partial class LocalTerminalView : UserControl
                 HandleClipboardImage();
                 return;
             }
-            // 텍스트는 기본 붙여넣기 동작
-            return;
+
+            // 텍스트 붙여넣기 명시적 처리
+            if (Clipboard.ContainsText())
+            {
+                e.Handled = true;
+                var clipboardText = Clipboard.GetText();
+                if (!string.IsNullOrEmpty(clipboardText))
+                {
+                    var caretIndex = InteractiveInputTextBox.CaretIndex;
+                    var currentText = InteractiveInputTextBox.Text ?? "";
+
+                    // 현재 커서 위치에 텍스트 삽입
+                    var newText = currentText.Insert(caretIndex, clipboardText);
+                    InteractiveInputTextBox.Text = newText;
+                    InteractiveInputTextBox.CaretIndex = caretIndex + clipboardText.Length;
+                }
+                return;
+            }
         }
 
         // Ctrl+X: 텍스트가 선택되어 있으면 잘라내기 허용
@@ -972,7 +1178,20 @@ public partial class LocalTerminalView : UserControl
         {
             if (InteractiveInputTextBox.SelectedText.Length > 0)
             {
-                // 기본 잘라내기 동작 허용
+                // 텍스트가 선택되어 있으면 명시적으로 잘라내기
+                e.Handled = true;
+                var selectedText = InteractiveInputTextBox.SelectedText;
+                var selectionStart = InteractiveInputTextBox.SelectionStart;
+                var selectionLength = InteractiveInputTextBox.SelectionLength;
+
+                // 클립보드에 복사
+                Clipboard.SetText(selectedText);
+
+                // 선택된 텍스트 삭제
+                var currentText = InteractiveInputTextBox.Text ?? "";
+                var newText = currentText.Remove(selectionStart, selectionLength);
+                InteractiveInputTextBox.Text = newText;
+                InteractiveInputTextBox.CaretIndex = selectionStart;
                 return;
             }
             // 선택된 텍스트가 없으면 아무것도 안 함
@@ -1102,124 +1321,44 @@ public partial class LocalTerminalView : UserControl
     #region 파일 트리 패널
 
     /// <summary>
-    /// 파일 트리 토글 버튼 클릭
+    /// 파일 트리 토글 버튼 클릭 (MainWindow에서 처리)
     /// </summary>
-    private async void FileTreeToggle_Click(object sender, RoutedEventArgs e)
+    private void FileTreeToggle_Click(object sender, RoutedEventArgs e)
     {
-        // IsChecked는 IsFileTreeVisible에 바인딩되어 있으므로 자동 업데이트됨
-        if (FileTreeToggle.IsChecked == true)
-        {
-            await ShowFileTreeAsync();
-        }
-        else
-        {
-            HideFileTree();
-        }
+        // FileTreePanel은 MainWindow에서 관리하므로 여기서는 아무것도 하지 않음
     }
 
     /// <summary>
-    /// 파일 트리 표시 및 초기화
+    /// 파일 트리 표시 및 초기화 - MainWindow에서 처리
     /// </summary>
     private async System.Threading.Tasks.Task ShowFileTreeAsync(string? path = null)
     {
-        try
-        {
-            // 파일 트리 패널 이벤트 초기화
-            if (!_isFileTreeInitialized)
-            {
-                FileTreePanelControl.CloseRequested += (s, args) =>
-                {
-                    // IsChecked는 IsFileTreeVisible에 바인딩되어 있으므로 ViewModel만 업데이트
-                    if (DataContext is LocalTerminalViewModel vm)
-                    {
-                        vm.IsFileTreeVisible = false;  // 이렇게 하면 토글 버튼도 자동 업데이트됨
-                    }
-                    HideFileTree();
-                };
-
-                FileTreePanelControl.OpenInTerminalRequested += (s, folderPath) =>
-                {
-                    if (folderPath != null && DataContext is LocalTerminalViewModel vm)
-                    {
-                        vm.UserInput = $"cd \"{folderPath}\"";
-                    }
-                };
-
-                FileTreePanelControl.FileDoubleClicked += async (s, item) =>
-                {
-                    // 로컬 파일 더블클릭 시 파일 뷰어에서 열기
-                    if (!item.IsDirectory)
-                    {
-                        await OpenFileInViewerAsync(item.FullPath);
-                    }
-                };
-
-                // 디렉토리 변경 시 ViewModel의 경로 저장 (각 탭마다 독립적)
-                FileTreePanelControl.DirectoryChanged += (s, newPath) =>
-                {
-                    if (DataContext is LocalTerminalViewModel vm)
-                    {
-                        vm.FileTreeCurrentPath = newPath;
-                    }
-                };
-
-                _isFileTreeInitialized = true;
-            }
-
-            // 경로 결정 우선순위: 매개변수 > ViewModel 저장 경로 > 현재 디렉토리 > 홈 폴더
-            string startPath;
-            if (!string.IsNullOrEmpty(path))
-            {
-                startPath = path;
-            }
-            else if (DataContext is LocalTerminalViewModel vm)
-            {
-                // ViewModel에 저장된 파일 트리 경로가 있으면 사용 (탭 독립성)
-                startPath = vm.FileTreeCurrentPath
-                    ?? vm.CurrentDirectory
-                    ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-
-                // 경로 저장
-                vm.FileTreeCurrentPath = startPath;
-            }
-            else
-            {
-                startPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            }
-
-            await FileTreePanelControl.InitializeLocalAsync(startPath);
-            FileTreePanelControl.Visibility = Visibility.Visible;
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"파일 트리를 열 수 없습니다: {ex.Message}", "오류",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            FileTreeToggle.IsChecked = false;
-        }
+        // FileTreePanel은 MainWindow에서 관리
+        await System.Threading.Tasks.Task.CompletedTask;
     }
 
     /// <summary>
-    /// 파일 트리 숨김
+    /// 파일 트리 숨김 - MainWindow에서 처리
     /// </summary>
     private void HideFileTree()
     {
-        FileTreePanelControl.Visibility = Visibility.Collapsed;
+        // FileTreePanel은 MainWindow에서 관리
     }
 
     /// <summary>
-    /// 파일 워처 활성화 (탭 활성화 시)
+    /// 파일 워처 활성화 (탭 활성화 시) - MainWindow에서 처리
     /// </summary>
     public void ActivateFileWatcher()
     {
-        FileTreePanelControl.EnableFileWatcher();
+        // FileTreePanel은 MainWindow에서 관리
     }
 
     /// <summary>
-    /// 파일 워처 비활성화 (탭 비활성화 시)
+    /// 파일 워처 비활성화 (탭 비활성화 시) - MainWindow에서 처리
     /// </summary>
     public void DeactivateFileWatcher()
     {
-        FileTreePanelControl.DisableFileWatcher();
+        // FileTreePanel은 MainWindow에서 관리
     }
 
     #endregion
@@ -1315,8 +1454,8 @@ public partial class LocalTerminalView : UserControl
         if (sender is FrameworkElement element && element.Tag is CommandSnippet snippet)
         {
             var result = MessageBox.Show(
-                $"'{snippet.Name}' 스니펫을 삭제하시겠습니까?",
-                "스니펫 삭제",
+                string.Format(LocalizationService.Instance.GetString("LocalTerminal.DeleteSnippetConfirm"), snippet.Name),
+                LocalizationService.Instance.GetString("LocalTerminal.DeleteSnippetTitle"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
@@ -1480,6 +1619,219 @@ public partial class LocalTerminalView : UserControl
         if (_isFileViewerOverlay)
         {
             SetFileViewerOverlayMode(false);
+        }
+    }
+
+    #endregion
+
+    #region 한영 전환
+
+    // Win32 API for keyboard simulation and IME state
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+    [DllImport("imm32.dll")]
+    private static extern IntPtr ImmGetContext(IntPtr hWnd);
+
+    [DllImport("imm32.dll")]
+    private static extern bool ImmReleaseContext(IntPtr hWnd, IntPtr hIMC);
+
+    [DllImport("imm32.dll")]
+    private static extern bool ImmGetOpenStatus(IntPtr hIMC);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetFocus();
+
+    private const byte VK_HANGUL = 0x15;  // 한영 전환 키
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+
+    private System.Windows.Threading.DispatcherTimer? _imeCheckTimer;
+
+    /// <summary>
+    /// 인터랙티브 입력창 포커스 시 IME 상태 업데이트
+    /// </summary>
+    private void InteractiveInputTextBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        StartImeMonitoring();
+        UpdateImeButtonText();
+    }
+
+    /// <summary>
+    /// 인터랙티브 입력창 텍스트 변경 시 IME 상태 업데이트
+    /// </summary>
+    private void InteractiveInputTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateImeButtonText();
+    }
+
+    /// <summary>
+    /// IME 모니터링 시작
+    /// </summary>
+    private void StartImeMonitoring()
+    {
+        if (_imeCheckTimer == null)
+        {
+            _imeCheckTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(200)
+            };
+            _imeCheckTimer.Tick += (s, e) => UpdateImeButtonText();
+            _imeCheckTimer.Start();
+        }
+    }
+
+    /// <summary>
+    /// 한영 전환 토글 (키보드 입력 시)
+    /// </summary>
+    private void ToggleIme(System.Windows.Controls.TextBox textBox)
+    {
+        try
+        {
+            // 입력창에 포커스
+            textBox.Focus();
+
+            // Win32 API로 한영 전환 키(VK_HANGUL) 전송
+            keybd_event(VK_HANGUL, 0, 0, UIntPtr.Zero);  // Key Down
+            keybd_event(VK_HANGUL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);  // Key Up
+
+            Debug.WriteLine("[ToggleIme] 한영 전환 키 전송");
+
+            // IME 버튼 텍스트 업데이트 (여러 번 지연 후 체크)
+            Task.Run(async () =>
+            {
+                await Task.Delay(50);
+                Dispatcher.Invoke(UpdateImeButtonText);
+
+                await Task.Delay(100);
+                Dispatcher.Invoke(UpdateImeButtonText);
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ToggleIme] 오류: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// IME 언어 변경 이벤트 핸들러 (시스템에서 한영 전환 시 자동 호출)
+    /// </summary>
+    private void OnInputLanguageChanged(object sender, InputLanguageEventArgs e)
+    {
+        Debug.WriteLine($"[OnInputLanguageChanged] 언어 변경 감지: {e.NewLanguage.DisplayName}");
+
+        // UI 스레드에서 버튼 업데이트
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            UpdateImeButtonText();
+        }), System.Windows.Threading.DispatcherPriority.Normal);
+    }
+
+    /// <summary>
+    /// IME 버튼 텍스트 업데이트
+    /// </summary>
+    private void UpdateImeButtonText()
+    {
+        try
+        {
+            if (ImeToggleButton == null)
+                return;
+
+            // IMM32 API로 직접 IME 상태 확인
+            bool isKorean = false;
+
+            try
+            {
+                var hwnd = new System.Windows.Interop.WindowInteropHelper(Window.GetWindow(this)).Handle;
+                if (hwnd != IntPtr.Zero)
+                {
+                    IntPtr hIMC = ImmGetContext(hwnd);
+                    if (hIMC != IntPtr.Zero)
+                    {
+                        isKorean = ImmGetOpenStatus(hIMC);
+                        ImmReleaseContext(hwnd, hIMC);
+                    }
+                }
+            }
+            catch
+            {
+                // IMM32 실패 시 InputLanguageManager로 확인
+                var language = InputLanguageManager.Current.CurrentInputLanguage;
+                isKorean = language.Name.StartsWith("ko") || language.TwoLetterISOLanguageName == "ko";
+            }
+
+            // 버튼 텍스트 업데이트
+            ImeToggleButton.Content = isKorean ? "한" : "A";
+            ImeToggleButton.ToolTip = isKorean ? "한영 전환 (클릭하여 영문으로)" : "한영 전환 (클릭하여 한글로)";
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[UpdateImeButtonText] 오류: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 한영 전환 버튼 클릭
+    /// </summary>
+    private void ImeToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // 입력창에 포커스
+            InteractiveInputTextBox.Focus();
+
+            // Win32 API로 한영 전환 키(VK_HANGUL) 전송
+            keybd_event(VK_HANGUL, 0, 0, UIntPtr.Zero);  // Key Down
+            keybd_event(VK_HANGUL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);  // Key Up
+
+            Debug.WriteLine("[ImeToggleButton_Click] 한영 전환 키 전송");
+
+            // 여러 번 지연 후 체크 (IME 상태 변경에 시간이 걸림)
+            Task.Run(async () =>
+            {
+                await Task.Delay(50);
+                Dispatcher.Invoke(UpdateImeButtonText);
+
+                await Task.Delay(100);
+                Dispatcher.Invoke(UpdateImeButtonText);
+
+                await Task.Delay(150);
+                Dispatcher.Invoke(UpdateImeButtonText);
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ImeToggleButton_Click] 오류: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region Claude Code 환영 박스 트리거
+
+    /// <summary>
+    /// Claude Code CLI 환영 박스 표시를 위한 터미널 리사이즈 트리거
+    /// </summary>
+    private async void TriggerTerminalWelcomeBox(LocalTerminalViewModel vm)
+    {
+        try
+        {
+            // 현재 터미널 버퍼 크기 가져오기
+            int currentCols = TerminalCtrl?.Buffer?.Columns ?? 130;
+            int currentRows = TerminalCtrl?.Buffer?.Rows ?? 40;
+
+            Debug.WriteLine($"[TriggerWelcomeBox] 현재 크기: {currentCols}x{currentRows}");
+
+            // 크기를 1칸 늘렸다가 다시 원래대로 (리사이즈 이벤트 트리거)
+            // Claude Code CLI는 리사이즈 이벤트를 받으면 화면을 다시 그림
+            vm.ResizeTerminal(currentCols, currentRows + 1);
+            await Task.Delay(150);
+            vm.ResizeTerminal(currentCols, currentRows);
+
+            Debug.WriteLine($"[TriggerWelcomeBox] 리사이즈 완료");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[TriggerWelcomeBox] 오류: {ex.Message}");
         }
     }
 

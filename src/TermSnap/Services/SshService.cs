@@ -23,6 +23,7 @@ public class SshService : IDisposable
     private bool _isShellInitialized;
     private string _currentDirectory = "~";
     private readonly object _shellLock = new();
+    private bool _disposed;
 
     // 프롬프트 감지용 마커
     private const string PROMPT_MARKER = "###PROMPT_END###";
@@ -580,7 +581,43 @@ public class SshService : IDisposable
 
     public void Dispose()
     {
-        Disconnect();
-        _sshClient?.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // 관리 리소스 정리
+            try
+            {
+                // 이벤트 구독 해제
+                OutputReceived = null;
+
+                // 연결 종료
+                Disconnect();
+
+                // SSH 클라이언트 정리
+                _shellStream?.Dispose();
+                _shellStream = null;
+
+                _sshClient?.Dispose();
+                _sshClient = null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SshService] Dispose 중 오류: {ex.Message}");
+            }
+        }
+
+        _disposed = true;
+    }
+
+    ~SshService()
+    {
+        Dispose(false);
     }
 }

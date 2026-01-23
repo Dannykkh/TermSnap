@@ -20,6 +20,9 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         DispatcherUnhandledException += OnDispatcherUnhandledException;
 
+        // 언어 초기화 (테마보다 먼저 실행)
+        LocalizationService.Instance.Initialize();
+
         // 테마 초기화
         ThemeService.Instance.Initialize();
 

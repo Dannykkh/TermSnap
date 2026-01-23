@@ -68,6 +68,17 @@ public partial class SettingsWindow : Window
             LightThemeRadio.IsChecked = true;
         }
 
+        // 언어 설정 로드
+        var isEnglish = _config.Language == "en-US" || string.IsNullOrEmpty(_config.Language);
+        if (isEnglish)
+        {
+            EnglishLanguageRadio.IsChecked = true;
+        }
+        else
+        {
+            KoreanLanguageRadio.IsChecked = true;
+        }
+
         // 서버 프로필 로드
         _profiles.Clear();
         foreach (var profile in _config.ServerProfiles)
@@ -345,6 +356,32 @@ public partial class SettingsWindow : Window
 
     #endregion
 
+    #region 언어 관리
+
+    private void Language_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isLoading) return; // 초기 로드 중에는 무시
+
+        // 언어 변경 시 즉시 적용
+        var isEnglish = EnglishLanguageRadio.IsChecked == true;
+        var newLanguage = isEnglish ? "en-US" : "ko-KR";
+
+        if (LocalizationService.Instance.CurrentLanguage != newLanguage)
+        {
+            LocalizationService.Instance.CurrentLanguage = newLanguage;
+            LocalizationService.Instance.SaveLanguagePreference();
+
+            // 설정 창 재로드 알림
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("Settings.LanguageChanged.Message"),
+                LocalizationService.Instance.GetString("Settings.LanguageChanged.Title"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+    }
+
+    #endregion
+
     private void GetApiKey_Click(object sender, RoutedEventArgs e)
     {
         if (_apiKeyUrls.TryGetValue(_selectedProvider, out var url))
@@ -395,6 +432,9 @@ public partial class SettingsWindow : Window
 
             // 테마 설정 저장
             _config.Theme = DarkThemeRadio.IsChecked == true ? "Dark" : "Light";
+
+            // 언어 설정 저장
+            _config.Language = EnglishLanguageRadio.IsChecked == true ? "en-US" : "ko-KR";
 
             // 임베딩 설정 저장
             if (EmbeddingEnabledCheckBox.IsChecked == true)

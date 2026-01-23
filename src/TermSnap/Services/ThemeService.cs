@@ -9,8 +9,9 @@ namespace TermSnap.Services;
 /// </summary>
 public class ThemeService
 {
-    private static ThemeService? _instance;
-    public static ThemeService Instance => _instance ??= new ThemeService();
+    private static readonly Lazy<ThemeService> _instance =
+        new Lazy<ThemeService>(() => new ThemeService(), isThreadSafe: true);
+    public static ThemeService Instance => _instance.Value;
 
     private bool _isDarkMode = true;
     

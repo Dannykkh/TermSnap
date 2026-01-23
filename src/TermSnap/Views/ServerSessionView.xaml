@@ -67,6 +67,8 @@
                                TextWrapping="Wrap"
                                FontFamily="Consolas"
                                FontSize="13"
+                               LineHeight="18"
+                               BaselineOffset="0"
                                Foreground="{DynamicResource TextPrimaryBrush}"/>
                     <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss'}"
                                FontSize="10"
@@ -82,23 +84,13 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <!-- 파일 트리 패널 (좌측) -->
-        <local:FileTreePanel x:Name="FileTreePanelControl"
-                             Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
-                             Width="280"
-                             VerticalAlignment="Stretch"
-                             Visibility="Collapsed"/>
-
         <!-- 채팅 영역 (Block UI 또는 기존 메시지) -->
-        <Grid Grid.Row="0" Grid.Column="1">
+        <Grid Grid.Row="0" Grid.Column="0">
             <!-- 연결되지 않은 상태: 서버 연결 패널 -->
             <Border x:Name="ConnectionPanel"
                     Background="{DynamicResource SurfaceBrush}"
@@ -113,20 +105,20 @@
                                                      Width="64" Height="64"
                                                      HorizontalAlignment="Center"
                                                      Foreground="{DynamicResource PrimaryBrush}"/>
-                            <TextBlock Text="서버에 연결하세요"
+                            <TextBlock Text="{DynamicResource ServerSession.ConnectToServer}"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        HorizontalAlignment="Center"
                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                        Margin="0,16,0,8"/>
-                            <TextBlock Text="저장된 프로필을 선택하거나 새 서버를 추가하세요"
+                            <TextBlock Text="{DynamicResource ServerSession.SelectProfile}"
                                        FontSize="12"
                                        HorizontalAlignment="Center"
                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                        Margin="0,0,0,24"/>
 
                             <!-- 저장된 프로필 목록 -->
-                            <TextBlock Text="저장된 서버"
+                            <TextBlock Text="{DynamicResource ServerSession.SavedServers}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextSecondaryBrush}"
@@ -176,7 +168,7 @@
                                                         <!-- 편집 버튼 -->
                                                         <Button Grid.Column="2"
                                                                 Click="EditProfile_Click"
-                                                                ToolTip="프로필 편집"
+                                                                ToolTip="{DynamicResource ServerSession.EditProfile}"
                                                                 Padding="6"
                                                                 Margin="8,0"
                                                                 Style="{StaticResource MaterialDesignIconButton}">
@@ -184,7 +176,7 @@
                                                         </Button>
                                                         <!-- 연결 버튼 -->
                                                         <Button Grid.Column="3"
-                                                                Content="연결"
+                                                                Content="{DynamicResource ServerSession.Connect}"
                                                                 Click="ConnectProfile_Click"
                                                                 Padding="16,6"
                                                                 FontSize="12"
@@ -199,7 +191,7 @@
 
                             <!-- 프로필 없을 때 메시지 -->
                             <TextBlock x:Name="NoProfileMessage"
-                                       Text="저장된 서버가 없습니다"
+                                       Text="{DynamicResource ServerSession.NoSavedServers}"
                                        FontSize="12"
                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                        HorizontalAlignment="Center"
@@ -208,12 +200,12 @@
 
                             <!-- 버튼들 -->
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Button Content="새 서버 추가"
+                                <Button Content="{DynamicResource ServerSession.AddNewServer}"
                                         Click="AddNewServer_Click"
                                         Style="{StaticResource MaterialDesignOutlinedButton}"
                                         Margin="0,0,12,0"
                                         Padding="16,8"/>
-                                <Button Content="설정"
+                                <Button Content="{DynamicResource ServerSession.Settings}"
                                         Click="OpenSettings_Click"
                                         Style="{StaticResource MaterialDesignFlatButton}"
                                         Padding="16,8"/>
@@ -296,7 +288,7 @@
                                                      Width="18" Height="18"
                                                      VerticalAlignment="Center"
                                                      Foreground="{DynamicResource PrimaryBrush}"/>
-                            <TextBlock Text="자주 사용하는 명령어"
+                            <TextBlock Text="{DynamicResource ServerSession.FrequentCommands}"
                                        FontWeight="Bold"
                                        FontSize="12"
                                        Foreground="{DynamicResource TextPrimaryBrush}"
@@ -306,7 +298,7 @@
 
                         <!-- 검색 버튼 -->
                         <Button Grid.Column="1"
-                                ToolTip="명령어 검색"
+                                ToolTip="{DynamicResource ServerSession.SearchCommand}"
                                 Style="{StaticResource MaterialDesignIconButton}"
                                 Width="28" Height="28"
                                 Padding="0"
@@ -366,7 +358,7 @@
 
                                         <!-- 편집 버튼 -->
                                         <Button Grid.Row="0" Grid.Column="1" Grid.RowSpan="2"
-                                                ToolTip="편집 (설명 수정, AI 설명 생성)"
+                                                ToolTip="{DynamicResource ServerSession.EditCommand}"
                                                 Style="{StaticResource MaterialDesignIconButton}"
                                                 Width="24" Height="24"
                                                 Padding="0"
@@ -421,12 +413,12 @@
                                              Width="48" Height="48"
                                              Foreground="{DynamicResource TextSecondaryBrush}"
                                              HorizontalAlignment="Center"/>
-                    <TextBlock Text="아직 실행한 명령어가 없습니다"
+                    <TextBlock Text="{DynamicResource ServerSession.NoCommands}"
                                FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                Margin="0,12,0,0"
                                TextAlignment="Center"/>
-                    <TextBlock Text="명령어를 실행하면 여기에 표시됩니다"
+                    <TextBlock Text="{DynamicResource ServerSession.CommandsWillAppear}"
                                FontSize="11"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                Margin="0,4,0,0"
@@ -436,7 +428,7 @@
         </Border>
 
         <!-- 입력 영역 -->
-        <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+        <Grid Grid.Row="1" Grid.Column="0"
               Margin="10"
               IsEnabled="{Binding IsConnected}">
             <Grid.RowDefinitions>
@@ -459,7 +451,7 @@
                                              Width="16" Height="16"
                                              Foreground="{DynamicResource PrimaryBrush}"
                                              VerticalAlignment="Center"/>
-                    <TextBlock Text="현재 경로:"
+                    <TextBlock Text="{DynamicResource ServerSession.CurrentPath}"
                                FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                VerticalAlignment="Center"
@@ -497,7 +489,7 @@
                                                  Foreground="{DynamicResource PrimaryBrush}"
                                                  VerticalAlignment="Center"/>
                         <TextBlock x:Name="SuggestionSource"
-                                   Text="추천"
+                                   Text="{DynamicResource ServerSession.Recommended}"
                                    FontSize="11"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
@@ -552,6 +544,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- 추천 토글 (ON: AI 추천, OFF: 직접 명령어 실행) -->
@@ -586,101 +579,36 @@
                     </TextBox.InputBindings>
                 </TextBox>
 
+                <!-- 파일 트리 토글 버튼 -->
                 <Button Grid.Column="2"
+                        Command="{Binding ToggleFileTreeCommand}"
+                        ToolTip="파일 탐색기 토글 (Ctrl+B)"
+                        Width="48" Height="48"
+                        Margin="10,0,0,0">
+                    <materialDesign:PackIcon Kind="FolderOutline"
+                                             Width="20" Height="20"/>
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsFileTreeVisible}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <Button Grid.Column="3"
                         Command="{Binding SendMessageCommand}"
                         Margin="10,0,0,0"
                         Width="100"
                         Height="56"
                         Background="{DynamicResource PrimaryBrush}"
-                        Foreground="White"
+                        Foreground="{DynamicResource TextOnPrimaryBrush}"
                         BorderThickness="0"
-                        Content="전송"/>
+                        Content="{DynamicResource ServerSession.Send}"/>
             </Grid>
         </Grid>
-
-        <!-- 상태바 -->
-        <materialDesign:ColorZone Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
-                                   Mode="PrimaryLight"
-                                   Padding="10">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="Circle"
-                                            Width="12"
-                                            Height="12"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,5,0">
-                        <materialDesign:PackIcon.Style>
-                            <Style TargetType="materialDesign:PackIcon">
-                                <Setter Property="Foreground" Value="Red"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                                        <Setter Property="Foreground" Value="Green"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </materialDesign:PackIcon.Style>
-                    </materialDesign:PackIcon>
-                    <TextBlock Text="{Binding StatusMessage}"
-                               VerticalAlignment="Center"
-                               FontWeight="Bold"/>
-                </StackPanel>
-
-                <!-- 도구 버튼들 -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0">
-                    <!-- 파일 트리 토글 -->
-                    <ToggleButton x:Name="FileTreeToggle"
-                                  IsChecked="{Binding IsFileTreeVisible, Mode=TwoWay}"
-                                  ToolTip="파일 탐색기 (IDE 스타일)"
-                                  Style="{StaticResource MaterialDesignFlatPrimaryToggleButton}"
-                                  Width="32" Height="32"
-                                  Margin="0,0,8,0"
-                                  Click="FileTreeToggle_Click">
-                        <materialDesign:PackIcon Kind="FileTree" Width="18" Height="18"/>
-                    </ToggleButton>
-                    
-                    <!-- Block UI 토글 -->
-                    <ToggleButton IsChecked="{Binding UseBlockUI}"
-                                  ToolTip="블록보기"
-                                  Style="{StaticResource MaterialDesignFlatPrimaryToggleButton}"
-                                  Width="32" Height="32"
-                                  Margin="0,0,8,0">
-                        <materialDesign:PackIcon Kind="ViewAgendaOutline" Width="18" Height="18"/>
-                    </ToggleButton>
-                    
-                    <Rectangle Width="1" Fill="{DynamicResource BorderBrush}" Margin="4,4"/>
-                    
-                    <Button Command="{Binding OpenFileTransferCommand}"
-                            ToolTip="파일 전송 (SFTP)"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Padding="4">
-                        <materialDesign:PackIcon Kind="FolderNetwork" Width="20" Height="20"/>
-                    </Button>
-                    <Button Command="{Binding OpenLogViewerCommand}"
-                            ToolTip="로그 뷰어"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Padding="4">
-                        <materialDesign:PackIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
-                    </Button>
-                    <Button Command="{Binding OpenMonitorCommand}"
-                            ToolTip="서버 모니터링"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Padding="4">
-                        <materialDesign:PackIcon Kind="MonitorDashboard" Width="20" Height="20"/>
-                    </Button>
-                </StackPanel>
-
-                <ProgressBar Grid.Column="3"
-                             Width="100"
-                             IsIndeterminate="True"
-                             Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-            </Grid>
-        </materialDesign:ColorZone>
     </Grid>
 </UserControl>

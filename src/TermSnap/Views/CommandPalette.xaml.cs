@@ -42,6 +42,24 @@ namespace TermSnap.Views
         private readonly string? _serverProfile;
         private List<PaletteItem> _allItems = new();
 
+        // Brush 재사용 (성능 최적화 - Frozen 상태로 생성)
+        private static readonly SolidColorBrush BlueBrush = CreateFrozenBrush(33, 150, 243);
+        private static readonly SolidColorBrush GreenBrush = CreateFrozenBrush(76, 175, 80);
+        private static readonly SolidColorBrush PurpleBrush = CreateFrozenBrush(103, 58, 183);
+        private static readonly SolidColorBrush OrangeBrush = CreateFrozenBrush(255, 152, 0);
+        private static readonly SolidColorBrush TealBrush = CreateFrozenBrush(0, 188, 212);
+        private static readonly SolidColorBrush IndigoBrush = CreateFrozenBrush(63, 81, 181);
+        private static readonly SolidColorBrush GreyBrush = CreateFrozenBrush(96, 125, 139);
+        private static readonly SolidColorBrush BrownBrush = CreateFrozenBrush(121, 85, 72);
+        private static readonly SolidColorBrush RedBrush = CreateFrozenBrush(244, 67, 54);
+
+        private static SolidColorBrush CreateFrozenBrush(byte r, byte g, byte b)
+        {
+            var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+            brush.Freeze(); // 성능 최적화 - 불변 객체로 만들어 스레드 간 공유 가능
+            return brush;
+        }
+
         /// <summary>
         /// 선택된 항목
         /// </summary>
@@ -66,40 +84,21 @@ namespace TermSnap.Views
             Loaded += OnLoaded;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             SearchTextBox.Focus();
-            LoadAllItems();
+
+            // 먼저 스니펫과 액션만 로드 (빠름)
+            LoadSnippetsAndActions();
             UpdateResults();
+
+            // 히스토리는 백그라운드에서 로드
+            await LoadHistoryAsync();
         }
 
-        private void LoadAllItems()
+        private void LoadSnippetsAndActions()
         {
             _allItems.Clear();
-
-            // 히스토리 로드
-            try
-            {
-                var histories = string.IsNullOrEmpty(_serverProfile)
-                    ? HistoryDatabaseService.Instance.GetRecentHistory(50)
-                    : HistoryDatabaseService.Instance.GetHistoryByServer(_serverProfile, 50);
-
-                foreach (var history in histories)
-                {
-                    _allItems.Add(new PaletteItem
-                    {
-                        Title = history.UserInput,
-                        Subtitle = history.GeneratedCommand,
-                        Icon = "History",
-                        IconBackground = new SolidColorBrush(Color.FromRgb(33, 150, 243)), // Blue
-                        TypeText = "히스토리",
-                        TypeBackground = new SolidColorBrush(Color.FromRgb(33, 150, 243)),
-                        ItemType = PaletteItemType.History,
-                        Data = history
-                    });
-                }
-            }
-            catch { }
 
             // 스니펫 로드
             foreach (var snippet in _config.CommandSnippets.Snippets)
@@ -109,9 +108,9 @@ namespace TermSnap.Views
                     Title = snippet.Name,
                     Subtitle = snippet.Command,
                     Icon = "CodeBraces",
-                    IconBackground = new SolidColorBrush(Color.FromRgb(76, 175, 80)), // Green
+                    IconBackground = GreenBrush,
                     TypeText = "스니펫",
-                    TypeBackground = new SolidColorBrush(Color.FromRgb(76, 175, 80)),
+                    TypeBackground = GreenBrush,
                     ItemType = PaletteItemType.Snippet,
                     Data = snippet
                 });
@@ -120,31 +119,64 @@ namespace TermSnap.Views
             // 액션 추가
             var actions = new[]
             {
-                ("새 탭 열기", "OpenNewTab", "TabPlus", "#FF9800"),
-                ("서버 연결", "Connect", "LanConnect", "#4CAF50"),
-                ("연결 해제", "Disconnect", "LanDisconnect", "#F44336"),
-                ("파일 전송", "OpenFileTransfer", "FolderNetwork", "#2196F3"),
-                ("서버 모니터링", "OpenMonitor", "MonitorDashboard", "#9C27B0"),
-                ("로그 뷰어", "OpenLogViewer", "FileDocumentOutline", "#00BCD4"),
-                ("설정", "OpenSettings", "Cog", "#607D8B"),
-                ("히스토리", "OpenHistory", "History", "#795548"),
-                ("스니펫 관리", "OpenSnippets", "CodeBracesBox", "#3F51B5"),
+                ("새 탭 열기", "OpenNewTab", "TabPlus", OrangeBrush),
+                ("서버 연결", "Connect", "LanConnect", GreenBrush),
+                ("연결 해제", "Disconnect", "LanDisconnect", RedBrush),
+                ("파일 전송", "OpenFileTransfer", "FolderNetwork", BlueBrush),
+                ("서버 모니터링", "OpenMonitor", "MonitorDashboard", PurpleBrush),
+                ("로그 뷰어", "OpenLogViewer", "FileDocumentOutline", TealBrush),
+                ("설정", "OpenSettings", "Cog", GreyBrush),
+                ("히스토리", "OpenHistory", "History", BrownBrush),
+                ("스니펫 관리", "OpenSnippets", "CodeBracesBox", IndigoBrush),
             };
 
-            foreach (var (title, action, icon, color) in actions)
+            foreach (var (title, action, icon, brush) in actions)
             {
                 _allItems.Add(new PaletteItem
                 {
                     Title = title,
                     Subtitle = $"액션: {action}",
                     Icon = icon,
-                    IconBackground = (SolidColorBrush)new BrushConverter().ConvertFrom(color)!,
+                    IconBackground = brush,
                     TypeText = "액션",
-                    TypeBackground = new SolidColorBrush(Color.FromRgb(103, 58, 183)), // Purple
+                    TypeBackground = PurpleBrush,
                     ItemType = PaletteItemType.Action,
                     Data = action
                 });
             }
+        }
+
+        private async System.Threading.Tasks.Task LoadHistoryAsync()
+        {
+            try
+            {
+                // 백그라운드 스레드에서 히스토리 로드
+                var histories = await System.Threading.Tasks.Task.Run(() =>
+                {
+                    return string.IsNullOrEmpty(_serverProfile)
+                        ? HistoryDatabaseService.Instance.GetRecentHistory(50)
+                        : HistoryDatabaseService.Instance.GetHistoryByServer(_serverProfile, 50);
+                });
+
+                // UI 스레드에서 항목 추가
+                foreach (var history in histories)
+                {
+                    _allItems.Add(new PaletteItem
+                    {
+                        Title = history.UserInput,
+                        Subtitle = history.GeneratedCommand,
+                        Icon = "History",
+                        IconBackground = BlueBrush,
+                        TypeText = "히스토리",
+                        TypeBackground = BlueBrush,
+                        ItemType = PaletteItemType.History,
+                        Data = history
+                    });
+                }
+
+                UpdateResults();
+            }
+            catch { }
         }
 
         private void UpdateResults()

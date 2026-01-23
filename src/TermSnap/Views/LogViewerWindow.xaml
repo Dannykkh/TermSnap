@@ -1,7 +1,7 @@
 <Window x:Class="TermSnap.Views.LogViewerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="로그 뷰어"
+        Title="{DynamicResource LogViewer.Title}"
         Height="700" Width="1000"
         WindowStartupLocation="CenterScreen"
         Background="#1E1E1E">
@@ -25,7 +25,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" Text="로그 파일:" Foreground="White"
+                <TextBlock Grid.Column="0" Text="{DynamicResource LogViewer.LogFile}" Foreground="White"
                            VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                 <ComboBox x:Name="LogFileComboBox" Grid.Column="1"
@@ -49,7 +49,7 @@
                         Padding="15,5" Margin="0,0,5,0" BorderThickness="0">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text=">" FontWeight="Bold" Margin="0,0,5,0"/>
-                        <TextBlock Text="시작"/>
+                        <TextBlock Text="{DynamicResource LogViewer.Start}"/>
                     </StackPanel>
                 </Button>
 
@@ -59,18 +59,18 @@
                         IsEnabled="False">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="||" FontWeight="Bold" Margin="0,0,5,0"/>
-                        <TextBlock Text="중지"/>
+                        <TextBlock Text="{DynamicResource LogViewer.Stop}"/>
                     </StackPanel>
                 </Button>
 
                 <Button x:Name="ClearButton" Grid.Column="4" Click="ClearButton_Click"
                         Background="#3E3E42" Foreground="White"
                         Padding="15,5" Margin="0,0,5,0" BorderThickness="0">
-                    <TextBlock Text="지우기"/>
+                    <TextBlock Text="{DynamicResource LogViewer.Clear}"/>
                 </Button>
 
                 <CheckBox x:Name="AutoScrollCheckBox" Grid.Column="5"
-                          Content="자동 스크롤" Foreground="White"
+                          Content="{DynamicResource LogViewer.AutoScroll}" Foreground="White"
                           IsChecked="True" VerticalAlignment="Center"/>
             </Grid>
         </Border>
@@ -85,7 +85,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" Text="필터:" Foreground="#CCCCCC"
+                <TextBlock Grid.Column="0" Text="{DynamicResource LogViewer.Filter}" Foreground="#CCCCCC"
                            VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                 <TextBox x:Name="FilterTextBox" Grid.Column="1"
@@ -93,13 +93,13 @@
                          BorderThickness="0" Padding="5,3"
                          TextChanged="FilterTextBox_TextChanged"/>
 
-                <TextBlock Grid.Column="2" Text="레벨:" Foreground="#CCCCCC"
+                <TextBlock Grid.Column="2" Text="{DynamicResource LogViewer.Level}" Foreground="#CCCCCC"
                            VerticalAlignment="Center" Margin="10,0,10,0"/>
 
                 <ComboBox x:Name="LevelFilterComboBox" Grid.Column="3"
                           Width="100" SelectionChanged="LevelFilterComboBox_SelectionChanged"
                           Background="#3E3E42" Foreground="White">
-                    <ComboBoxItem Content="모두" IsSelected="True"/>
+                    <ComboBoxItem Content="{DynamicResource LogViewer.LevelAll}" IsSelected="True"/>
                     <ComboBoxItem Content="Error"/>
                     <ComboBoxItem Content="Warning"/>
                     <ComboBoxItem Content="Info"/>
@@ -165,11 +165,11 @@
                          VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                 <TextBlock x:Name="StatusText" Grid.Column="1"
-                           Text="대기 중" Foreground="White"
+                           Text="{DynamicResource LogViewer.Waiting}" Foreground="White"
                            VerticalAlignment="Center"/>
 
                 <TextBlock x:Name="LineCountText" Grid.Column="3"
-                           Text="0 줄" Foreground="White"
+                           Text="{DynamicResource LogViewer.LineCount}" Foreground="White"
                            VerticalAlignment="Center"/>
             </Grid>
         </Border>

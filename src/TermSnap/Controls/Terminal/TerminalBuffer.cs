@@ -18,7 +18,17 @@ public class TerminalBuffer
     private bool _isAlternateScreen = false;
     private int _savedCursorX;
     private int _savedCursorY;
-    private bool _lineNeedsClearAfterCR = false; // 캐리지 리턴 후 줄 정리 필요
+
+    // 스크롤 영역 (CSI r)
+    private int _scrollTop = 0;     // 0-based
+    private int _scrollBottom = -1;  // 0-based, -1 = Rows-1
+
+    // 마우스 트래킹 모드 (xterm 확장)
+    public bool MouseTrackingEnabled { get; set; } = false;        // ?1000h
+    public bool MouseButtonTracking { get; set; } = false;         // ?1002h
+    public bool MouseAnyEventTracking { get; set; } = false;       // ?1003h
+    public bool MouseFocusTracking { get; set; } = false;          // ?1004h
+    public bool MouseSgrMode { get; set; } = false;                // ?1006h
 
     public int Columns { get; private set; }
     public int Rows { get; private set; }
@@ -40,7 +50,7 @@ public class TerminalBuffer
     // 변경 알림
     public event Action? BufferChanged;
 
-    public TerminalBuffer(int columns = 120, int rows = 30, int maxScrollback = 10000)
+    public TerminalBuffer(int columns = 130, int rows = 40, int maxScrollback = 10000)
     {
         Columns = columns;
         Rows = rows;
@@ -59,7 +69,7 @@ public class TerminalBuffer
 
         var newCells = new TerminalCell[rows, columns];
 
-        // 기존 내용 복사
+        // 기존 내용 복사 (위쪽부터 복사)
         int copyRows = Math.Min(rows, Rows);
         int copyCols = Math.Min(columns, Columns);
 
@@ -95,6 +105,7 @@ public class TerminalBuffer
 
         BufferChanged?.Invoke();
     }
+
 
     /// <summary>
     /// 화면 전체 지우기
@@ -136,19 +147,6 @@ public class TerminalBuffer
     /// </summary>
     public void WriteChar(char c)
     {
-        // 캐리지 리턴 후 첫 번째 쓰기: 커서부터 줄 끝까지 지우기
-        if (_lineNeedsClearAfterCR)
-        {
-            for (int x = CursorX; x < Columns; x++)
-            {
-                if (CursorY >= 0 && CursorY < Rows)
-                {
-                    _cells[CursorY, x] = CreateEmptyCell();
-                }
-            }
-            _lineNeedsClearAfterCR = false;
-        }
-
         bool isWide = CharWidthHelper.IsWideChar(c);
         int charWidth = isWide ? 2 : 1;
 
@@ -211,10 +209,19 @@ public class TerminalBuffer
     /// </summary>
     public void LineFeed()
     {
-        _lineNeedsClearAfterCR = false; // 새 줄로 이동하므로 플래그 리셋
+        int scrollBottom = _scrollBottom < 0 ? Rows - 1 : _scrollBottom;
+
         CursorY++;
-        if (CursorY >= Rows)
+
+        // 스크롤 영역 내에서 하단을 벗어나면 스크롤
+        if (CursorY > scrollBottom)
         {
+            ScrollUp();
+            CursorY = scrollBottom;
+        }
+        else if (CursorY >= Rows)
+        {
+            // 스크롤 영역 밖에서도 전체 화면 경계 체크
             ScrollUp();
             CursorY = Rows - 1;
         }
@@ -222,13 +229,11 @@ public class TerminalBuffer
     }
 
     /// <summary>
-    /// 캐리지 리턴 (CR)
+    /// 캐리지 리턴 (CR) - 커서만 줄 시작으로 이동 (VT100 표준)
     /// </summary>
     public void CarriageReturn()
     {
         CursorX = 0;
-        // 다음 쓰기 작업 전에 줄의 나머지 부분을 지워야 함
-        _lineNeedsClearAfterCR = true;
         BufferChanged?.Invoke();
     }
 
@@ -259,24 +264,112 @@ public class TerminalBuffer
     /// </summary>
     public void ScrollUp(int lines = 1)
     {
+        int scrollTop = _scrollTop;
+        int scrollBottom = _scrollBottom < 0 ? Rows - 1 : _scrollBottom;
+
         for (int i = 0; i < lines; i++)
         {
-            // 맨 윗줄을 스크롤백에 저장
-            var topLine = new TerminalCell[Columns];
+            // 스크롤 영역이 전체 화면이면 스크롤백에 저장
+            if (scrollTop == 0 && scrollBottom == Rows - 1)
+            {
+                var topLine = new TerminalCell[Columns];
+                for (int x = 0; x < Columns; x++)
+                {
+                    topLine[x] = _cells[scrollTop, x];
+                }
+                _scrollbackBuffer.Add(topLine);
+
+                // 스크롤백 크기 제한
+                while (_scrollbackBuffer.Count > _maxScrollback)
+                {
+                    _scrollbackBuffer.RemoveAt(0);
+                }
+            }
+
+            // 스크롤 영역 내에서 한 줄씩 위로 이동
+            for (int y = scrollTop; y < scrollBottom; y++)
+            {
+                for (int x = 0; x < Columns; x++)
+                {
+                    _cells[y, x] = _cells[y + 1, x];
+                }
+            }
+
+            // 스크롤 영역의 마지막 줄 비우기
             for (int x = 0; x < Columns; x++)
             {
-                topLine[x] = _cells[0, x];
+                _cells[scrollBottom, x] = CreateEmptyCell();
             }
-            _scrollbackBuffer.Add(topLine);
+        }
+        BufferChanged?.Invoke();
+    }
 
-            // 스크롤백 크기 제한
-            while (_scrollbackBuffer.Count > _maxScrollback)
+    /// <summary>
+    /// 화면 아래로 스크롤 (CSI T)
+    /// </summary>
+    public void ScrollDown(int lines = 1)
+    {
+        int scrollTop = _scrollTop;
+        int scrollBottom = _scrollBottom < 0 ? Rows - 1 : _scrollBottom;
+
+        for (int i = 0; i < lines; i++)
+        {
+            // 스크롤 영역 내에서 한 줄씩 아래로 이동
+            for (int y = scrollBottom; y > scrollTop; y--)
             {
-                _scrollbackBuffer.RemoveAt(0);
+                for (int x = 0; x < Columns; x++)
+                {
+                    _cells[y, x] = _cells[y - 1, x];
+                }
             }
 
-            // 한 줄씩 위로 이동
-            for (int y = 0; y < Rows - 1; y++)
+            // 스크롤 영역의 첫 줄 비우기
+            for (int x = 0; x < Columns; x++)
+            {
+                _cells[scrollTop, x] = CreateEmptyCell();
+            }
+        }
+        BufferChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// 줄 삽입 (CSI L) - 현재 줄에 빈 줄 삽입하고 아래 줄들을 밀어냄
+    /// </summary>
+    public void InsertLines(int count = 1)
+    {
+        if (CursorY < 0 || CursorY >= Rows) return;
+
+        for (int i = 0; i < count && CursorY + i < Rows; i++)
+        {
+            // 아래쪽 줄들을 한 줄씩 아래로 이동
+            for (int y = Rows - 1; y > CursorY; y--)
+            {
+                for (int x = 0; x < Columns; x++)
+                {
+                    _cells[y, x] = _cells[y - 1, x];
+                }
+            }
+
+            // 현재 줄 비우기
+            for (int x = 0; x < Columns; x++)
+            {
+                _cells[CursorY, x] = CreateEmptyCell();
+            }
+        }
+        BufferChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// 줄 삭제 (CSI M) - 현재 줄을 삭제하고 아래 줄들을 위로 이동
+    /// </summary>
+    public void DeleteLines(int count = 1)
+    {
+        if (CursorY < 0 || CursorY >= Rows) return;
+
+        for (int i = 0; i < count && CursorY < Rows; i++)
+        {
+            // 아래쪽 줄들을 한 줄씩 위로 이동
+            for (int y = CursorY; y < Rows - 1; y++)
             {
                 for (int x = 0; x < Columns; x++)
                 {
@@ -294,12 +387,148 @@ public class TerminalBuffer
     }
 
     /// <summary>
+    /// 문자 삽입 (CSI @) - 현재 위치에 빈 문자 삽입하고 오른쪽 문자들 이동
+    /// </summary>
+    public void InsertChars(int count = 1)
+    {
+        if (CursorY < 0 || CursorY >= Rows || CursorX < 0 || CursorX >= Columns) return;
+
+        int insertCount = Math.Min(count, Columns - CursorX);
+
+        // 오른쪽 문자들을 이동
+        for (int x = Columns - 1; x >= CursorX + insertCount; x--)
+        {
+            _cells[CursorY, x] = _cells[CursorY, x - insertCount];
+        }
+
+        // 삽입 위치에 빈 셀 넣기
+        for (int x = CursorX; x < CursorX + insertCount && x < Columns; x++)
+        {
+            _cells[CursorY, x] = CreateEmptyCell();
+        }
+        BufferChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// 문자 삭제 (CSI P) - 현재 위치의 문자 삭제하고 오른쪽 문자들을 왼쪽으로 이동
+    /// </summary>
+    public void DeleteChars(int count = 1)
+    {
+        if (CursorY < 0 || CursorY >= Rows || CursorX < 0 || CursorX >= Columns) return;
+
+        int deleteCount = Math.Min(count, Columns - CursorX);
+
+        // 오른쪽 문자들을 왼쪽으로 이동
+        for (int x = CursorX; x < Columns - deleteCount; x++)
+        {
+            _cells[CursorY, x] = _cells[CursorY, x + deleteCount];
+        }
+
+        // 끝 부분을 빈 셀로 채우기
+        for (int x = Columns - deleteCount; x < Columns; x++)
+        {
+            _cells[CursorY, x] = CreateEmptyCell();
+        }
+        BufferChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// 문자 지우기 (CSI X) - 현재 위치부터 n개 문자를 빈 칸으로 교체
+    /// </summary>
+    public void EraseChars(int count = 1)
+    {
+        if (CursorY < 0 || CursorY >= Rows || CursorX < 0 || CursorX >= Columns) return;
+
+        int eraseCount = Math.Min(count, Columns - CursorX);
+
+        for (int x = CursorX; x < CursorX + eraseCount; x++)
+        {
+            _cells[CursorY, x] = CreateEmptyCell();
+        }
+        BufferChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// 커서 위치 저장 (ESC 7, CSI s)
+    /// </summary>
+    public void SaveCursor()
+    {
+        _savedCursorX = CursorX;
+        _savedCursorY = CursorY;
+    }
+
+    /// <summary>
+    /// 커서 위치 복원 (ESC 8, CSI u)
+    /// </summary>
+    public void RestoreCursor()
+    {
+        CursorX = Math.Max(0, Math.Min(_savedCursorX, Columns - 1));
+        CursorY = Math.Max(0, Math.Min(_savedCursorY, Rows - 1));
+        BufferChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// 스크롤 영역 설정 (CSI r)
+    /// </summary>
+    /// <param name="top">상단 줄 (1-based, 0이면 1로 취급)</param>
+    /// <param name="bottom">하단 줄 (1-based, 0이면 Rows로 취급)</param>
+    public void SetScrollingRegion(int top, int bottom)
+    {
+        // 1-based to 0-based 변환
+        int scrollTop = (top == 0 ? 1 : top) - 1;
+        int scrollBottom = (bottom == 0 ? Rows : bottom) - 1;
+
+        // 범위 검증
+        scrollTop = Math.Max(0, Math.Min(scrollTop, Rows - 1));
+        scrollBottom = Math.Max(0, Math.Min(scrollBottom, Rows - 1));
+
+        // 상단이 하단보다 크면 무시
+        if (scrollTop >= scrollBottom)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[TerminalBuffer] Invalid scroll region: top={top}, bottom={bottom}");
+            return;
+        }
+
+        _scrollTop = scrollTop;
+        _scrollBottom = scrollBottom;
+
+        // 커서를 홈 위치로 (VT100 표준)
+        CursorX = 0;
+        CursorY = 0;
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[TerminalBuffer] Set scroll region: {_scrollTop}-{_scrollBottom} (0-based)");
+    }
+
+    /// <summary>
+    /// 스크롤 영역 리셋 (전체 화면)
+    /// </summary>
+    public void ResetScrollingRegion()
+    {
+        _scrollTop = 0;
+        _scrollBottom = -1; // -1은 Rows-1을 의미
+        System.Diagnostics.Debug.WriteLine("[TerminalBuffer] Reset scroll region to full screen");
+    }
+
+    /// <summary>
     /// 커서 위치 설정 (1-based to 0-based)
     /// </summary>
     public void SetCursorPosition(int row, int col)
     {
-        CursorY = Math.Max(0, Math.Min(row - 1, Rows - 1));
-        CursorX = Math.Max(0, Math.Min(col - 1, Columns - 1));
+        int newY = Math.Max(0, Math.Min(row - 1, Rows - 1));
+        int newX = Math.Max(0, Math.Min(col - 1, Columns - 1));
+
+        // 범위 초과 시 디버그 로그 (터미널 크기 조정 필요)
+        if (col - 1 >= Columns || row - 1 >= Rows)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[TerminalBuffer] Cursor position out of range: requested ({row},{col}), " +
+                $"clamped to ({newY + 1},{newX + 1}), buffer size: {Columns}x{Rows}");
+        }
+
+        CursorY = newY;
+        CursorX = newX;
         BufferChanged?.Invoke();
     }
 
@@ -318,7 +547,6 @@ public class TerminalBuffer
     /// </summary>
     public void EraseToEndOfLine()
     {
-        _lineNeedsClearAfterCR = false; // 명시적 지우기이므로 플래그 리셋
         for (int x = CursorX; x < Columns; x++)
         {
             _cells[CursorY, x] = CreateEmptyCell();
@@ -331,7 +559,6 @@ public class TerminalBuffer
     /// </summary>
     public void EraseToStartOfLine()
     {
-        _lineNeedsClearAfterCR = false; // 명시적 지우기이므로 플래그 리셋
         for (int x = 0; x <= CursorX && x < Columns; x++)
         {
             _cells[CursorY, x] = CreateEmptyCell();
@@ -344,7 +571,6 @@ public class TerminalBuffer
     /// </summary>
     public void EraseLine()
     {
-        _lineNeedsClearAfterCR = false; // 명시적 지우기이므로 플래그 리셋
         for (int x = 0; x < Columns; x++)
         {
             _cells[CursorY, x] = CreateEmptyCell();
