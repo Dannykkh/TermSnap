@@ -1,0 +1,414 @@
+<Window x:Class="TermSnap.Views.PortForwardingManagerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        mc:Ignorable="d"
+        Title="{DynamicResource PortForwarding.Title}"
+        Height="600" Width="900"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        FontFamily="{DynamicResource MaterialDesignFont}">
+
+    <Window.Resources>
+        <!-- Status Color Converter -->
+        <Style x:Key="StatusIndicator" TargetType="Ellipse">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="Fill" Value="Gray"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="Running">
+                    <Setter Property="Fill" Value="#4CAF50"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Starting">
+                    <Setter Property="Fill" Value="#FFC107"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Error">
+                    <Setter Property="Fill" Value="#F44336"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Stopped">
+                    <Setter Property="Fill" Value="#9E9E9E"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="{DynamicResource PortForwarding.Title}"
+                       Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                       Margin="0,0,0,8"/>
+            <TextBlock Text="{DynamicResource PortForwarding.ActiveTunnels}"
+                       Style="{StaticResource MaterialDesignBody2TextBlock}"
+                       Foreground="{DynamicResource MaterialDesignBodyLight}"/>
+        </StackPanel>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel: Port Forwarding List -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- List -->
+                <Border Grid.Row="0"
+                        BorderBrush="{DynamicResource MaterialDesignDivider}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <ListBox x:Name="PortForwardingListBox"
+                             ItemsSource="{Binding PortForwardings}"
+                             SelectedItem="{Binding SelectedPortForwarding}"
+                             Background="Transparent"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="8,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Status Indicator -->
+                                    <Ellipse Grid.Column="0"
+                                             Style="{StaticResource StatusIndicator}"
+                                             Margin="0,0,12,0"
+                                             VerticalAlignment="Center"/>
+
+                                    <!-- Info -->
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Name}"
+                                                   FontWeight="Medium"
+                                                   FontSize="14"/>
+                                        <TextBlock Text="{Binding Description}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource MaterialDesignBodyLight}"/>
+                                    </StackPanel>
+
+                                    <!-- Type Badge -->
+                                    <Border Grid.Column="2"
+                                            Background="{DynamicResource MaterialDesignDivider}"
+                                            CornerRadius="2"
+                                            Padding="6,2"
+                                            VerticalAlignment="Center">
+                                        <TextBlock FontSize="10" FontWeight="Medium">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Type}" Value="Local">
+                                                            <Setter Property="Text" Value="LOCAL"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Type}" Value="Remote">
+                                                            <Setter Property="Text" Value="REMOTE"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Type}" Value="Dynamic">
+                                                            <Setter Property="Text" Value="SOCKS"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
+                <!-- Add Buttons -->
+                <UniformGrid Grid.Row="1" Rows="1" Columns="2" Margin="0,8,0,0">
+                    <Button Content="{DynamicResource PortForwarding.AddNew}"
+                            Command="{Binding AddPortForwardingCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Margin="0,0,4,0"
+                            Height="40"/>
+                    <Button Command="{Binding AddFromTemplateCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Margin="4,0,0,0"
+                            Height="40">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="StarOutline"
+                                                     Width="18"
+                                                     Height="18"
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,4,0"/>
+                            <TextBlock Text="{DynamicResource PortForwarding.AddFromTemplate}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </UniformGrid>
+            </Grid>
+
+            <!-- Divider -->
+            <Rectangle Grid.Column="1" Width="1"
+                       Fill="{DynamicResource MaterialDesignDivider}"
+                       Margin="16,0"/>
+
+            <!-- Right Panel: Details & Edit -->
+            <Grid Grid.Column="2">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8,0,0,0">
+                        <!-- No Selection Placeholder -->
+                        <TextBlock Text="{DynamicResource PortForwarding.NoTunnels}"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,100,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                   FontSize="14">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedPortForwarding}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <!-- Edit Form -->
+                        <StackPanel DataContext="{Binding SelectedPortForwarding}">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+
+                            <!-- Name -->
+                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="{DynamicResource PortForwarding.Name}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Margin="0,0,0,16"/>
+
+                            <!-- Type -->
+                            <ComboBox SelectedItem="{Binding Type}"
+                                      materialDesign:HintAssist.Hint="{DynamicResource PortForwarding.Type}"
+                                      Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                      Margin="0,0,0,16">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock>
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding}" Value="Local">
+                                                            <Setter Property="Text" Value="{DynamicResource PortForwarding.Type.Local}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding}" Value="Remote">
+                                                            <Setter Property="Text" Value="{DynamicResource PortForwarding.Type.Remote}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding}" Value="Dynamic">
+                                                            <Setter Property="Text" Value="{DynamicResource PortForwarding.Type.Dynamic}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+
+                            <!-- Local Settings -->
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding LocalHost, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="{DynamicResource PortForwarding.LocalHost}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+
+                                <TextBox Grid.Column="2"
+                                         Text="{Binding LocalPort, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="{DynamicResource PortForwarding.LocalPort}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         PreviewTextInput="NumberValidationTextBox"/>
+                            </Grid>
+
+                            <!-- Remote Settings (Hidden for Dynamic) -->
+                            <Grid Margin="0,0,0,16">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Type}" Value="Dynamic">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding RemoteHost, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="{DynamicResource PortForwarding.RemoteHost}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+
+                                <TextBox Grid.Column="2"
+                                         Text="{Binding RemotePort, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="{DynamicResource PortForwarding.RemotePort}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         PreviewTextInput="NumberValidationTextBox"/>
+                            </Grid>
+
+                            <!-- Auto Start -->
+                            <CheckBox Content="{DynamicResource PortForwarding.AutoStart}"
+                                      IsChecked="{Binding AutoStart}"
+                                      Margin="0,0,0,24"/>
+
+                            <!-- Status Info -->
+                            <Border Background="{DynamicResource MaterialDesignToolBarBackground}"
+                                    Padding="12"
+                                    CornerRadius="4"
+                                    Margin="0,0,0,16">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource PortForwarding.Status}"
+                                               FontWeight="Medium"
+                                               Margin="0,0,0,8"/>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Ellipse Style="{StaticResource StatusIndicator}"
+                                                 Margin="0,0,8,0"
+                                                 VerticalAlignment="Center"/>
+                                        <TextBlock VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Stopped">
+                                                            <Setter Property="Text" Value="{DynamicResource PortForwarding.Status.Stopped}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Starting">
+                                                            <Setter Property="Text" Value="{DynamicResource PortForwarding.Status.Starting}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Running">
+                                                            <Setter Property="Text" Value="{DynamicResource PortForwarding.Status.Running}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                            <Setter Property="Text" Value="{DynamicResource PortForwarding.Status.Error}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <!-- Error Message -->
+                                    <TextBlock Text="{Binding ErrorMessage}"
+                                               Foreground="#F44336"
+                                               TextWrapping="Wrap"
+                                               FontSize="12"
+                                               Margin="20,4,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <!-- Started At -->
+                                    <TextBlock FontSize="12" Margin="20,4,0,0"
+                                               Foreground="{DynamicResource MaterialDesignBodyLight}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Running">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                        <Run Text="{DynamicResource PortForwarding.StartedAt}"/>
+                                        <Run Text=": "/>
+                                        <Run Text="{Binding StartedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Action Buttons -->
+                            <StackPanel>
+                                <!-- Start/Stop Button (SSH 연결 시만) -->
+                                <Button Margin="0,0,0,8" Height="40">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                            <Setter Property="Content" Value="{DynamicResource PortForwarding.Start}"/>
+                                            <Setter Property="Command" Value="{Binding DataContext.StartPortForwardingCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                            <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.CanControl, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="Running">
+                                                    <Setter Property="Content" Value="{DynamicResource PortForwarding.Stop}"/>
+                                                    <Setter Property="Command" Value="{Binding DataContext.StopPortForwardingCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Setter Property="Background" Value="#F44336"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="Starting">
+                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+
+                                <!-- Delete Button -->
+                                <Button Content="{DynamicResource PortForwarding.Delete}"
+                                        Command="{Binding DataContext.DeletePortForwardingCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Height="40"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <!-- Bottom Buttons -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Content="{DynamicResource Common.Close}"
+                    Click="CloseButton_Click"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    Width="100"
+                    Height="36"/>
+        </StackPanel>
+    </Grid>
+</Window>

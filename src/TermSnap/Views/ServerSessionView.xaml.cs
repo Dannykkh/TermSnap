@@ -118,9 +118,12 @@ public partial class ServerSessionView : UserControl
 
         if (dialog.ShowDialog() == true && dialog.ResultProfile != null)
         {
+            // 최신 config 다시 로드
+            var currentConfig = ConfigService.Load();
+
             // 프로필 저장
-            _config.ServerProfiles.Add(dialog.ResultProfile);
-            ConfigService.Save(_config);
+            currentConfig.ServerProfiles.Add(dialog.ResultProfile);
+            ConfigService.Save(currentConfig);
 
             // 목록 갱신
             LoadSavedProfiles();
@@ -132,23 +135,58 @@ public partial class ServerSessionView : UserControl
     /// </summary>
     private void EditProfile_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.DataContext is ServerConfig profile)
+        try
         {
-            var index = _config.ServerProfiles.IndexOf(profile);
-            if (index < 0) return;
+            System.Diagnostics.Debug.WriteLine("EditProfile_Click 호출됨");
 
-            var dialog = new ProfileEditorDialog(profile);
+            if (sender is not Button button)
+            {
+                System.Diagnostics.Debug.WriteLine("sender가 Button이 아님");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"Button DataContext: {button.DataContext?.GetType().Name}");
+
+            if (button.DataContext is not ServerConfig profile)
+            {
+                System.Diagnostics.Debug.WriteLine("DataContext가 ServerConfig가 아님");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"프로필: {profile.ProfileName}");
+
+            // 최신 config 다시 로드
+            var currentConfig = ConfigService.Load();
+
+            var index = currentConfig.ServerProfiles.FindIndex(p => p.ProfileName == profile.ProfileName);
+            if (index < 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"프로필을 찾을 수 없음: {profile.ProfileName}");
+                MessageBox.Show($"프로필을 찾을 수 없습니다: {profile.ProfileName}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"프로필 인덱스: {index}, 대화상자 열기");
+
+            var dialog = new ProfileEditorDialog(currentConfig.ServerProfiles[index]);
             dialog.Owner = Window.GetWindow(this);
 
             if (dialog.ShowDialog() == true && dialog.ResultProfile != null)
             {
                 // 프로필 업데이트
-                _config.ServerProfiles[index] = dialog.ResultProfile;
-                ConfigService.Save(_config);
+                currentConfig.ServerProfiles[index] = dialog.ResultProfile;
+                ConfigService.Save(currentConfig);
 
                 // 목록 갱신
                 LoadSavedProfiles();
+
+                System.Diagnostics.Debug.WriteLine("프로필 업데이트 완료");
             }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"EditProfile_Click 예외: {ex.Message}");
+            MessageBox.Show($"프로필 편집 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

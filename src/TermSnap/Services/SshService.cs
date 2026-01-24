@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -556,6 +558,9 @@ public class SshService : IDisposable
     /// </summary>
     public void Disconnect()
     {
+        // Port Forwarding 정리 (자동 복구 목록은 유지)
+        StopAllPortForwardingsAsync(clearAutoRecover: false).Wait();
+
         // ShellStream 정리
         if (_shellStream != null)
         {
@@ -577,7 +582,470 @@ public class SshService : IDisposable
         }
 
         _currentDirectory = "~";
+
+        // Port Forwarding 상태 업데이트
+        lock (_portForwardingLock)
+        {
+            foreach (var config in _autoRecoverConfigs)
+            {
+                config.Status = PortForwardingStatus.Stopped;
+                config.StartedAt = null;
+            }
+        }
     }
+
+    #region Port Forwarding
+
+    private readonly Dictionary<string, ForwardedPort> _forwardedPorts = new();
+    private readonly object _portForwardingLock = new();
+    private readonly List<PortForwardingConfig> _autoRecoverConfigs = new();
+
+    /// <summary>
+    /// Local Port Forwarding 시작
+    /// </summary>
+    public async Task<bool> StartLocalPortForwardingAsync(PortForwardingConfig config)
+    {
+        if (!IsConnected || _sshClient == null)
+        {
+            config.Status = PortForwardingStatus.Error;
+            config.ErrorMessage = "SSH 연결이 되어있지 않습니다.";
+            return false;
+        }
+
+        return await Task.Run(() =>
+        {
+            try
+            {
+                lock (_portForwardingLock)
+                {
+                    var key = GetPortForwardingKey(config);
+
+                    // 이미 실행 중인지 확인
+                    if (_forwardedPorts.ContainsKey(key))
+                    {
+                        config.Status = PortForwardingStatus.Error;
+                        config.ErrorMessage = "이미 실행 중인 Port Forwarding입니다.";
+                        return false;
+                    }
+
+                    // 유효성 검사
+                    if (!config.Validate(out var validationError))
+                    {
+                        config.Status = PortForwardingStatus.Error;
+                        config.ErrorMessage = validationError;
+                        return false;
+                    }
+
+                    config.Status = PortForwardingStatus.Starting;
+
+                    // Local Port Forwarding 생성
+                    var forwardedPort = new ForwardedPortLocal(
+                        config.LocalHost,
+                        (uint)config.LocalPort,
+                        config.RemoteHost,
+                        (uint)config.RemotePort
+                    );
+
+                    // 이벤트 핸들러 등록
+                    forwardedPort.Exception += (sender, args) =>
+                    {
+                        config.Status = PortForwardingStatus.Error;
+                        config.ErrorMessage = args.Exception.Message;
+                        Debug.WriteLine($"[Port Forwarding] Error: {args.Exception.Message}");
+
+                        // 자동 복구 대상에서 제거
+                        lock (_portForwardingLock)
+                        {
+                            _autoRecoverConfigs.Remove(config);
+                        }
+                    };
+
+                    // SSH 클라이언트에 추가 및 시작
+                    _sshClient.AddForwardedPort(forwardedPort);
+                    forwardedPort.Start();
+
+                    _forwardedPorts[key] = forwardedPort;
+
+                    // 자동 복구 목록에 추가
+                    if (!_autoRecoverConfigs.Contains(config))
+                    {
+                        _autoRecoverConfigs.Add(config);
+                    }
+
+                    config.Status = PortForwardingStatus.Running;
+                    config.StartedAt = DateTime.Now;
+                    config.ErrorMessage = null;
+
+                    Debug.WriteLine($"[Port Forwarding] Started: {config.Description}");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                config.Status = PortForwardingStatus.Error;
+                config.ErrorMessage = ex.Message;
+                Debug.WriteLine($"[Port Forwarding] Failed to start: {ex.Message}");
+                return false;
+            }
+        });
+    }
+
+    /// <summary>
+    /// Remote Port Forwarding 시작
+    /// </summary>
+    public async Task<bool> StartRemotePortForwardingAsync(PortForwardingConfig config)
+    {
+        if (!IsConnected || _sshClient == null)
+        {
+            config.Status = PortForwardingStatus.Error;
+            config.ErrorMessage = "SSH 연결이 되어있지 않습니다.";
+            return false;
+        }
+
+        return await Task.Run(() =>
+        {
+            try
+            {
+                lock (_portForwardingLock)
+                {
+                    var key = GetPortForwardingKey(config);
+
+                    if (_forwardedPorts.ContainsKey(key))
+                    {
+                        config.Status = PortForwardingStatus.Error;
+                        config.ErrorMessage = "이미 실행 중인 Port Forwarding입니다.";
+                        return false;
+                    }
+
+                    if (!config.Validate(out var validationError))
+                    {
+                        config.Status = PortForwardingStatus.Error;
+                        config.ErrorMessage = validationError;
+                        return false;
+                    }
+
+                    config.Status = PortForwardingStatus.Starting;
+
+                    // Remote Port Forwarding 생성
+                    var forwardedPort = new ForwardedPortRemote(
+                        (uint)config.RemotePort,
+                        config.LocalHost,
+                        (uint)config.LocalPort
+                    );
+
+                    forwardedPort.Exception += (sender, args) =>
+                    {
+                        config.Status = PortForwardingStatus.Error;
+                        config.ErrorMessage = args.Exception.Message;
+                        Debug.WriteLine($"[Port Forwarding] Error: {args.Exception.Message}");
+
+                        lock (_portForwardingLock)
+                        {
+                            _autoRecoverConfigs.Remove(config);
+                        }
+                    };
+
+                    _sshClient.AddForwardedPort(forwardedPort);
+                    forwardedPort.Start();
+
+                    _forwardedPorts[key] = forwardedPort;
+
+                    if (!_autoRecoverConfigs.Contains(config))
+                    {
+                        _autoRecoverConfigs.Add(config);
+                    }
+
+                    config.Status = PortForwardingStatus.Running;
+                    config.StartedAt = DateTime.Now;
+                    config.ErrorMessage = null;
+
+                    Debug.WriteLine($"[Port Forwarding] Started: {config.Description}");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                config.Status = PortForwardingStatus.Error;
+                config.ErrorMessage = ex.Message;
+                Debug.WriteLine($"[Port Forwarding] Failed to start: {ex.Message}");
+                return false;
+            }
+        });
+    }
+
+    /// <summary>
+    /// Dynamic Port Forwarding (SOCKS Proxy) 시작
+    /// </summary>
+    public async Task<bool> StartDynamicPortForwardingAsync(PortForwardingConfig config)
+    {
+        if (!IsConnected || _sshClient == null)
+        {
+            config.Status = PortForwardingStatus.Error;
+            config.ErrorMessage = "SSH 연결이 되어있지 않습니다.";
+            return false;
+        }
+
+        return await Task.Run(() =>
+        {
+            try
+            {
+                lock (_portForwardingLock)
+                {
+                    var key = GetPortForwardingKey(config);
+
+                    if (_forwardedPorts.ContainsKey(key))
+                    {
+                        config.Status = PortForwardingStatus.Error;
+                        config.ErrorMessage = "이미 실행 중인 Port Forwarding입니다.";
+                        return false;
+                    }
+
+                    if (!config.Validate(out var validationError))
+                    {
+                        config.Status = PortForwardingStatus.Error;
+                        config.ErrorMessage = validationError;
+                        return false;
+                    }
+
+                    config.Status = PortForwardingStatus.Starting;
+
+                    // Dynamic Port Forwarding (SOCKS) 생성
+                    var forwardedPort = new ForwardedPortDynamic(
+                        config.LocalHost,
+                        (uint)config.LocalPort
+                    );
+
+                    forwardedPort.Exception += (sender, args) =>
+                    {
+                        config.Status = PortForwardingStatus.Error;
+                        config.ErrorMessage = args.Exception.Message;
+                        Debug.WriteLine($"[Port Forwarding] Error: {args.Exception.Message}");
+
+                        lock (_portForwardingLock)
+                        {
+                            _autoRecoverConfigs.Remove(config);
+                        }
+                    };
+
+                    _sshClient.AddForwardedPort(forwardedPort);
+                    forwardedPort.Start();
+
+                    _forwardedPorts[key] = forwardedPort;
+
+                    if (!_autoRecoverConfigs.Contains(config))
+                    {
+                        _autoRecoverConfigs.Add(config);
+                    }
+
+                    config.Status = PortForwardingStatus.Running;
+                    config.StartedAt = DateTime.Now;
+                    config.ErrorMessage = null;
+
+                    Debug.WriteLine($"[Port Forwarding] Started SOCKS Proxy: {config.Description}");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                config.Status = PortForwardingStatus.Error;
+                config.ErrorMessage = ex.Message;
+                Debug.WriteLine($"[Port Forwarding] Failed to start: {ex.Message}");
+                return false;
+            }
+        });
+    }
+
+    /// <summary>
+    /// Port Forwarding 중지
+    /// </summary>
+    public async Task<bool> StopPortForwardingAsync(PortForwardingConfig config, bool removeFromAutoRecover = true)
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                lock (_portForwardingLock)
+                {
+                    var key = GetPortForwardingKey(config);
+
+                    if (!_forwardedPorts.TryGetValue(key, out var forwardedPort))
+                    {
+                        config.Status = PortForwardingStatus.Stopped;
+                        return true;
+                    }
+
+                    // Port Forwarding 중지
+                    if (forwardedPort.IsStarted)
+                    {
+                        forwardedPort.Stop();
+                    }
+
+                    // SSH 클라이언트에서 제거
+                    if (_sshClient != null)
+                    {
+                        _sshClient.RemoveForwardedPort(forwardedPort);
+                    }
+
+                    forwardedPort.Dispose();
+                    _forwardedPorts.Remove(key);
+
+                    // 자동 복구 목록에서 제거 (사용자가 수동으로 중지한 경우)
+                    if (removeFromAutoRecover)
+                    {
+                        _autoRecoverConfigs.Remove(config);
+                    }
+
+                    config.Status = PortForwardingStatus.Stopped;
+                    config.StartedAt = null;
+                    config.ErrorMessage = null;
+
+                    Debug.WriteLine($"[Port Forwarding] Stopped: {config.Description}");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                config.Status = PortForwardingStatus.Error;
+                config.ErrorMessage = ex.Message;
+                Debug.WriteLine($"[Port Forwarding] Failed to stop: {ex.Message}");
+                return false;
+            }
+        });
+    }
+
+    /// <summary>
+    /// 모든 Port Forwarding 중지
+    /// </summary>
+    public async Task StopAllPortForwardingsAsync(bool clearAutoRecover = true)
+    {
+        await Task.Run(() =>
+        {
+            lock (_portForwardingLock)
+            {
+                foreach (var kvp in _forwardedPorts.ToList())
+                {
+                    try
+                    {
+                        var forwardedPort = kvp.Value;
+
+                        if (forwardedPort.IsStarted)
+                        {
+                            forwardedPort.Stop();
+                        }
+
+                        if (_sshClient != null)
+                        {
+                            _sshClient.RemoveForwardedPort(forwardedPort);
+                        }
+
+                        forwardedPort.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[Port Forwarding] Error stopping {kvp.Key}: {ex.Message}");
+                    }
+                }
+
+                _forwardedPorts.Clear();
+
+                if (clearAutoRecover)
+                {
+                    _autoRecoverConfigs.Clear();
+                }
+
+                Debug.WriteLine("[Port Forwarding] All port forwardings stopped");
+            }
+        });
+    }
+
+    /// <summary>
+    /// Port Forwarding 자동 복구 (재연결 시 호출)
+    /// </summary>
+    public async Task RecoverPortForwardingsAsync()
+    {
+        if (!IsConnected || _sshClient == null)
+        {
+            Debug.WriteLine("[Port Forwarding] Cannot recover: SSH not connected");
+            return;
+        }
+
+        List<PortForwardingConfig> configsToRecover;
+
+        lock (_portForwardingLock)
+        {
+            configsToRecover = _autoRecoverConfigs.ToList();
+        }
+
+        if (configsToRecover.Count == 0)
+        {
+            Debug.WriteLine("[Port Forwarding] No port forwardings to recover");
+            return;
+        }
+
+        Debug.WriteLine($"[Port Forwarding] Recovering {configsToRecover.Count} port forwardings...");
+
+        foreach (var config in configsToRecover)
+        {
+            try
+            {
+                // 상태 리셋
+                config.Status = PortForwardingStatus.Stopped;
+                config.ErrorMessage = null;
+
+                // 재시작
+                bool success = config.Type switch
+                {
+                    PortForwardingType.Local => await StartLocalPortForwardingAsync(config),
+                    PortForwardingType.Remote => await StartRemotePortForwardingAsync(config),
+                    PortForwardingType.Dynamic => await StartDynamicPortForwardingAsync(config),
+                    _ => false
+                };
+
+                if (success)
+                {
+                    Debug.WriteLine($"[Port Forwarding] Recovered: {config.Description}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[Port Forwarding] Failed to recover: {config.Description}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Port Forwarding] Error recovering {config.Description}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Port Forwarding 키 생성 (중복 방지용)
+    /// </summary>
+    private string GetPortForwardingKey(PortForwardingConfig config)
+    {
+        return config.Type switch
+        {
+            PortForwardingType.Local => $"L:{config.LocalHost}:{config.LocalPort}→{config.RemoteHost}:{config.RemotePort}",
+            PortForwardingType.Remote => $"R:{config.RemotePort}←{config.LocalHost}:{config.LocalPort}",
+            PortForwardingType.Dynamic => $"D:{config.LocalHost}:{config.LocalPort}",
+            _ => Guid.NewGuid().ToString()
+        };
+    }
+
+    /// <summary>
+    /// 실행 중인 Port Forwarding 목록
+    /// </summary>
+    public IReadOnlyDictionary<string, ForwardedPort> ActivePortForwardings
+    {
+        get
+        {
+            lock (_portForwardingLock)
+            {
+                return new Dictionary<string, ForwardedPort>(_forwardedPorts);
+            }
+        }
+    }
+
+    #endregion
 
     public void Dispose()
     {

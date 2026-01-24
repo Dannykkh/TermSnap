@@ -53,6 +53,14 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     private string _aicliElapsedTime = string.Empty;
     private string _aicliProgramName = string.Empty;
 
+    // 데이터 수신 스피너 (탭 헤더에 표시)
+    private DispatcherTimer? _spinnerTimer;
+    private DispatcherTimer? _dataReceivedTimer;
+    private string _spinnerText = string.Empty;
+    private int _spinnerIndex = 0;
+    private static readonly string[] SpinnerFrames = { "/", "-", "\\", "|" };
+    private DateTime? _lastDataReceivedTime;
+
     // 인터랙티브 모드 원시 출력 이벤트 (터미널 컨트롤용)
     public event Action<string>? RawOutputReceived;
 
@@ -80,6 +88,10 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     private InteractiveOutputHandler? _interactiveHandler;
     private NonInteractiveOutputHandler? _nonInteractiveHandler;
     private CommandBlock? _currentBlock;
+
+    // 인터랙티브 모드 출력 버퍼 (탭 전환 시 출력 손실 방지)
+    private readonly StringBuilder _interactiveOutputBuffer = new StringBuilder();
+    private const int MaxInteractiveBufferSize = 1024 * 1024; // 1MB 제한
 
     // 관리자 클래스들
     private readonly HistoryManager _historyManager = new();
@@ -155,10 +167,14 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             if (value)
             {
                 StartElapsedTimer();
+                // 인터랙티브 모드 시작 시 버퍼 초기화
+                _interactiveOutputBuffer.Clear();
             }
             else
             {
                 StopElapsedTimer();
+                // 인터랙티브 모드 종료 시 버퍼 비우기 (메모리 절약)
+                _interactiveOutputBuffer.Clear();
             }
         }
     }
@@ -215,6 +231,15 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     {
         get => _aicliProgramName;
         private set { _aicliProgramName = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// 데이터 수신 중 스피너 텍스트 (/, -, \, |)
+    /// </summary>
+    public string SpinnerText
+    {
+        get => _spinnerText;
+        private set { _spinnerText = value; OnPropertyChanged(); }
     }
 
     /// <summary>
@@ -518,7 +543,17 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     {
         // 인터랙티브 핸들러
         _interactiveHandler = new InteractiveOutputHandler();
-        _interactiveHandler.RawOutputReceived += (data) => RawOutputReceived?.Invoke(data);
+        _interactiveHandler.RawOutputReceived += (data) =>
+        {
+            // 버퍼에 저장 (탭이 안보일 때 대비)
+            AppendToInteractiveBuffer(data);
+
+            // 데이터 수신 시 스피너 시작
+            StartDataReceivingSpinner();
+
+            // TerminalControl에도 전달 (View 캐싱되어 있으면 계속 업데이트됨)
+            RawOutputReceived?.Invoke(data);
+        };
 
         // 비인터랙티브 핸들러
         _nonInteractiveHandler = new NonInteractiveOutputHandler();
@@ -989,6 +1024,106 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
 
     #endregion
 
+    #region 데이터 수신 스피너
+
+    /// <summary>
+    /// 데이터 수신 스피너 시작
+    /// </summary>
+    private void StartDataReceivingSpinner()
+    {
+        _lastDataReceivedTime = DateTime.Now;
+
+        // 스피너 타이머가 없으면 생성 및 시작
+        if (_spinnerTimer == null)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                _spinnerTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(100) // 100ms마다 스피너 업데이트
+                };
+                _spinnerTimer.Tick += OnSpinnerTick;
+                _spinnerTimer.Start();
+
+                // 즉시 스피너 표시
+                UpdateSpinnerFrame();
+            });
+        }
+
+        // 데이터 수신 확인 타이머 (500ms 동안 데이터 없으면 스피너 중지)
+        if (_dataReceivedTimer == null)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                _dataReceivedTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(500)
+                };
+                _dataReceivedTimer.Tick += OnDataReceivedTimerTick;
+                _dataReceivedTimer.Start();
+            });
+        }
+    }
+
+    /// <summary>
+    /// 스피너 프레임 업데이트
+    /// </summary>
+    private void OnSpinnerTick(object? sender, EventArgs e)
+    {
+        UpdateSpinnerFrame();
+    }
+
+    /// <summary>
+    /// 스피너 프레임 갱신
+    /// </summary>
+    private void UpdateSpinnerFrame()
+    {
+        _spinnerIndex = (_spinnerIndex + 1) % SpinnerFrames.Length;
+        SpinnerText = SpinnerFrames[_spinnerIndex];
+    }
+
+    /// <summary>
+    /// 데이터 수신 확인 타이머 (일정 시간 데이터 없으면 스피너 중지)
+    /// </summary>
+    private void OnDataReceivedTimerTick(object? sender, EventArgs e)
+    {
+        if (_lastDataReceivedTime.HasValue)
+        {
+            var elapsed = DateTime.Now - _lastDataReceivedTime.Value;
+            if (elapsed.TotalMilliseconds > 500)
+            {
+                // 500ms 동안 데이터 없으면 스피너 중지
+                StopDataReceivingSpinner();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 데이터 수신 스피너 중지
+    /// </summary>
+    private void StopDataReceivingSpinner()
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            if (_spinnerTimer != null)
+            {
+                _spinnerTimer.Stop();
+                _spinnerTimer = null;
+            }
+
+            if (_dataReceivedTimer != null)
+            {
+                _dataReceivedTimer.Stop();
+                _dataReceivedTimer = null;
+            }
+
+            SpinnerText = string.Empty;
+            _lastDataReceivedTime = null;
+        });
+    }
+
+    #endregion
+
     /// <summary>
     /// 특수 키 전송 (Tab, 화살표 등)
     /// </summary>
@@ -1004,6 +1139,32 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     public void ResizeTerminal(int columns, int rows)
     {
         _session?.ResizeTerminal(columns, rows);
+    }
+
+    /// <summary>
+    /// 인터랙티브 출력 버퍼에 데이터 추가 (크기 제한 적용)
+    /// </summary>
+    private void AppendToInteractiveBuffer(string data)
+    {
+        if (string.IsNullOrEmpty(data)) return;
+
+        _interactiveOutputBuffer.Append(data);
+
+        // 버퍼 크기 제한: 최대 크기 초과 시 앞부분 삭제
+        if (_interactiveOutputBuffer.Length > MaxInteractiveBufferSize)
+        {
+            var excessLength = _interactiveOutputBuffer.Length - MaxInteractiveBufferSize;
+            _interactiveOutputBuffer.Remove(0, excessLength);
+            System.Diagnostics.Debug.WriteLine($"[InteractiveBuffer] 버퍼 크기 초과, {excessLength}자 제거");
+        }
+    }
+
+    /// <summary>
+    /// 현재 인터랙티브 출력 버퍼 내용 (탭 복원 시 사용)
+    /// </summary>
+    public string GetInteractiveBuffer()
+    {
+        return _interactiveOutputBuffer.ToString();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -1040,6 +1201,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
 
         // 타이머 정리
         StopElapsedTimer();
+        StopDataReceivingSpinner();
         Disconnect();
 
         // 큰 컬렉션 정리 (메모리 누수 방지)

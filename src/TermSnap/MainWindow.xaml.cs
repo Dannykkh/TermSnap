@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using TermSnap.Core.Sessions;
 using TermSnap.Mcp;
@@ -19,6 +21,9 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private ISessionViewModel? _currentTrackedSession;
+
+    // View 캐싱 Dictionary (탭 전환 시 View 재사용)
+    private readonly Dictionary<ISessionViewModel, UIElement> _viewCache = new();
 
     public MainWindow()
     {
@@ -78,9 +83,17 @@ public partial class MainWindow : Window
                 _currentTrackedSession = _viewModel.CurrentSession;
             }
 
+            // View 캐싱: 현재 선택된 세션의 View 할당
+            UpdateSessionView();
+
             // 탭 전환 시 파일 트리 동기화
             _ = SyncFileTreePanelAsync();
             UpdateSnippetPanelVisibility();
+        }
+        else if (e.PropertyName == nameof(MainViewModel.SecondarySession))
+        {
+            // 분할 모드에서 보조 세션 변경 시에도 View 업데이트
+            UpdateSessionView();
         }
     }
 
@@ -89,7 +102,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void Sessions_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        // 제거된 세션의 PropertyChanged 구독 해제
+        // 제거된 세션의 PropertyChanged 구독 해제 및 View 캐시 정리
         if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems != null)
         {
             foreach (var item in e.OldItems)
@@ -102,6 +115,18 @@ public partial class MainWindow : Window
                     if (_currentTrackedSession == item)
                     {
                         _currentTrackedSession = null;
+                    }
+                }
+
+                // View 캐시에서 제거
+                if (item is ISessionViewModel sessionVm && _viewCache.Remove(sessionVm, out var cachedView))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ViewCache] 제거됨: {sessionVm.TabHeader}");
+
+                    // View가 IDisposable이면 정리
+                    if (cachedView is IDisposable disposableView)
+                    {
+                        disposableView.Dispose();
                     }
                 }
             }
@@ -121,6 +146,11 @@ public partial class MainWindow : Window
         else if (e.PropertyName == nameof(ISessionViewModel.ShowSnippetPanel))
         {
             // 스니펫 패널 가시성 변경 시 업데이트
+            UpdateSnippetPanelVisibility();
+        }
+        else if (e.PropertyName == nameof(ISessionViewModel.IsConnected))
+        {
+            // SSH 연결/해제 시 패널 교차 표시 업데이트
             UpdateSnippetPanelVisibility();
         }
     }
@@ -296,20 +326,176 @@ public partial class MainWindow : Window
                     break;
             }
         }
+
+        // View 업데이트
+        UpdateSessionView();
     }
 
     /// <summary>
-    /// 스니펫 패널 가시성 업데이트
+    /// 현재 세션의 View를 캐싱하거나 재사용하여 ContentControl에 할당
+    /// </summary>
+    private void UpdateSessionView()
+    {
+        // 주 세션 View 업데이트
+        if (_viewModel.SelectedSession != null)
+        {
+            var primaryView = GetOrCreateView(_viewModel.SelectedSession);
+
+            if (!_viewModel.IsSplitMode)
+            {
+                // 단일 모드: MainContentControl에 할당
+                if (MainContentControl.Content != primaryView)
+                {
+                    MainContentControl.Content = primaryView;
+                }
+            }
+            else
+            {
+                // 분할 모드: 방향에 따라 적절한 ContentControl에 할당
+                var container = _viewModel.SplitOrientation switch
+                {
+                    SplitPaneContainer.SplitOrientation.Horizontal => HorizontalSplitGrid,
+                    SplitPaneContainer.SplitOrientation.Vertical => VerticalSplitGrid,
+                    _ => null
+                };
+
+                if (container != null)
+                {
+                    // 첫 번째 ContentControl 찾기
+                    var contentControl = FindContentControl(container, 0);
+                    if (contentControl != null && contentControl.Content != primaryView)
+                    {
+                        contentControl.Content = primaryView;
+                    }
+                }
+            }
+        }
+
+        // 보조 세션 View 업데이트 (분할 모드)
+        if (_viewModel.IsSplitMode && _viewModel.SecondarySession != null)
+        {
+            var secondaryView = GetOrCreateView(_viewModel.SecondarySession);
+
+            var container = _viewModel.SplitOrientation switch
+            {
+                SplitPaneContainer.SplitOrientation.Horizontal => HorizontalSplitGrid,
+                SplitPaneContainer.SplitOrientation.Vertical => VerticalSplitGrid,
+                _ => null
+            };
+
+            if (container != null)
+            {
+                // 두 번째 ContentControl 찾기
+                var contentControl = FindContentControl(container, 2);
+                if (contentControl != null && contentControl.Content != secondaryView)
+                {
+                    contentControl.Content = secondaryView;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 세션의 View를 캐시에서 가져오거나 새로 생성
+    /// </summary>
+    private UIElement GetOrCreateView(ISessionViewModel session)
+    {
+        // 캐시에 있으면 재사용
+        if (_viewCache.TryGetValue(session, out var cachedView))
+        {
+            System.Diagnostics.Debug.WriteLine($"[ViewCache] 재사용: {session.TabHeader}");
+            return cachedView;
+        }
+
+        // 없으면 새로 생성하고 캐싱
+        UIElement newView = session switch
+        {
+            ServerSessionViewModel serverVm => new ServerSessionView { DataContext = serverVm },
+            LocalTerminalViewModel localVm => new LocalTerminalView { DataContext = localVm },
+            NewSessionSelectorViewModel selectorVm => new NewSessionSelectorView { DataContext = selectorVm },
+            _ => throw new NotSupportedException($"지원하지 않는 세션 타입: {session.GetType().Name}")
+        };
+
+        _viewCache[session] = newView;
+        System.Diagnostics.Debug.WriteLine($"[ViewCache] 새로 생성: {session.TabHeader}");
+
+        return newView;
+    }
+
+    /// <summary>
+    /// Grid에서 특정 위치(Row/Column)의 ContentControl 찾기
+    /// </summary>
+    private ContentControl? FindContentControl(Grid container, int position)
+    {
+        foreach (var child in container.Children)
+        {
+            if (child is ContentControl contentControl)
+            {
+                // Grid.Row 또는 Grid.Column 값 확인
+                var row = Grid.GetRow(contentControl);
+                var column = Grid.GetColumn(contentControl);
+
+                if (row == position || column == position)
+                {
+                    return contentControl;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 스니펫 패널 가시성 업데이트 (로컬 터미널/SSH 서버 교차 표시)
     /// </summary>
     private void UpdateSnippetPanelVisibility()
     {
         if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
         {
+            // 로컬 터미널: 스니펫 패널 표시
             SnippetPanel.Visibility = localVm.ShowSnippetPanel ? Visibility.Visible : Visibility.Collapsed;
+            FrequentCommandsPanel.Visibility = Visibility.Collapsed;
+        }
+        else if (_viewModel.CurrentSession is ServerSessionViewModel serverVm && serverVm.IsConnected)
+        {
+            // SSH 서버: Frequent Commands 패널 표시
+            SnippetPanel.Visibility = Visibility.Collapsed;
+            FrequentCommandsPanel.Visibility = Visibility.Visible;
         }
         else
         {
+            // 연결 안됨: 둘 다 숨김
             SnippetPanel.Visibility = Visibility.Collapsed;
+            FrequentCommandsPanel.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>
+    /// Frequent Commands 검색 버튼 클릭
+    /// </summary>
+    private void SearchCommands_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.CurrentSession is ServerSessionViewModel serverVm)
+        {
+            // 명령어 관리 창 열기
+            var commandManager = new CommandManagerWindow(serverVm.FrequentCommands);
+            commandManager.Owner = this;
+            commandManager.ShowDialog();
+        }
+    }
+
+    /// <summary>
+    /// Frequent Command 편집 버튼 클릭
+    /// </summary>
+    private void EditFrequentCommand_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is FrequentCommand command &&
+            _viewModel.CurrentSession is ServerSessionViewModel)
+        {
+            // 명령어 상세 정보 표시 - ShowCommandDetailCmd 실행
+            if (_viewModel.CurrentSession is ServerSessionViewModel serverVm)
+            {
+                serverVm.ShowCommandDetailCmd.Execute(command);
+            }
         }
     }
 

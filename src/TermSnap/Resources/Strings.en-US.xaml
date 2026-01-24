@@ -724,6 +724,9 @@
     <system:String x:Key="ProfileEditor.Passphrase">Passphrase (Optional)</system:String>
     <system:String x:Key="ProfileEditor.AddToFavorites">Add to Favorites</system:String>
     <system:String x:Key="ProfileEditor.Notes">Notes (Optional)</system:String>
+    <system:String x:Key="ProfileEditor.PortForwarding">Port Forwarding</system:String>
+    <system:String x:Key="ProfileEditor.ManagePortForwarding">Manage Port Forwarding...</system:String>
+    <system:String x:Key="ProfileEditor.PortForwardingCount">{0} configured</system:String>
 
     <!-- HistorySearchPopup -->
     <system:String x:Key="HistorySearch.WindowTitle">Command History Search</system:String>
@@ -798,5 +801,40 @@
     <system:String x:Key="CommandManager.BackToList">List</system:String>
     <system:String x:Key="CommandManager.Save">Save</system:String>
     <system:String x:Key="CommandManager.Delete">Delete</system:String>
+
+    <!-- Port Forwarding -->
+    <system:String x:Key="PortForwarding.Title">Port Forwarding Manager</system:String>
+    <system:String x:Key="PortForwarding.AddNew">Add New Tunnel</system:String>
+    <system:String x:Key="PortForwarding.AddFromTemplate">Add from Template</system:String>
+    <system:String x:Key="PortForwarding.Type">Type</system:String>
+    <system:String x:Key="PortForwarding.Type.Local">Local (Local → Remote)</system:String>
+    <system:String x:Key="PortForwarding.Type.Remote">Remote (Remote → Local)</system:String>
+    <system:String x:Key="PortForwarding.Type.Dynamic">Dynamic (SOCKS Proxy)</system:String>
+    <system:String x:Key="PortForwarding.Name">Name</system:String>
+    <system:String x:Key="PortForwarding.LocalHost">Local Host</system:String>
+    <system:String x:Key="PortForwarding.LocalPort">Local Port</system:String>
+    <system:String x:Key="PortForwarding.RemoteHost">Remote Host</system:String>
+    <system:String x:Key="PortForwarding.RemotePort">Remote Port</system:String>
+    <system:String x:Key="PortForwarding.AutoStart">Auto-start with SSH connection</system:String>
+    <system:String x:Key="PortForwarding.Status">Status</system:String>
+    <system:String x:Key="PortForwarding.Status.Stopped">Stopped</system:String>
+    <system:String x:Key="PortForwarding.Status.Starting">Starting</system:String>
+    <system:String x:Key="PortForwarding.Status.Running">Running</system:String>
+    <system:String x:Key="PortForwarding.Status.Error">Error</system:String>
+    <system:String x:Key="PortForwarding.Start">Start</system:String>
+    <system:String x:Key="PortForwarding.Stop">Stop</system:String>
+    <system:String x:Key="PortForwarding.Edit">Edit</system:String>
+    <system:String x:Key="PortForwarding.Delete">Delete</system:String>
+    <system:String x:Key="PortForwarding.DeleteConfirm">Are you sure you want to delete this port forwarding?</system:String>
+    <system:String x:Key="PortForwarding.ActiveTunnels">Active Tunnels</system:String>
+    <system:String x:Key="PortForwarding.NoTunnels">No active tunnels</system:String>
+    <system:String x:Key="PortForwarding.Description">Description</system:String>
+    <system:String x:Key="PortForwarding.ConnectionCount">Connections</system:String>
+    <system:String x:Key="PortForwarding.StartedAt">Started At</system:String>
+    <system:String x:Key="PortForwarding.Error">Error</system:String>
+    <system:String x:Key="PortForwarding.Validation.NameRequired">Please enter a name</system:String>
+    <system:String x:Key="PortForwarding.Validation.LocalPortInvalid">Local port must be between 1-65535</system:String>
+    <system:String x:Key="PortForwarding.Validation.RemoteHostRequired">Please enter remote host</system:String>
+    <system:String x:Key="PortForwarding.Validation.RemotePortInvalid">Remote port must be between 1-65535</system:String>
 
 </ResourceDictionary>

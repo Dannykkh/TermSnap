@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace TermSnap.Models;
 
@@ -30,6 +31,9 @@ public class ServerConfig
 
     // 서버 메모 (MySQL 접속 정보, 중요 경로 등)
     public string Notes { get; set; } = string.Empty;
+
+    // Port Forwarding 설정 목록
+    public List<PortForwardingConfig> PortForwardings { get; set; } = new();
 
     /// <summary>
     /// 설정이 유효한지 확인
@@ -65,7 +69,8 @@ public class ServerConfig
             AuthType = AuthType,
             LastConnected = LastConnected,
             IsFavorite = IsFavorite,
-            Notes = Notes
+            Notes = Notes,
+            PortForwardings = new List<PortForwardingConfig>(PortForwardings)
         };
     }
 
