@@ -532,6 +532,12 @@ public partial class LocalTerminalView : UserControl
             newVm.CommandBlocks.CollectionChanged += OnCommandBlocksChanged;
             newVm.Messages.CollectionChanged += OnMessagesChanged;
             newVm.PropertyChanged += OnViewModelPropertyChanged;
+
+            // 인터랙티브 모드일 때 버퍼 복원 (View가 새로 생성된 경우)
+            if (newVm.IsInteractiveMode)
+            {
+                RestoreInteractiveBuffer(newVm);
+            }
         }
 
         SetupAutoScroll();
@@ -553,13 +559,15 @@ public partial class LocalTerminalView : UserControl
         RestoreUIState();
 
         // 인터랙티브 모드일 때 터미널 컨트롤 강제 갱신
+        // 버퍼 복원은 View가 새로 생성될 때만 (OnDataContextChanged에서 처리)
+        // View 캐싱이 작동하면 TerminalControl은 이미 내용을 가지고 있음
         if (vm.IsInteractiveMode)
         {
-            Debug.WriteLine("[OnViewModelActivated] 인터랙티브 모드 - 터미널 강제 갱신");
+            Debug.WriteLine("[OnViewModelActivated] 인터랙티브 모드 - 터미널 갱신");
             Dispatcher.BeginInvoke(() =>
             {
+                // 화면 갱신만 (버퍼 복원 안 함)
                 TerminalCtrl?.InvalidateVisual();
-                TerminalCtrl?.ResizeToFitImmediate();
             }, System.Windows.Threading.DispatcherPriority.Render);
         }
 
@@ -1128,23 +1136,21 @@ public partial class LocalTerminalView : UserControl
             return;
         }
 
-        // Ctrl+C: 텍스트가 선택되어 있으면 복사, 아니면 프로세스에 전송
+        // Ctrl+C: 선택된 텍스트가 없으면 프로세스에 Ctrl+C 전송 (종료 신호)
         if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            if (InteractiveInputTextBox.SelectedText.Length > 0)
+            if (InteractiveInputTextBox.SelectedText.Length == 0)
             {
-                // 텍스트가 선택되어 있으면 명시적으로 복사
+                // 선택된 텍스트가 없으면 Ctrl+C를 프로세스에 전송
                 e.Handled = true;
-                Clipboard.SetText(InteractiveInputTextBox.SelectedText);
+                await vm.SendSpecialKeyAsync("\x03");
                 return;
             }
-            // 선택된 텍스트가 없으면 Ctrl+C를 프로세스에 전송
-            e.Handled = true;
-            await vm.SendSpecialKeyAsync("\x03");
+            // 선택된 텍스트가 있으면 CommandBinding에서 처리됨 (복사)
             return;
         }
 
-        // Ctrl+V: 이미지가 있으면 이미지 처리, 텍스트는 명시적으로 붙여넣기
+        // Ctrl+V: 이미지가 있으면 이미지 처리
         if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
         {
             if (ClipboardService.HasImage())
@@ -1153,56 +1159,13 @@ public partial class LocalTerminalView : UserControl
                 HandleClipboardImage();
                 return;
             }
-
-            // 텍스트 붙여넣기 명시적 처리
-            if (Clipboard.ContainsText())
-            {
-                e.Handled = true;
-                var clipboardText = Clipboard.GetText();
-                if (!string.IsNullOrEmpty(clipboardText))
-                {
-                    var caretIndex = InteractiveInputTextBox.CaretIndex;
-                    var currentText = InteractiveInputTextBox.Text ?? "";
-
-                    // 현재 커서 위치에 텍스트 삽입
-                    var newText = currentText.Insert(caretIndex, clipboardText);
-                    InteractiveInputTextBox.Text = newText;
-                    InteractiveInputTextBox.CaretIndex = caretIndex + clipboardText.Length;
-                }
-                return;
-            }
-        }
-
-        // Ctrl+X: 텍스트가 선택되어 있으면 잘라내기 허용
-        if (e.Key == Key.X && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            if (InteractiveInputTextBox.SelectedText.Length > 0)
-            {
-                // 텍스트가 선택되어 있으면 명시적으로 잘라내기
-                e.Handled = true;
-                var selectedText = InteractiveInputTextBox.SelectedText;
-                var selectionStart = InteractiveInputTextBox.SelectionStart;
-                var selectionLength = InteractiveInputTextBox.SelectionLength;
-
-                // 클립보드에 복사
-                Clipboard.SetText(selectedText);
-
-                // 선택된 텍스트 삭제
-                var currentText = InteractiveInputTextBox.Text ?? "";
-                var newText = currentText.Remove(selectionStart, selectionLength);
-                InteractiveInputTextBox.Text = newText;
-                InteractiveInputTextBox.CaretIndex = selectionStart;
-                return;
-            }
-            // 선택된 텍스트가 없으면 아무것도 안 함
-            e.Handled = true;
+            // 텍스트만 있으면 CommandBinding에서 처리됨
             return;
         }
 
-        // Ctrl+A: 전체 선택 허용
-        if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
+        // Ctrl+X, Ctrl+A: CommandBinding에서 처리됨 (기본 동작)
+        if ((e.Key == Key.X || e.Key == Key.A) && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            // 기본 전체 선택 동작 허용
             return;
         }
 
@@ -1648,12 +1611,85 @@ public partial class LocalTerminalView : UserControl
     private System.Windows.Threading.DispatcherTimer? _imeCheckTimer;
 
     /// <summary>
+    /// 인터랙티브 입력창 Loaded 시 CommandBindings 설정
+    /// </summary>
+    private void InteractiveInputTextBox_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox textBox) return;
+
+        // 기존 Copy/Paste/Cut CommandBindings 제거 (기본 동작 비활성화)
+        textBox.CommandBindings.Clear();
+
+        // Copy 커맨드: 선택된 텍스트가 있으면 복사
+        textBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy,
+            (s, args) =>
+            {
+                if (textBox.SelectedText.Length > 0)
+                {
+                    Clipboard.SetText(textBox.SelectedText);
+                    args.Handled = true;
+                }
+            }));
+
+        // Paste 커맨드: 텍스트 붙여넣기
+        textBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Paste,
+            (s, args) =>
+            {
+                if (Clipboard.ContainsText())
+                {
+                    var clipboardText = Clipboard.GetText();
+                    if (!string.IsNullOrEmpty(clipboardText))
+                    {
+                        var caretIndex = textBox.CaretIndex;
+                        var currentText = textBox.Text ?? "";
+                        var newText = currentText.Insert(caretIndex, clipboardText);
+                        textBox.Text = newText;
+                        textBox.CaretIndex = caretIndex + clipboardText.Length;
+                    }
+                    args.Handled = true;
+                }
+            }));
+
+        // Cut 커맨드: 선택된 텍스트 잘라내기
+        textBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Cut,
+            (s, args) =>
+            {
+                if (textBox.SelectedText.Length > 0)
+                {
+                    Clipboard.SetText(textBox.SelectedText);
+                    var selectionStart = textBox.SelectionStart;
+                    var selectionLength = textBox.SelectionLength;
+                    var currentText = textBox.Text ?? "";
+                    var newText = currentText.Remove(selectionStart, selectionLength);
+                    textBox.Text = newText;
+                    textBox.CaretIndex = selectionStart;
+                    args.Handled = true;
+                }
+            }));
+    }
+
+    /// <summary>
     /// 인터랙티브 입력창 포커스 시 IME 상태 업데이트
     /// </summary>
     private void InteractiveInputTextBox_GotFocus(object sender, RoutedEventArgs e)
     {
         StartImeMonitoring();
         UpdateImeButtonText();
+    }
+
+    /// <summary>
+    /// 인터랙티브 입력창 포커스 해제 시 선택 영역 초기화
+    /// </summary>
+    private void InteractiveInputTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        // 포커스를 잃을 때 선택 영역 초기화 (커서 백그라운드 제거)
+        if (sender is TextBox textBox)
+        {
+            textBox.SelectionStart = textBox.Text.Length;
+            textBox.SelectionLength = 0;
+        }
+
+        StopImeMonitoring();
     }
 
     /// <summary>
@@ -1677,6 +1713,17 @@ public partial class LocalTerminalView : UserControl
             };
             _imeCheckTimer.Tick += (s, e) => UpdateImeButtonText();
             _imeCheckTimer.Start();
+        }
+    }
+
+    /// <summary>
+    /// IME 모니터링 중지
+    /// </summary>
+    private void StopImeMonitoring()
+    {
+        if (_imeCheckTimer != null)
+        {
+            _imeCheckTimer.Stop();
         }
     }
 
@@ -1832,6 +1879,49 @@ public partial class LocalTerminalView : UserControl
         catch (Exception ex)
         {
             Debug.WriteLine($"[TriggerWelcomeBox] 오류: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 인터랙티브 모드 버퍼 복원 (View가 새로 생성될 때만 호출)
+    /// </summary>
+    private void RestoreInteractiveBuffer(LocalTerminalViewModel vm)
+    {
+        try
+        {
+            // TerminalControl이 이미 초기화되어 있고 내용이 있으면 복원 안 함
+            // (View 캐싱으로 재사용되는 경우)
+            if (TerminalCtrl?.Buffer != null && TerminalCtrl.Buffer.ScrollbackCount > 0)
+            {
+                Debug.WriteLine("[RestoreInteractiveBuffer] TerminalControl에 이미 내용 있음 - 복원 건너뜀");
+                return;
+            }
+
+            var buffer = vm.GetInteractiveBuffer();
+
+            if (string.IsNullOrEmpty(buffer))
+            {
+                Debug.WriteLine("[RestoreInteractiveBuffer] 복원할 버퍼 없음");
+                return;
+            }
+
+            Debug.WriteLine($"[RestoreInteractiveBuffer] 버퍼 복원 시작: {buffer.Length}자");
+
+            // TerminalControl에 버퍼 내용 복원
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (TerminalCtrl != null)
+                {
+                    // 버퍼 내용 출력
+                    TerminalCtrl.Write(buffer);
+
+                    Debug.WriteLine("[RestoreInteractiveBuffer] 버퍼 복원 완료");
+                }
+            }, System.Windows.Threading.DispatcherPriority.Background);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[RestoreInteractiveBuffer] 오류: {ex.Message}");
         }
     }
 

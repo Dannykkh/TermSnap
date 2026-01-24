@@ -46,6 +46,7 @@ public class NewSessionSelectorViewModel : ISessionViewModel, INotifyPropertyCha
     public bool IsFileTreeVisible { get; set; } = false; // 세션 선택 화면에서는 파일 트리 표시 안 함
     public string? FileTreeCurrentPath { get; set; } = null; // 세션 선택 화면에서는 파일 트리 경로 없음
     public bool ShowSnippetPanel { get; set; } = false; // 세션 선택 화면에서는 스니펫 패널 표시 안 함
+    public string SpinnerText => string.Empty; // 세션 선택 화면에서는 스피너 표시 안 함
 
     public ObservableCollection<ChatMessage> Messages { get; } = new();
     public ObservableCollection<CommandBlock> CommandBlocks { get; } = new();

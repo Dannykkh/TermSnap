@@ -37,6 +37,9 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     private string? _fileTreeCurrentPath = null; // 파일 트리 현재 경로
     private bool _showSnippetPanel = false; // 스니펫 패널 표시 여부 (서버 세션에서는 사용 안 함)
 
+    // Port Forwarding
+    private ObservableCollection<PortForwardingConfig> _portForwardings = new();
+
     // Ring Buffer 설정 - 메모리 누수 방지
     private const int MaxMessages = 500;        // 최대 메시지 수
     private const int MaxCommandBlocks = 200;   // 최대 명령 블록 수
@@ -104,6 +107,11 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
         get => _showSnippetPanel;
         set { _showSnippetPanel = value; OnPropertyChanged(); }
     }
+
+    /// <summary>
+    /// 데이터 수신 중 스피너 텍스트 (서버 세션에서는 사용 안 함)
+    /// </summary>
+    public string SpinnerText => string.Empty;
 
     /// <summary>
     /// 자주 사용하는 명령어 목록
@@ -221,6 +229,20 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     public ICommand UseFrequentCommandCmd { get; }
     public ICommand ShowCommandDetailCmd { get; }
     public ICommand ToggleFileTreeCommand { get; }
+    public ICommand OpenPortForwardingManagerCommand { get; }
+
+    /// <summary>
+    /// Port Forwarding 설정 목록
+    /// </summary>
+    public ObservableCollection<PortForwardingConfig> PortForwardings
+    {
+        get => _portForwardings;
+        set
+        {
+            _portForwardings = value;
+            OnPropertyChanged();
+        }
+    }
 
     public ServerSessionViewModel(AppConfig config)
     {
@@ -236,6 +258,7 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
         UseFrequentCommandCmd = new RelayCommand<FrequentCommand>(cmd => { if (cmd != null) UseFrequentCommand(cmd); });
         ShowCommandDetailCmd = new RelayCommand<FrequentCommand>(cmd => { if (cmd != null) ShowCommandDetail(cmd); });
         ToggleFileTreeCommand = new RelayCommand(() => IsFileTreeVisible = !IsFileTreeVisible);
+        OpenPortForwardingManagerCommand = new RelayCommand(() => OpenPortForwardingManager(), () => IsConnected);
 
         AddMessage("세션이 준비되었습니다. 서버에 연결해주세요.", false, MessageType.Info);
     }
@@ -323,8 +346,28 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
             TabHeader = profile.ProfileName;
             AddMessage($"✓ {profile.ProfileName}에 연결되었습니다.", false, MessageType.Success);
 
+            // Port Forwarding 설정 로드
+            LoadPortForwardingsFromProfile(profile);
+
             // 서버 정보 가져와서 환영 메시지 표시
             await ShowServerWelcomeMessage();
+
+            // Port Forwarding 복구 (재연결 시) 또는 AutoStart 시작 (신규 연결 시)
+            try
+            {
+                // 먼저 자동 복구 시도
+                await _sshService.RecoverPortForwardingsAsync();
+
+                // 복구되지 않은 AutoStart 항목 시작
+                foreach (var pf in PortForwardings.Where(p => p.AutoStart && p.Status != PortForwardingStatus.Running))
+                {
+                    _ = StartPortForwardingAsync(pf);
+                }
+            }
+            catch (Exception ex)
+            {
+                AddMessage($"Port Forwarding 복구 실패: {ex.Message}", false, MessageType.Warning);
+            }
 
             // 자주 사용하는 명령어 로드
             RefreshFrequentCommands();
@@ -823,6 +866,95 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
         catch (Exception ex)
         {
             AddMessage($"로그 뷰어 창 열기 실패: {ex.Message}", false, MessageType.Error);
+        }
+    }
+
+    private void OpenPortForwardingManager()
+    {
+        if (_sshService == null || !IsConnected)
+        {
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("ViewModel.NotConnected") ?? "서버에 연결되지 않았습니다.",
+                LocalizationService.Instance.GetString("Common.Error") ?? "오류",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            var dialog = new Views.PortForwardingManagerDialog(_sshService, PortForwardings)
+            {
+                Owner = Application.Current.MainWindow
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                // Port Forwarding 설정을 프로필에 저장
+                SavePortForwardingsToProfile();
+
+                // Port Forwarding 목록이 변경되었을 수 있으므로 AutoStart 처리
+                foreach (var pf in PortForwardings.Where(p => p.AutoStart && p.Status == PortForwardingStatus.Stopped))
+                {
+                    _ = StartPortForwardingAsync(pf);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AddMessage($"Port Forwarding 관리자 열기 실패: {ex.Message}", false, MessageType.Error);
+        }
+    }
+
+    private void LoadPortForwardingsFromProfile(ServerConfig profile)
+    {
+        PortForwardings.Clear();
+        foreach (var pf in profile.PortForwardings)
+        {
+            PortForwardings.Add(pf);
+        }
+    }
+
+    private void SavePortForwardingsToProfile()
+    {
+        if (_serverProfile == null) return;
+
+        _serverProfile.PortForwardings.Clear();
+        foreach (var pf in PortForwardings)
+        {
+            _serverProfile.PortForwardings.Add(pf);
+        }
+
+        // 설정 저장
+        ConfigService.Save(_config);
+    }
+
+    private async Task StartPortForwardingAsync(PortForwardingConfig config)
+    {
+        if (_sshService == null) return;
+
+        try
+        {
+            bool success = config.Type switch
+            {
+                PortForwardingType.Local => await _sshService.StartLocalPortForwardingAsync(config),
+                PortForwardingType.Remote => await _sshService.StartRemotePortForwardingAsync(config),
+                PortForwardingType.Dynamic => await _sshService.StartDynamicPortForwardingAsync(config),
+                _ => false
+            };
+
+            if (success)
+            {
+                AddMessage($"Port Forwarding 시작: {config.Description}", false, MessageType.Info);
+            }
+            else if (!string.IsNullOrEmpty(config.ErrorMessage))
+            {
+                AddMessage($"Port Forwarding 시작 실패: {config.ErrorMessage}", false, MessageType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            AddMessage($"Port Forwarding 오류: {ex.Message}", false, MessageType.Error);
         }
     }
 

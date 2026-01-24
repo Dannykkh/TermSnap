@@ -61,6 +61,11 @@ public interface ISessionViewModel : IDisposable
     bool ShowSnippetPanel { get; set; }
 
     /// <summary>
+    /// 데이터 수신 중 스피너 텍스트 (/, -, \, |)
+    /// </summary>
+    string SpinnerText { get; }
+
+    /// <summary>
     /// 채팅 메시지 목록
     /// </summary>
     ObservableCollection<ChatMessage> Messages { get; }

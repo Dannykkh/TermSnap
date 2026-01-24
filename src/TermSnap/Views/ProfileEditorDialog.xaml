@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="{DynamicResource ProfileEditor.WindowTitle}"
-        Height="550" Width="450"
+        Height="620" Width="450"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource SurfaceBrush}"
         ResizeMode="NoResize">
@@ -134,7 +134,7 @@
                           Margin="0,0,0,16"/>
 
                 <!-- 메모 -->
-                <TextBlock Text="{DynamicResource ProfileEditor.Notes}" 
+                <TextBlock Text="{DynamicResource ProfileEditor.Notes}"
                            Foreground="{DynamicResource TextPrimaryBrush}"
                            FontWeight="SemiBold"
                            Margin="0,0,0,8"/>
@@ -143,7 +143,31 @@
                          TextWrapping="Wrap"
                          Height="80"
                          Style="{DynamicResource ThemedTextBox}"
-                         VerticalScrollBarVisibility="Auto"/>
+                         VerticalScrollBarVisibility="Auto"
+                         Margin="0,0,0,16"/>
+
+                <!-- Port Forwarding -->
+                <TextBlock Text="{DynamicResource ProfileEditor.PortForwarding}"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+                <Button x:Name="PortForwardingButton"
+                        Click="PortForwarding_Click"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        HorizontalContentAlignment="Left"
+                        Height="40"
+                        Padding="12,8">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Connection"
+                                                 Width="20"
+                                                 Height="20"
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,8,0"/>
+                        <TextBlock x:Name="PortForwardingButtonText"
+                                   Text="{DynamicResource ProfileEditor.ManagePortForwarding}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </ScrollViewer>
 

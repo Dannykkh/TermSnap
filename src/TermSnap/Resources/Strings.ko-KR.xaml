@@ -724,6 +724,9 @@
     <system:String x:Key="ProfileEditor.Passphrase">Passphrase (선택사항)</system:String>
     <system:String x:Key="ProfileEditor.AddToFavorites">즐겨찾기에 추가</system:String>
     <system:String x:Key="ProfileEditor.Notes">메모 (선택사항)</system:String>
+    <system:String x:Key="ProfileEditor.PortForwarding">Port Forwarding</system:String>
+    <system:String x:Key="ProfileEditor.ManagePortForwarding">Port Forwarding 관리...</system:String>
+    <system:String x:Key="ProfileEditor.PortForwardingCount">{0}개 설정됨</system:String>
 
     <!-- HistorySearchPopup -->
     <system:String x:Key="HistorySearch.WindowTitle">명령어 히스토리 검색</system:String>
@@ -798,5 +801,40 @@
     <system:String x:Key="CommandManager.BackToList">목록</system:String>
     <system:String x:Key="CommandManager.Save">저장</system:String>
     <system:String x:Key="CommandManager.Delete">삭제</system:String>
+
+    <!-- Port Forwarding -->
+    <system:String x:Key="PortForwarding.Title">Port Forwarding 관리</system:String>
+    <system:String x:Key="PortForwarding.AddNew">새 터널 추가</system:String>
+    <system:String x:Key="PortForwarding.AddFromTemplate">템플릿에서 추가</system:String>
+    <system:String x:Key="PortForwarding.Type">타입</system:String>
+    <system:String x:Key="PortForwarding.Type.Local">Local (로컬 → 원격)</system:String>
+    <system:String x:Key="PortForwarding.Type.Remote">Remote (원격 → 로컬)</system:String>
+    <system:String x:Key="PortForwarding.Type.Dynamic">Dynamic (SOCKS Proxy)</system:String>
+    <system:String x:Key="PortForwarding.Name">이름</system:String>
+    <system:String x:Key="PortForwarding.LocalHost">로컬 호스트</system:String>
+    <system:String x:Key="PortForwarding.LocalPort">로컬 포트</system:String>
+    <system:String x:Key="PortForwarding.RemoteHost">원격 호스트</system:String>
+    <system:String x:Key="PortForwarding.RemotePort">원격 포트</system:String>
+    <system:String x:Key="PortForwarding.AutoStart">SSH 연결 시 자동 시작</system:String>
+    <system:String x:Key="PortForwarding.Status">상태</system:String>
+    <system:String x:Key="PortForwarding.Status.Stopped">중지됨</system:String>
+    <system:String x:Key="PortForwarding.Status.Starting">시작 중</system:String>
+    <system:String x:Key="PortForwarding.Status.Running">실행 중</system:String>
+    <system:String x:Key="PortForwarding.Status.Error">오류 발생</system:String>
+    <system:String x:Key="PortForwarding.Start">시작</system:String>
+    <system:String x:Key="PortForwarding.Stop">중지</system:String>
+    <system:String x:Key="PortForwarding.Edit">편집</system:String>
+    <system:String x:Key="PortForwarding.Delete">삭제</system:String>
+    <system:String x:Key="PortForwarding.DeleteConfirm">이 Port Forwarding을 삭제하시겠습니까?</system:String>
+    <system:String x:Key="PortForwarding.ActiveTunnels">활성 터널</system:String>
+    <system:String x:Key="PortForwarding.NoTunnels">활성 터널이 없습니다</system:String>
+    <system:String x:Key="PortForwarding.Description">설명</system:String>
+    <system:String x:Key="PortForwarding.ConnectionCount">연결 수</system:String>
+    <system:String x:Key="PortForwarding.StartedAt">시작 시간</system:String>
+    <system:String x:Key="PortForwarding.Error">오류</system:String>
+    <system:String x:Key="PortForwarding.Validation.NameRequired">이름을 입력하세요</system:String>
+    <system:String x:Key="PortForwarding.Validation.LocalPortInvalid">로컬 포트는 1-65535 범위여야 합니다</system:String>
+    <system:String x:Key="PortForwarding.Validation.RemoteHostRequired">원격 호스트를 입력하세요</system:String>
+    <system:String x:Key="PortForwarding.Validation.RemotePortInvalid">원격 포트는 1-65535 범위여야 합니다</system:String>
 
 </ResourceDictionary>

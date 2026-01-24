@@ -282,6 +282,8 @@ public partial class LogViewerWindow : Window
     /// </summary>
     private void UpdateLineCount()
     {
+        if (LineCountText == null) return; // UI 요소가 아직 초기화되지 않았을 때
+
         LineCountText.Text = _levelFilter.HasValue || !string.IsNullOrEmpty(_currentFilter)
             ? string.Format(LocalizationService.Instance.GetString("LogViewer.LineCountWithFilter"), _filteredLogEntries.Count, _allLogEntries.Count)
             : string.Format(LocalizationService.Instance.GetString("LogViewer.LineCountTotal"), _allLogEntries.Count);

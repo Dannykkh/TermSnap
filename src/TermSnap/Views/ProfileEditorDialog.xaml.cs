@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Collections.ObjectModel;
 using TermSnap.Models;
 using TermSnap.Services;
 using Microsoft.Win32;
@@ -11,7 +12,8 @@ namespace TermSnap.Views;
 public partial class ProfileEditorDialog : Window
 {
     private readonly ServerConfig? _existingProfile;
-    
+    private readonly ObservableCollection<PortForwardingConfig> _portForwardings = new();
+
     /// <summary>
     /// 편집된 프로필
     /// </summary>
@@ -45,6 +47,14 @@ public partial class ProfileEditorDialog : Window
         UsernameBox.Text = profile.Username;
         FavoriteCheckBox.IsChecked = profile.IsFavorite;
         NotesBox.Text = profile.Notes;
+
+        // Port Forwarding 설정 로드
+        _portForwardings.Clear();
+        foreach (var pf in profile.PortForwardings)
+        {
+            _portForwardings.Add(pf);
+        }
+        UpdatePortForwardingButtonText();
 
         if (profile.AuthType == AuthenticationType.Password)
         {
@@ -180,6 +190,13 @@ public partial class ProfileEditorDialog : Window
             LastConnected = _existingProfile?.LastConnected ?? System.DateTime.MinValue
         };
 
+        // Port Forwarding 설정 저장
+        ResultProfile.PortForwardings.Clear();
+        foreach (var pf in _portForwardings)
+        {
+            ResultProfile.PortForwardings.Add(pf);
+        }
+
         // 비밀번호/키 암호화
         if (ResultProfile.AuthType == AuthenticationType.Password)
         {
@@ -202,5 +219,29 @@ public partial class ProfileEditorDialog : Window
     {
         DialogResult = false;
         Close();
+    }
+
+    private void PortForwarding_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new PortForwardingManagerDialog(null, _portForwardings)
+        {
+            Owner = this
+        };
+
+        dialog.ShowDialog();
+        UpdatePortForwardingButtonText();
+    }
+
+    private void UpdatePortForwardingButtonText()
+    {
+        if (_portForwardings.Count > 0)
+        {
+            var format = Application.Current.FindResource("ProfileEditor.PortForwardingCount") as string ?? "{0} configured";
+            PortForwardingButtonText.Text = string.Format(format, _portForwardings.Count);
+        }
+        else
+        {
+            PortForwardingButtonText.Text = Application.Current.FindResource("ProfileEditor.ManagePortForwarding") as string ?? "Manage Port Forwarding...";
+        }
     }
 }
