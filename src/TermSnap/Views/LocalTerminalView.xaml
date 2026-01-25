@@ -251,8 +251,24 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Git 브랜치 및 상태 -->
+                    <!-- 현재 경로 및 Git 브랜치 -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <!-- 현재 경로 -->
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Folder"
+                                                     Width="14" Height="14"
+                                                     Foreground="{DynamicResource TextSecondaryBrush}"
+                                                     VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding CurrentDirectory}"
+                                       FontFamily="Consolas"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="6,0,0,0"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="400"/>
+                        </StackPanel>
+
                         <!-- Git 브랜치 -->
                         <Border Margin="12,0,0,0" Padding="6,2" Background="#33FF9800" CornerRadius="3">
                             <Border.Style>
