@@ -220,12 +220,6 @@ Now viewable in file editor:
 - Fixed CPU fan noise during terminal output
 - Fixed UI freezing during high-frequency output
 
-### 📋 Planned for v2.0
-- FileViewerPanel edit mode (toggle between view/edit)
-- Line numbers display (like Claude Code)
-- Support for more file types (.bat, .sh, .ps1, .json, .xml, .yaml)
-- Auto-save and change detection
-
 ### 🎯 Performance
 - Output rendering: Reduced from hundreds/sec to 60/sec (stable 60fps)
 - IME detection: Eliminated 200ms polling overhead
