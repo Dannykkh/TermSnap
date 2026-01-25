@@ -1,70 +1,72 @@
-# 기여 가이드
+# Contributing Guide
 
-TermSnap 프로젝트에 관심을 가져주셔서 감사합니다!
+[한국어](CONTRIBUTING.ko.md)
 
-## 기여 방법
+Thank you for your interest in contributing to TermSnap!
 
-### 1. 이슈 리포트
+## How to Contribute
 
-버그를 발견하거나 개선 아이디어가 있다면:
+### 1. Issue Reports
 
-1. [Issues](https://github.com/Dannykkh/nebula-terminal/issues)에서 중복된 이슈가 없는지 확인
-2. 새 이슈 생성
-3. 다음 정보 포함:
-   - 명확한 제목
-   - 재현 방법 (버그인 경우)
-   - 예상 동작 vs 실제 동작
-   - 환경 정보 (Windows 버전, .NET 버전 등)
-   - 스크린샷 (해당되는 경우)
+If you find a bug or have an improvement idea:
 
-### 2. 코드 기여
+1. Check for duplicate issues at [Issues](https://github.com/Dannykkh/TermSnap/issues)
+2. Create a new issue
+3. Include the following information:
+   - Clear title
+   - Steps to reproduce (for bugs)
+   - Expected vs actual behavior
+   - Environment info (Windows version, .NET version, etc.)
+   - Screenshots (if applicable)
 
-#### 준비 사항
+### 2. Code Contributions
 
-- Visual Studio 2022 이상
+#### Prerequisites
+
+- Visual Studio 2022 or later
 - .NET 8.0 SDK
 - Git
 
-#### 개발 프로세스
+#### Development Process
 
-1. **Fork 및 Clone**
+1. **Fork and Clone**
    ```bash
-   git clone https://github.com/your-username/nebula-terminal.git
-   cd nebula-terminal
+   git clone https://github.com/your-username/TermSnap.git
+   cd TermSnap
    ```
 
-2. **브랜치 생성**
+2. **Create a Branch**
    ```bash
    git checkout -b feature/your-feature-name
-   # 또는
+   # or
    git checkout -b fix/bug-description
    ```
 
-3. **개발**
-   - 코드 스타일 가이드 준수
-   - 의미있는 커밋 메시지 작성
-   - 변경사항 테스트
+3. **Develop**
+   - Follow the code style guide
+   - Write meaningful commit messages
+   - Test your changes
 
-4. **커밋**
+4. **Commit**
    ```bash
    git add .
    git commit -m "feat: Add new feature description"
    ```
 
-5. **Push 및 Pull Request**
+5. **Push and Pull Request**
    ```bash
    git push origin feature/your-feature-name
    ```
-   - GitHub에서 Pull Request 생성
-   - 변경 사항 상세히 설명
-   - 관련 이슈 번호 참조 (#123)
+   - Create a Pull Request on GitHub
+   - Describe your changes in detail
+   - Reference related issue numbers (#123)
 
-## 코드 스타일
+## Code Style
 
-### C# 코딩 규칙
+### C# Coding Rules
 
 ```csharp
-// ✅ 좋은 예
+// ✅ Good example
 public class GeminiService
 {
     private readonly string _apiKey;
@@ -76,53 +78,53 @@ public class GeminiService
             throw new ArgumentException("User request cannot be empty", nameof(userRequest));
         }
 
-        // 로직...
+        // Logic...
     }
 }
 
-// ❌ 나쁜 예
+// ❌ Bad example
 public class geminiservice
 {
     public string apikey;
 
     public string convert(string s)
     {
-        return ""; // 오류 처리 없음
+        return ""; // No error handling
     }
 }
 ```
 
-### 규칙
+### Rules
 
-- **네이밍**:
-  - 클래스/메서드: PascalCase
-  - 변수/파라미터: camelCase
-  - Private 필드: _camelCase
-  - 상수: UPPER_CASE
+- **Naming**:
+  - Classes/Methods: PascalCase
+  - Variables/Parameters: camelCase
+  - Private fields: _camelCase
+  - Constants: UPPER_CASE
 
-- **포맷팅**:
-  - 들여쓰기: 4 스페이스
-  - 중괄호: 새 줄에 시작
-  - 한 줄 최대 길이: 120자
+- **Formatting**:
+  - Indentation: 4 spaces
+  - Braces: Start on new line
+  - Max line length: 120 characters
 
-- **주석**:
-  - XML 문서 주석 사용
-  - 복잡한 로직은 설명 추가
-  - TODO 주석에는 이슈 번호 포함
+- **Comments**:
+  - Use XML documentation comments
+  - Add explanations for complex logic
+  - Include issue numbers in TODO comments
 
 ```csharp
 /// <summary>
-/// Gemini API를 사용하여 자연어를 리눅스 명령어로 변환
+/// Converts natural language to Linux commands using Gemini API
 /// </summary>
-/// <param name="userRequest">사용자의 자연어 요청</param>
-/// <returns>생성된 리눅스 명령어</returns>
+/// <param name="userRequest">User's natural language request</param>
+/// <returns>Generated Linux command</returns>
 public async Task<string> ConvertToLinuxCommand(string userRequest)
 {
-    // TODO: #42 - 캐싱 기능 추가
+    // TODO: #42 - Add caching feature
 }
 ```
 
-## 커밋 메시지 규칙
+## Commit Message Rules
 
 ```
 <type>: <subject>
@@ -134,15 +136,15 @@ public async Task<string> ConvertToLinuxCommand(string userRequest)
 
 ### Type
 
-- `feat`: 새로운 기능
-- `fix`: 버그 수정
-- `docs`: 문서 변경
-- `style`: 코드 포맷팅 (기능 변경 없음)
-- `refactor`: 리팩토링
-- `test`: 테스트 추가/수정
-- `chore`: 빌드/설정 변경
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code formatting (no functional changes)
+- `refactor`: Refactoring
+- `test`: Add/modify tests
+- `chore`: Build/config changes
 
-### 예시
+### Example
 
 ```
 feat: Add command history feature
@@ -154,110 +156,108 @@ feat: Add command history feature
 Closes #42
 ```
 
-## Pull Request 가이드라인
+## Pull Request Guidelines
 
-### PR 제목
+### PR Title
 
-- 명확하고 간결하게
-- 커밋 메시지 규칙 따르기
-- 예: `feat: Add SSH key authentication support`
+- Clear and concise
+- Follow commit message rules
+- Example: `feat: Add SSH key authentication support`
 
-### PR 설명
+### PR Description
 
-다음 템플릿 사용:
+Use the following template:
 
 ```markdown
-## 변경 사항
-- 변경된 내용 요약
+## Changes
+- Summary of changes
 
-## 동기
-- 왜 이 변경이 필요한가?
+## Motivation
+- Why is this change needed?
 
-## 테스트
-- 어떻게 테스트했는가?
+## Testing
+- How was this tested?
 
-## 스크린샷 (해당되는 경우)
-- UI 변경사항 스크린샷
+## Screenshots (if applicable)
+- Screenshots of UI changes
 
-## 체크리스트
-- [ ] 코드가 빌드됨
-- [ ] 스타일 가이드 준수
-- [ ] 문서 업데이트 (필요시)
-- [ ] 테스트 통과
+## Checklist
+- [ ] Code builds successfully
+- [ ] Follows style guide
+- [ ] Documentation updated (if needed)
+- [ ] Tests pass
 ```
 
-### 리뷰 프로세스
+### Review Process
 
-1. 자동 빌드 통과 확인
-2. 최소 1명의 리뷰어 승인 필요
-3. 변경 요청 사항 반영
+1. Verify automatic build passes
+2. At least 1 reviewer approval required
+3. Address change requests
 4. Squash and merge
 
-## 개발 환경 설정
+## Development Environment Setup
 
-### 권장 도구
+### Recommended Tools
 
 - **IDE**: Visual Studio 2022 Community
 - **Extensions**:
-  - ReSharper (선택사항)
+  - ReSharper (optional)
   - XAML Styler
   - EditorConfig
 
-### 빌드 및 실행
+### Build and Run
 
 ```bash
-# 빌드
+# Build
 dotnet build
 
-# 실행
+# Run
 dotnet run --project src/TermSnap/TermSnap.csproj
 
-# 테스트
+# Test
 dotnet test
 ```
 
-## 프로젝트 구조
+## Project Structure
 
 ```
-nebula-terminal/
+TermSnap/
 ├── src/TermSnap/
-│   ├── Models/          # 데이터 모델
-│   ├── Services/        # 비즈니스 로직
-│   ├── ViewModels/      # MVVM 뷰모델
+│   ├── Models/          # Data models
+│   ├── Services/        # Business logic
+│   ├── ViewModels/      # MVVM ViewModels
 │   └── Views/           # UI (XAML)
-├── tests/               # 단위 테스트
-└── docs/                # 문서
+├── tests/               # Unit tests
+└── docs/                # Documentation
 ```
 
-## 우선순위 기능
+## Priority Features
 
-다음 기능들에 대한 기여를 환영합니다:
+We welcome contributions for the following features:
 
-- [ ] 여러 서버 프로필 관리
-- [ ] 명령어 실행 이력 저장/검색
-- [ ] 즐겨찾기 명령어 기능
-- [ ] 다크 모드 지원
-- [ ] 다국어 지원 (영어, 일본어 등)
-- [ ] 명령어 자동완성
-- [ ] 서버 모니터링 대시보드
-- [ ] 스크립트 생성 및 저장 기능
+- [ ] macOS/Linux support (Avalonia UI migration)
+- [ ] English UI localization
+- [ ] Plugin system
+- [ ] Cloud settings sync
+- [ ] Terminal recording/playback
+- [ ] Unit test coverage improvement
 
-## 질문이나 도움이 필요한 경우
+## Questions or Need Help?
 
-- [GitHub Discussions](https://github.com/Dannykkh/nebula-terminal/discussions)
-- [Issues](https://github.com/Dannykkh/nebula-terminal/issues)
+- [GitHub Discussions](https://github.com/Dannykkh/TermSnap/discussions)
+- [Issues](https://github.com/Dannykkh/TermSnap/issues)
 
-## 행동 강령
+## Code of Conduct
 
-- 존중하고 포용적인 태도
-- 건설적인 피드백
-- 다양한 관점 환영
-- 협력적인 문제 해결
+- Respectful and inclusive attitude
+- Constructive feedback
+- Welcome diverse perspectives
+- Collaborative problem solving
 
-## 라이선스
+## License
 
-기여한 코드는 프로젝트의 MIT 라이선스를 따릅니다.
+Contributed code follows the project's MIT License.
 
 ---
 
-다시 한 번 기여해주셔서 감사합니다! 🎉
+Thank you again for contributing! 🎉
