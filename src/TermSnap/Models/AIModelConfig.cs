@@ -13,7 +13,8 @@ public enum AIProviderType
     Gemini,
     OpenAI,
     Grok,
-    Claude
+    Claude,
+    Ollama   // 로컬 모델 (Ollama)
 }
 
 /// <summary>
@@ -28,7 +29,14 @@ public class AIModelConfig
     public string ApiKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// API 키가 설정되어 있는지 확인
+    /// Ollama 등 로컬 모델용 Base URL (기본값: http://localhost:11434)
     /// </summary>
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey);
+    public string BaseUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// API 키가 설정되어 있는지 확인 (Ollama는 BaseUrl만 있으면 됨)
+    /// </summary>
+    public bool IsConfigured => Provider == AIProviderType.Ollama
+        ? !string.IsNullOrWhiteSpace(BaseUrl) || true  // Ollama는 기본 URL 사용 가능
+        : !string.IsNullOrWhiteSpace(ApiKey);
 }

@@ -303,6 +303,110 @@
                                      Style="{StaticResource ProviderRadioButton}"
                                      Tag="Grok"
                                      Checked="Provider_Changed"/>
+                        <RadioButton x:Name="OllamaRadio"
+                                     GroupName="Provider"
+                                     Style="{StaticResource ProviderRadioButton}"
+                                     Tag="Ollama"
+                                     Checked="Provider_Changed">
+                            <StackPanel>
+                                <TextBlock Text="Ollama (Local)" FontWeight="SemiBold"/>
+                                <TextBlock Text="{DynamicResource Settings.AIProvider.Ollama.Description}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </Border>
+
+                <!-- Ollama 설정 (Ollama 선택 시에만 표시) -->
+                <Border x:Name="OllamaSection" Style="{StaticResource SectionBorder}" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock Text="{DynamicResource Settings.Ollama.Title}"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   Margin="0,0,0,12"/>
+
+                        <!-- Base URL -->
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock Text="{DynamicResource Settings.Ollama.BaseUrl}"
+                                       FontSize="13"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       Margin="0,0,0,8"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="OllamaBaseUrlBox"
+                                         Grid.Column="0"
+                                         Text="http://localhost:11434"
+                                         Style="{DynamicResource ThemedTextBox}"
+                                         FontSize="13"/>
+                                <Button Grid.Column="1"
+                                        x:Name="OllamaTestButton"
+                                        Content="{DynamicResource Settings.Ollama.TestConnection}"
+                                        Click="OllamaTest_Click"
+                                        Margin="12,0,0,0"
+                                        Padding="12,8"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- 연결 상태 -->
+                        <Border x:Name="OllamaStatusBorder"
+                                Background="{DynamicResource SurfaceBrush}"
+                                CornerRadius="6"
+                                Padding="12"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon x:Name="OllamaStatusIcon"
+                                                        Kind="CircleOutline"
+                                                        Width="20" Height="20"
+                                                        Foreground="{DynamicResource TextSecondaryBrush}"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,0,8,0"/>
+                                <TextBlock x:Name="OllamaStatusText"
+                                           Text="{DynamicResource Settings.Ollama.Status.NotConnected}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 모델 선택 -->
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{DynamicResource Settings.Ollama.Model}"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                                <Button Grid.Column="1"
+                                        x:Name="OllamaRefreshButton"
+                                        Click="OllamaRefresh_Click"
+                                        Padding="8,4"
+                                        ToolTip="{DynamicResource Settings.Ollama.RefreshModels}"
+                                        Style="{StaticResource MaterialDesignIconButton}">
+                                    <materialDesign:PackIcon Kind="Refresh" Width="20" Height="20"/>
+                                </Button>
+                            </Grid>
+                            <ComboBox x:Name="OllamaModelComboBox"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      Background="{DynamicResource CardBrush}"
+                                      Padding="10,8"
+                                      FontSize="13"
+                                      DisplayMemberPath="Name"/>
+                            <TextBlock x:Name="OllamaNoModelsText"
+                                       Text="{DynamicResource Settings.Ollama.NoModels}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       FontSize="12"
+                                       Margin="0,8,0,0"
+                                       Visibility="Collapsed"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 

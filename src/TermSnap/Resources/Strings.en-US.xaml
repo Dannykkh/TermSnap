@@ -109,6 +109,20 @@
     <system:String x:Key="Settings.Embedding.Local.Size">Size:</system:String>
     <system:String x:Key="Settings.Embedding.Local.Dimension">Dimension:</system:String>
     <system:String x:Key="Settings.Embedding.Local.KoreanSupport">Korean Support</system:String>
+
+    <!-- Ollama Settings -->
+    <system:String x:Key="Settings.AIProvider.Ollama.Description">Open-source LLM running locally (requires Ollama)</system:String>
+    <system:String x:Key="Settings.Ollama.Title">Ollama Settings</system:String>
+    <system:String x:Key="Settings.Ollama.BaseUrl">Server Address</system:String>
+    <system:String x:Key="Settings.Ollama.TestConnection">Test Connection</system:String>
+    <system:String x:Key="Settings.Ollama.Model">Select Model</system:String>
+    <system:String x:Key="Settings.Ollama.RefreshModels">Refresh Model List</system:String>
+    <system:String x:Key="Settings.Ollama.NoModels">No models installed. Download a model with 'ollama pull qwen2.5' in terminal.</system:String>
+    <system:String x:Key="Settings.Ollama.Status.NotConnected">Not Connected</system:String>
+    <system:String x:Key="Settings.Ollama.Status.Connected">Connected</system:String>
+    <system:String x:Key="Settings.Ollama.Status.Failed">Connection Failed - Check if Ollama is running</system:String>
+    <system:String x:Key="Settings.Ollama.Status.NoModels">Connected - No models installed</system:String>
+
     <system:String x:Key="Settings.LanguageChanged.Title">Language Changed</system:String>
     <system:String x:Key="Settings.LanguageChanged.Message">Language has been changed. Some UI will be applied after restarting the app.</system:String>
 
