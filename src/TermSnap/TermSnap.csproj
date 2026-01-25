@@ -9,9 +9,9 @@
     <AssemblyName>TermSnap</AssemblyName>
     <RootNamespace>TermSnap</RootNamespace>
     <!-- Version Information -->
-    <Version>1.3.0</Version>
-    <AssemblyVersion>1.3.0.0</AssemblyVersion>
-    <FileVersion>1.3.0.0</FileVersion>
+    <Version>1.4.0</Version>
+    <AssemblyVersion>1.4.0.0</AssemblyVersion>
+    <FileVersion>1.4.0.0</FileVersion>
     <Product>TermSnap</Product>
     <Company>Dannykkh</Company>
     <Copyright>Copyright © 2026 Dannykkh</Copyright>
@@ -24,6 +24,8 @@
     <!-- MCP 서버 모드를 위한 커스텀 Main 사용 -->
     <StartupObject>TermSnap.Program</StartupObject>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <!-- Application Icon -->
+    <ApplicationIcon>Resources\termsnap_icon2.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -49,6 +51,15 @@
       <Generator>MSBuild:Compile</Generator>
       <XamlRuntime>Wpf</XamlRuntime>
     </ApplicationDefinition>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 시드 데이터베이스 파일을 출력 디렉토리로 복사 -->
+    <Content Include="Resources\seed-history.db">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!-- 아이콘 파일 포함 -->
+    <Resource Include="Resources\termsnap_icon2.ico" />
   </ItemGroup>
 
 </Project>

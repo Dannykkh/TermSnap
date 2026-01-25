@@ -344,6 +344,16 @@ public partial class WelcomePanel : UserControl
         // 체크박스 상태 복원
         UseAICLICheckBox.IsChecked = config.AICLISettings.IsExpanded;
         AICLIOptionsPanel.Visibility = config.AICLISettings.IsExpanded ? Visibility.Visible : Visibility.Collapsed;
+
+        // 실행 모드 라디오 버튼 상태 복원
+        if (config.AICLISettings.LastAutoMode)
+        {
+            ModeAutoRadio.IsChecked = true;
+        }
+        else
+        {
+            ModeNormalRadio.IsChecked = true;
+        }
     }
 
     /// <summary>
@@ -442,7 +452,9 @@ public partial class WelcomePanel : UserControl
     /// </summary>
     private void UpdateModeDescription()
     {
-        if (ModeAutoRadio.IsChecked == true)
+        var isAutoMode = ModeAutoRadio.IsChecked == true;
+
+        if (isAutoMode)
         {
             ModeDescText.Text = LocalizationService.Instance.GetString("Welcome.ModeDescription.Auto");
         }
@@ -450,6 +462,12 @@ public partial class WelcomePanel : UserControl
         {
             ModeDescText.Text = LocalizationService.Instance.GetString("Welcome.ModeDescription.Normal");
         }
+
+        // 모드 선택 저장
+        var config = ConfigService.Load();
+        config.AICLISettings.LastAutoMode = isAutoMode;
+        ConfigService.Save(config);
+
         UpdateCommandPreview();
     }
 

@@ -88,8 +88,6 @@
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition x:Name="FileViewerSplitterColumn" Width="Auto"/>
-            <ColumnDefinition x:Name="FileViewerColumn" Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <!-- 출력 영역 (웰컴 화면 또는 터미널/블록 보기) -->
@@ -108,18 +106,42 @@
                 <terminal:TerminalControl x:Name="TerminalCtrl"
                                           FontFamily="Consolas"
                                           FontSize="14"
-                                          Margin="2"/>
+                                          Margin="2"
+                                          AllowDrop="True"
+                                          DragEnter="TerminalCtrl_DragEnter"
+                                          DragOver="TerminalCtrl_DragOver"
+                                          Drop="TerminalCtrl_Drop"/>
             </Border>
 
 
             <!-- 블록 보기 - 채팅 UI 스타일 (UseBlockUI=True, 비인터랙티브) -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                          Padding="10"
-                          Name="BlockScrollViewer"
-                          Focusable="True"
-                          PreviewKeyDown="OutputArea_PreviewKeyDown">
-                <ScrollViewer.Style>
-                    <Style TargetType="ScrollViewer">
+            <ListBox ItemsSource="{Binding CommandBlocks}"
+                     ItemTemplate="{StaticResource ChatBlockTemplate}"
+                     Name="BlockScrollViewer"
+                     Focusable="True"
+                     PreviewKeyDown="OutputArea_PreviewKeyDown"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.CanContentScroll="True"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     VirtualizingPanel.ScrollUnit="Pixel"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     Padding="10"
+                     HorizontalContentAlignment="Stretch">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter/>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.Style>
+                    <Style TargetType="ListBox">
                         <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
                             <MultiDataTrigger>
@@ -132,19 +154,37 @@
                             </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
-                </ScrollViewer.Style>
-                <ItemsControl ItemsSource="{Binding CommandBlocks}"
-                              ItemTemplate="{StaticResource ChatBlockTemplate}"/>
-            </ScrollViewer>
+                </ListBox.Style>
+            </ListBox>
 
             <!-- 터미널 보기 - 카드 블록 스타일 (UseBlockUI=False, 비인터랙티브) -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                          Padding="10"
-                          Name="TerminalScrollViewer"
-                          Focusable="True"
-                          PreviewKeyDown="OutputArea_PreviewKeyDown">
-                <ScrollViewer.Style>
-                    <Style TargetType="ScrollViewer">
+            <ListBox ItemsSource="{Binding CommandBlocks}"
+                     ItemTemplate="{StaticResource TerminalBlockTemplate}"
+                     Name="TerminalScrollViewer"
+                     Focusable="True"
+                     PreviewKeyDown="OutputArea_PreviewKeyDown"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.CanContentScroll="True"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     VirtualizingPanel.ScrollUnit="Pixel"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     Padding="10"
+                     HorizontalContentAlignment="Stretch">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter/>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.Style>
+                    <Style TargetType="ListBox">
                         <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
                             <MultiDataTrigger>
@@ -157,44 +197,30 @@
                             </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
-                </ScrollViewer.Style>
-                <ItemsControl ItemsSource="{Binding CommandBlocks}"
-                              ItemTemplate="{StaticResource TerminalBlockTemplate}"/>
-            </ScrollViewer>
+                </ListBox.Style>
+            </ListBox>
         </Grid>
 
-        <!-- 파일 뷰어 GridSplitter -->
-        <GridSplitter x:Name="FileViewerSplitter"
-                      Grid.Row="0" Grid.Column="1"
-                      Width="6"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Stretch"
-                      Background="Transparent"
-                      Cursor="SizeWE"
-                      ShowsPreview="True"
-                      Visibility="{Binding IsFileViewerVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <GridSplitter.Style>
-                <Style TargetType="GridSplitter">
-                    <Style.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
-            </GridSplitter.Style>
-        </GridSplitter>
-
-        <!-- 파일 뷰어 패널 (우측) -->
-        <local:FileViewerPanel x:Name="FileViewerPanelControl"
-                               Grid.Row="0" Grid.Column="2"
-                               Width="400"
-                               MinWidth="200"
-                               MaxWidth="800"
-                               Visibility="{Binding IsFileViewerVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        <!-- 파일 뷰어 패널 (오버레이, 우측) -->
+        <Border x:Name="FileViewerBorder"
+                Grid.Row="0" Grid.Column="1"
+                Panel.ZIndex="100"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Visibility="{Binding IsFileViewerVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.5" BlurRadius="20" ShadowDepth="0"/>
+            </Border.Effect>
+            <local:FileViewerPanel x:Name="FileViewerPanelControl"
+                                   x:FieldModifier="public"
+                                   Width="450"
+                                   MinWidth="300"
+                                   MaxWidth="800"/>
+        </Border>
 
 
         <!-- 입력 영역 -->
-        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+        <Border Grid.Row="2" Grid.Column="0"
                 Margin="10"
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="#3E3E3E"
@@ -225,24 +251,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- 현재 경로 표시 -->
+                    <!-- Git 브랜치 및 상태 -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="FolderOutline"
-                                                 Width="16" Height="16"
-                                                 Foreground="{DynamicResource PrimaryBrush}"
-                                                 VerticalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource LocalTerminal.CurrentPath}"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   VerticalAlignment="Center"
-                                   Margin="6,0,8,0"/>
-                        <TextBlock Text="{Binding CurrentDirectory}"
-                                   FontFamily="Consolas"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource PrimaryBrush}"
-                                   VerticalAlignment="Center"/>
-
                         <!-- Git 브랜치 -->
                         <Border Margin="12,0,0,0" Padding="6,2" Background="#33FF9800" CornerRadius="3">
                             <Border.Style>
@@ -402,6 +412,10 @@
                              BorderBrush="#3E3E3E"
                              CaretBrush="{DynamicResource TextPrimaryBrush}"
                              BorderThickness="1"
+                             AllowDrop="True"
+                             DragEnter="InputTextBox_DragEnter"
+                             DragOver="InputTextBox_DragOver"
+                             Drop="InputTextBox_Drop"
                              PreviewKeyDown="InputTextBox_PreviewKeyDown"
                              TextChanged="InputTextBox_TextChanged">
                         <TextBox.Style>

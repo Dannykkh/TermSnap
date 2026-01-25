@@ -91,8 +91,96 @@
 
         <!-- 채팅 영역 (Block UI 또는 기존 메시지) -->
         <Grid Grid.Row="0" Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- 검색/필터 패널 -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="10,8">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 검색 TextBox -->
+                    <TextBox Grid.Column="0"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="검색어 입력 (명령어, 출력, 오류)"
+                             FontSize="12"
+                             Height="32"
+                             VerticalContentAlignment="Center"
+                             Background="{DynamicResource CardBrush}"
+                             Foreground="{DynamicResource TextPrimaryBrush}"
+                             CaretBrush="{DynamicResource TextPrimaryBrush}"
+                             BorderBrush="{DynamicResource BorderBrush}"
+                             Padding="8,0"
+                             Margin="0,0,8,0">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
+                                <Setter Property="materialDesign:HintAssist.Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <!-- 상태 필터 ComboBox -->
+                    <ComboBox Grid.Column="1"
+                              x:Name="StatusFilterComboBox"
+                              SelectionChanged="StatusFilter_SelectionChanged"
+                              materialDesign:HintAssist.Hint="상태 필터"
+                              FontSize="12"
+                              Width="150"
+                              Height="32"
+                              VerticalContentAlignment="Center"
+                              Margin="0,0,8,0"
+                              SelectedIndex="0">
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
+                                <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                            </Style>
+                        </ComboBox.Style>
+                        <ComboBoxItem Content="전체" Tag=""/>
+                        <ComboBoxItem Content="대기 중" Tag="Pending"/>
+                        <ComboBoxItem Content="생성 중" Tag="Generating"/>
+                        <ComboBoxItem Content="확인 대기" Tag="Confirming"/>
+                        <ComboBoxItem Content="실행 중" Tag="Executing"/>
+                        <ComboBoxItem Content="성공" Tag="Success"/>
+                        <ComboBoxItem Content="실패" Tag="Failed"/>
+                        <ComboBoxItem Content="취소됨" Tag="Cancelled"/>
+                    </ComboBox>
+
+                    <!-- 검색 초기화 버튼 -->
+                    <Button Grid.Column="2"
+                            Click="ClearSearch_Click"
+                            ToolTip="검색 초기화"
+                            Width="32" Height="32"
+                            Padding="0"
+                            Style="{StaticResource MaterialDesignIconButton}">
+                        <materialDesign:PackIcon Kind="Close" Width="16" Height="16"/>
+                    </Button>
+                </Grid>
+            </Border>
+
             <!-- 연결되지 않은 상태: 서버 연결 패널 -->
             <Border x:Name="ConnectionPanel"
+                    Grid.Row="1"
                     Background="{DynamicResource SurfaceBrush}"
                     Visibility="{Binding IsConnected, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                 <Grid VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400">
@@ -216,7 +304,8 @@
             </Border>
 
             <!-- 블록 보기 - 채팅 UI 스타일 (UseBlockUI=True) -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
                           Padding="10"
                           Name="BlockScrollViewer">
                 <ScrollViewer.Style>
@@ -233,12 +322,13 @@
                         </Style.Triggers>
                     </Style>
                 </ScrollViewer.Style>
-                <ItemsControl ItemsSource="{Binding CommandBlocks}"
+                <ItemsControl ItemsSource="{Binding FilteredCommandBlocks}"
                               ItemTemplate="{StaticResource ChatBlockTemplate}"/>
             </ScrollViewer>
 
             <!-- 터미널 보기 - 카드 블록 스타일 (UseBlockUI=False) -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
                           Padding="10"
                           Name="TerminalScrollViewer">
                 <ScrollViewer.Style>
@@ -255,7 +345,7 @@
                         </Style.Triggers>
                     </Style>
                 </ScrollViewer.Style>
-                <ItemsControl ItemsSource="{Binding CommandBlocks}"
+                <ItemsControl ItemsSource="{Binding FilteredCommandBlocks}"
                               ItemTemplate="{StaticResource TerminalBlockTemplate}"/>
             </ScrollViewer>
         </Grid>
@@ -405,6 +495,10 @@
                          CaretBrush="{DynamicResource TextPrimaryBrush}"
                          BorderBrush="{DynamicResource BorderBrush}"
                          BorderThickness="1"
+                         AllowDrop="True"
+                         DragEnter="InputTextBox_DragEnter"
+                         DragOver="InputTextBox_DragOver"
+                         Drop="InputTextBox_Drop"
                          PreviewKeyDown="InputTextBox_PreviewKeyDown"
                          TextChanged="InputTextBox_TextChanged">
                     <TextBox.InputBindings>

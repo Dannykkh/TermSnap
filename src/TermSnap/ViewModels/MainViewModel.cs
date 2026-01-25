@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -364,6 +365,54 @@ public class MainViewModel : INotifyPropertyChanged
 
         // 리소스 모니터링 시작 (전체 프로그램 공통)
         StartResourceMonitoring();
+
+        // 리눅스 명령어 지식 베이스 자동 임포트 (백그라운드)
+        _ = Task.Run(async () => await ImportKnowledgeBaseIfNeededAsync());
+    }
+
+    /// <summary>
+    /// 시드 데이터가 없으면 자동으로 임포트
+    /// </summary>
+    private async Task ImportKnowledgeBaseIfNeededAsync()
+    {
+        try
+        {
+            var knowledgeService = new KnowledgeBaseService();
+
+            // 이미 임포트되었는지 확인
+            if (knowledgeService.IsSeedDataImported())
+            {
+                System.Diagnostics.Debug.WriteLine("[KnowledgeBase] 시드 데이터가 이미 임포트되어 있습니다.");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine("[KnowledgeBase] 리눅스 명령어 지식 베이스 임포트 시작...");
+
+            // 배포된 시드 DB 파일 경로
+            var appDir = AppDomain.CurrentDomain.BaseDirectory;
+            var seedDbPath = Path.Combine(appDir, "Resources", "seed-history.db");
+
+            int count = 0;
+
+            // 시드 DB 파일이 있으면 임포트
+            if (File.Exists(seedDbPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[KnowledgeBase] 시드 DB 파일 발견: {seedDbPath}");
+                count = await knowledgeService.ImportFromSeedDatabaseAsync(seedDbPath);
+                System.Diagnostics.Debug.WriteLine($"[KnowledgeBase] 시드 DB에서 {count}개 항목 임포트 완료");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[KnowledgeBase] 시드 DB 파일 없음, 기본 지식 베이스 사용");
+                // 시드 파일이 없으면 하드코딩된 기본 지식 베이스 임포트
+                count = await knowledgeService.ImportDefaultKnowledgeBaseAsync();
+                System.Diagnostics.Debug.WriteLine($"[KnowledgeBase] 기본 지식 베이스 {count}개 임포트 완료");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[KnowledgeBase] 임포트 실패: {ex.Message}");
+        }
     }
 
     /// <summary>

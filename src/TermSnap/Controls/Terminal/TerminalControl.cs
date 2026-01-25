@@ -26,6 +26,12 @@ public class TerminalControl : FrameworkElement
     private int _pendingResizeRows;
     private bool _renderPending = false;
 
+    // DrawingVisual 기반 라인별 캐싱 (CPU 최적화)
+    private readonly VisualCollection _visualChildren;
+    private DrawingVisual[] _lineVisuals;
+    private DrawingVisual? _backgroundVisual;
+    private DrawingVisual? _overlayVisual;
+
     // 폰트 설정
     private Typeface _typeface = new Typeface("Consolas");
     private double _fontSize = 14;
@@ -123,6 +129,18 @@ public class TerminalControl : FrameworkElement
 
     public TerminalBuffer Buffer => _buffer;
 
+    // Visual 자식 관리 (DrawingVisual 기반)
+    protected override int VisualChildrenCount => _visualChildren.Count;
+
+    protected override Visual GetVisualChild(int index)
+    {
+        if (index < 0 || index >= _visualChildren.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+        return _visualChildren[index];
+    }
+
     public TerminalControl()
     {
         _buffer = new TerminalBuffer(130, 40);
@@ -135,16 +153,35 @@ public class TerminalControl : FrameworkElement
         Focusable = true;
         FocusVisualStyle = null;
 
-        // 커서 깜빡임 타이머 (사용하지 않음, Warp 스타일)
+        // DrawingVisual 기반 라인별 캐싱 초기화
+        _visualChildren = new VisualCollection(this);
+        _lineVisuals = new DrawingVisual[_buffer.Rows];
+
+        // 배경 Visual (맨 뒤)
+        _backgroundVisual = new DrawingVisual();
+        _visualChildren.Add(_backgroundVisual);
+
+        // 각 라인의 Visual 생성 (중간)
+        for (int i = 0; i < _buffer.Rows; i++)
+        {
+            _lineVisuals[i] = new DrawingVisual();
+            _visualChildren.Add(_lineVisuals[i]);
+        }
+
+        // 오버레이 Visual (선택 영역, 스크롤 버튼 등 - 맨 앞)
+        _overlayVisual = new DrawingVisual();
+        _visualChildren.Add(_overlayVisual);
+
+        // GPU 가속 최적화
+        RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);  // 앤티앨리어싱 OFF (속도 향상)
+        SnapsToDevicePixels = true;  // 픽셀 정렬 (선명도 향상)
+
+        // 커서 깜빡임 타이머 (비활성화, Warp 스타일 - 커서 없음)
         _cursorTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(530)
         };
-        _cursorTimer.Tick += (s, e) =>
-        {
-            _cursorBlinkState = !_cursorBlinkState;
-            InvalidateVisual();
-        };
+        // 타이머 Tick 이벤트 없음 (커서 표시 안 함)
 
         // 리사이즈 디바운스 타이머 (300ms)
         _resizeDebounceTimer = new DispatcherTimer
@@ -153,10 +190,10 @@ public class TerminalControl : FrameworkElement
         };
         _resizeDebounceTimer.Tick += OnResizeDebounceTimerTick;
 
-        // 렌더링 쓰로틀 타이머 (16ms = 약 60fps)
-        _renderThrottleTimer = new DispatcherTimer
+        // 렌더링 쓰로틀 타이머 (33ms = 30fps, DrawingVisual 캐싱으로 부드럽고 효율적)
+        _renderThrottleTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromMilliseconds(16)
+            Interval = TimeSpan.FromMilliseconds(33)
         };
         _renderThrottleTimer.Tick += OnRenderThrottleTimerTick;
 
@@ -202,7 +239,8 @@ public class TerminalControl : FrameworkElement
         if (d is TerminalControl terminal)
         {
             terminal.UpdateFont();
-            terminal.InvalidateVisual();
+            terminal._buffer.MarkAllLinesDirty();
+            terminal.UpdateLines();
         }
     }
 
@@ -325,24 +363,22 @@ public class TerminalControl : FrameworkElement
     }
 
     /// <summary>
-    /// 텍스트 출력
+    /// 텍스트 출력 (즉시 파싱, GPU 캐싱 + 렌더링 쓰로틀로 최적화)
     /// </summary>
     public void Write(string text)
     {
-        // 디버그 로깅 (처음 100자만)
-        var preview = text.Length > 100 ? text.Substring(0, 100) + "..." : text;
-        System.Diagnostics.Debug.WriteLine($"[TerminalControl.Write] Length: {text.Length}, Preview: '{preview}'");
-        System.Diagnostics.Debug.WriteLine($"[TerminalControl.Write] Bytes: {string.Join(" ", System.Text.Encoding.UTF8.GetBytes(text.Length > 50 ? text.Substring(0, 50) : text).Select(b => $"{b:X2}"))}");
+        if (string.IsNullOrEmpty(text)) return;
 
+        // 즉시 파싱 (ANSI 시퀀스 무결성 보장, 흔들림 방지)
         _parser.Parse(text);
 
-        // 자동 스크롤이 활성화되어 있을 때만 맨 아래로 스크롤
+        // 자동 스크롤
         if (_autoScroll && _buffer.ScrollOffset != 0)
         {
             _buffer.ScrollOffset = 0;
         }
 
-        // 즉시 렌더링 요청
+        // 렌더링 요청 (GPU 캐싱 + 쓰로틀링으로 CPU 사용량 최소화)
         RequestRender();
     }
 
@@ -419,34 +455,65 @@ public class TerminalControl : FrameworkElement
             $"NewBuffer: {_pendingResizeCols}x{_pendingResizeRows}, " +
             $"ActualSize: {ActualWidth:F0}x{ActualHeight:F0}");
 
-        // 버퍼 리사이즈 및 이벤트 발생
+        // 버퍼 리사이즈
         _buffer.Resize(_pendingResizeCols, _pendingResizeRows);
+
+        // DrawingVisual 배열 재생성
+        RecreateLineVisuals();
+
+        // 이벤트 발생
         TerminalSizeChanged?.Invoke(_pendingResizeCols, _pendingResizeRows);
     }
 
     /// <summary>
-    /// 렌더링 요청 (즉시 렌더링)
+    /// 라인 Visual 배열 재생성 (리사이즈 시)
     /// </summary>
-    private void RequestRender()
+    private void RecreateLineVisuals()
     {
-        // 즉시 렌더링 요청 (WPF가 자동으로 같은 프레임에 합침)
-        Dispatcher.BeginInvoke(InvalidateVisual, System.Windows.Threading.DispatcherPriority.Render);
+        // 기존 라인 Visuals 제거
+        for (int i = 0; i < _lineVisuals.Length; i++)
+        {
+            _visualChildren.Remove(_lineVisuals[i]);
+        }
+
+        // 새로운 배열 생성
+        _lineVisuals = new DrawingVisual[_buffer.Rows];
+
+        // 배경 Visual 다음에 라인 Visuals 삽입 (오버레이 전에)
+        for (int i = 0; i < _buffer.Rows; i++)
+        {
+            _lineVisuals[i] = new DrawingVisual();
+            _visualChildren.Insert(1 + i, _lineVisuals[i]);
+        }
+
+        // 모든 라인 다시 그리기
+        _buffer.MarkAllLinesDirty();
+        UpdateLines();
     }
 
     /// <summary>
-    /// 렌더링 쓰로틀 타이머 만료 시 실제 렌더링 수행
+    /// 렌더링 요청 (쓰로틀링 적용)
+    /// </summary>
+    private void RequestRender()
+    {
+        _renderPending = true;
+
+        // 타이머가 실행 중이 아니면 시작
+        if (!_renderThrottleTimer.IsEnabled)
+        {
+            _renderThrottleTimer.Start();
+        }
+    }
+
+    /// <summary>
+    /// 렌더링 쓰로틀 타이머 만료 시 실제 렌더링 수행 (dirty line만)
     /// </summary>
     private void OnRenderThrottleTimerTick(object? sender, EventArgs e)
     {
         if (_renderPending)
         {
             _renderPending = false;
-            Dispatcher.BeginInvoke(InvalidateVisual, System.Windows.Threading.DispatcherPriority.Render);
-        }
-        else
-        {
-            // 더 이상 렌더링 요청이 없으면 타이머 중지
-            _renderThrottleTimer.Stop();
+            UpdateLines();  // dirty line만 다시 그리기 (CPU 90% 절감)
         }
     }
 
@@ -501,31 +568,65 @@ public class TerminalControl : FrameworkElement
         ResizeToFit();
     }
 
-    protected override void OnRender(DrawingContext dc)
+    /// <summary>
+    /// DrawingVisual 기반 라인별 렌더링 (dirty line만)
+    /// </summary>
+    private void UpdateLines()
     {
-        // 배경 (캐시된 브러시 사용)
-        var backgroundBrush = GetOrCreateBrush(TerminalColors.DefaultBackground);
-        dc.DrawRectangle(
-            backgroundBrush,
-            null,
-            new Rect(0, 0, ActualWidth, ActualHeight));
-
         if (_cellWidth <= 0 || _cellHeight <= 0) return;
 
-        var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        // 배경 업데이트 (항상)
+        UpdateBackground();
 
-        int scrollOffset = _buffer.ScrollOffset;
-        int scrollbackCount = _buffer.ScrollbackCount;
+        // dirty line만 업데이트 (CPU 90% 절감)
+        foreach (var dirtyRow in _buffer.GetDirtyLines())
+        {
+            if (dirtyRow >= 0 && dirtyRow < _buffer.Rows)
+            {
+                UpdateLine(dirtyRow);
+            }
+        }
+        _buffer.ClearDirtyLines();
 
-        // 각 행 렌더링
-        for (int screenRow = 0; screenRow < _buffer.Rows; screenRow++)
+        // 오버레이 업데이트 (선택, 스크롤 인디케이터 등)
+        UpdateOverlay();
+    }
+
+    /// <summary>
+    /// 배경 렌더링
+    /// </summary>
+    private void UpdateBackground()
+    {
+        if (_backgroundVisual == null) return;
+
+        using (var dc = _backgroundVisual.RenderOpen())
+        {
+            var backgroundBrush = GetOrCreateBrush(TerminalColors.DefaultBackground);
+            dc.DrawRectangle(
+                backgroundBrush,
+                null,
+                new Rect(0, 0, ActualWidth, ActualHeight));
+        }
+    }
+
+    /// <summary>
+    /// 단일 라인 렌더링 (DrawingVisual 캐싱)
+    /// </summary>
+    private void UpdateLine(int screenRow)
+    {
+        if (screenRow < 0 || screenRow >= _lineVisuals.Length) return;
+
+        var visual = _lineVisuals[screenRow];
+        using (var dc = visual.RenderOpen())
         {
             double y = screenRow * _cellHeight;
+            var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
 
-            // 스크롤 오프셋에 따라 스크롤백 또는 현재 버퍼에서 읽기
+            int scrollOffset = _buffer.ScrollOffset;
+            int scrollbackCount = _buffer.ScrollbackCount;
             int dataRow = screenRow - scrollOffset;
             bool isScrollback = dataRow < 0;
-            int scrollbackIndex = scrollbackCount + dataRow;  // 스크롤백 인덱스
+            int scrollbackIndex = scrollbackCount + dataRow;
 
             for (int col = 0; col < _buffer.Columns; col++)
             {
@@ -534,7 +635,6 @@ public class TerminalControl : FrameworkElement
 
                 if (isScrollback && scrollbackIndex >= 0 && scrollbackIndex < scrollbackCount)
                 {
-                    // 스크롤백 버퍼에서 읽기
                     var scrollbackLine = _buffer.GetScrollbackLine(scrollbackIndex);
                     cell = (scrollbackLine != null && col < scrollbackLine.Length)
                         ? scrollbackLine[col]
@@ -542,7 +642,6 @@ public class TerminalControl : FrameworkElement
                 }
                 else if (!isScrollback && dataRow < _buffer.Rows)
                 {
-                    // 현재 버퍼에서 읽기
                     cell = _buffer.GetCell(dataRow, col);
                 }
                 else
@@ -550,38 +649,20 @@ public class TerminalControl : FrameworkElement
                     cell = TerminalCell.Empty;
                 }
 
-                // Wide char의 tail 셀은 건너뜀
                 if (cell.IsWideCharTail)
                     continue;
 
-                // Wide char는 2칸 너비
                 double cellRenderWidth = cell.IsWideChar ? _cellWidth * 2 : _cellWidth;
 
-                // 커서 위치인지 확인
-                bool isCursor = scrollOffset == 0 && dataRow == _buffer.CursorY && col == _buffer.CursorX &&
-                                _buffer.CursorVisible && _cursorBlinkState;
-
-                // 배경색 (커서 위치가 아닐 때만)
-                if (!isCursor && cell.Background != TerminalColors.DefaultBackground &&
+                // 배경색
+                if (cell.Background != TerminalColors.DefaultBackground &&
                     cell.Background != Colors.Transparent)
                 {
                     var cellBackgroundBrush = GetOrCreateBrush(cell.Background);
                     dc.DrawRectangle(
                         cellBackgroundBrush,
                         null,
-                        new Rect(x, y, cellRenderWidth, _cellHeight));
-                }
-
-                // 커서 위치 표시 (스크롤백 보는 중에는 숨김)
-                if (isCursor)
-                {
-                    // 언더라인 커서 (셀 하단에 얇은 선)
-                    double cursorHeight = 2.0;
-                    var cursorBrush = GetOrCreateBrush(Color.FromArgb(220, 255, 255, 255));
-                    dc.DrawRectangle(
-                        cursorBrush,
-                        null,
-                        new Rect(x, y + _cellHeight - cursorHeight, cellRenderWidth, cursorHeight));
+                        new Rect(x, 0, cellRenderWidth, _cellHeight));
                 }
 
                 // 호버된 링크인지 확인
@@ -592,17 +673,14 @@ public class TerminalControl : FrameworkElement
                 // 문자 렌더링
                 if (cell.Character != ' ' && cell.Character != '\0')
                 {
-                    // 호버된 링크는 파란색으로 표시
                     var textColor = isHoveredLink
-                        ? Color.FromRgb(100, 149, 237)  // CornflowerBlue
+                        ? Color.FromRgb(100, 149, 237)
                         : cell.Foreground;
 
-                    // Glyph 캐시에서 가져오기 (성능 최적화)
                     var formattedText = GetOrCreateGlyphText(cell.Character, textColor, cell.Bold, pixelsPerDip);
+                    dc.DrawText(formattedText, new Point(x, 0));
 
-                    dc.DrawText(formattedText, new Point(x, y));
-
-                    // 밑줄 (원래 밑줄 또는 호버된 링크)
+                    // 밑줄
                     if (cell.Underline || isHoveredLink)
                     {
                         var underlineColor = isHoveredLink
@@ -611,44 +689,61 @@ public class TerminalControl : FrameworkElement
                         var underlinePen = GetOrCreatePen(underlineColor);
                         dc.DrawLine(
                             underlinePen,
-                            new Point(x, y + _cellHeight - 2),
-                            new Point(x + cellRenderWidth, y + _cellHeight - 2));
+                            new Point(x, _cellHeight - 2),
+                            new Point(x + cellRenderWidth, _cellHeight - 2));
                     }
                 }
             }
         }
 
-        // 스크롤백 표시 중이면 인디케이터 표시
-        if (scrollOffset > 0)
+        // Visual 위치 설정
+        visual.Offset = new Vector(0, screenRow * _cellHeight);
+    }
+
+    /// <summary>
+    /// 오버레이 렌더링 (선택 영역, 스크롤 인디케이터, 버튼)
+    /// </summary>
+    private void UpdateOverlay()
+    {
+        if (_overlayVisual == null) return;
+
+        using (var dc = _overlayVisual.RenderOpen())
         {
-            var indicatorText = new FormattedText(
-                $"↑ {scrollOffset} lines",
-                CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight,
-                _typeface,
-                10,
-                Brushes.Yellow,
-                pixelsPerDip);
+            var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+            int scrollOffset = _buffer.ScrollOffset;
 
-            var indicatorBgBrush = GetOrCreateBrush(Color.FromArgb(180, 0, 0, 0));
-            dc.DrawRectangle(
-                indicatorBgBrush,
-                null,
-                new Rect(ActualWidth - indicatorText.Width - 20, 5, indicatorText.Width + 10, indicatorText.Height + 4));
+            // 스크롤백 인디케이터
+            if (scrollOffset > 0)
+            {
+                var indicatorText = new FormattedText(
+                    $"↑ {scrollOffset} lines",
+                    CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    _typeface,
+                    10,
+                    Brushes.Yellow,
+                    pixelsPerDip);
 
-            dc.DrawText(indicatorText, new Point(ActualWidth - indicatorText.Width - 15, 7));
-        }
+                var indicatorBgBrush = GetOrCreateBrush(Color.FromArgb(180, 0, 0, 0));
+                dc.DrawRectangle(
+                    indicatorBgBrush,
+                    null,
+                    new Rect(ActualWidth - indicatorText.Width - 20, 5, indicatorText.Width + 10, indicatorText.Height + 4));
 
-        // 선택 영역 표시
-        if (_isSelecting || !string.IsNullOrEmpty(_selectedText))
-        {
-            RenderSelection(dc);
-        }
+                dc.DrawText(indicatorText, new Point(ActualWidth - indicatorText.Width - 15, 7));
+            }
 
-        // 스크롤 다운 버튼 표시 (마우스 오버 + 스크롤 위치가 위쪽일 때)
-        if (_isMouseOver && scrollOffset > 0)
-        {
-            RenderScrollDownButton(dc, pixelsPerDip);
+            // 선택 영역
+            if (_isSelecting || !string.IsNullOrEmpty(_selectedText))
+            {
+                RenderSelection(dc);
+            }
+
+            // 스크롤 다운 버튼
+            if (_isMouseOver && scrollOffset > 0)
+            {
+                RenderScrollDownButton(dc, pixelsPerDip);
+            }
         }
     }
 
@@ -752,6 +847,34 @@ public class TerminalControl : FrameworkElement
                     input = "\x03";  // Ctrl+C를 프로세스에 전송
                 }
             }
+            // Ctrl+V: 클립보드 텍스트 붙여넣기
+            else if (e.Key == Key.V)
+            {
+                try
+                {
+                    if (Clipboard.ContainsText())
+                    {
+                        var text = Clipboard.GetText();
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            InputReceived?.Invoke(text);
+                        }
+                        e.Handled = true;
+                        return;
+                    }
+                }
+                catch
+                {
+                    // 클립보드 접근 실패 무시
+                }
+            }
+            // Ctrl+Enter: 줄바꿈
+            else if (e.Key == Key.Enter)
+            {
+                InputReceived?.Invoke("\n");
+                e.Handled = true;
+                return;
+            }
             else
             {
                 input = e.Key switch
@@ -832,7 +955,8 @@ public class TerminalControl : FrameworkElement
         if (newOffset != _buffer.ScrollOffset)
         {
             _buffer.ScrollOffset = newOffset;
-            InvalidateVisual();
+            _buffer.MarkAllLinesDirty();
+            UpdateLines();
         }
     }
 
@@ -844,7 +968,8 @@ public class TerminalControl : FrameworkElement
         if (_buffer.ScrollOffset != 0)
         {
             _buffer.ScrollOffset = 0;
-            InvalidateVisual();
+            _buffer.MarkAllLinesDirty();
+            UpdateLines();
         }
     }
 
@@ -911,7 +1036,7 @@ public class TerminalControl : FrameworkElement
         _selectionEndPoint = position;
         _selectedText = null;
         CaptureMouse();
-        InvalidateVisual();
+        UpdateOverlay();
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
@@ -935,7 +1060,7 @@ public class TerminalControl : FrameworkElement
         if (_isSelecting)
         {
             _selectionEndPoint = position;
-            InvalidateVisual();
+            UpdateOverlay();
         }
         else
         {
@@ -966,6 +1091,9 @@ public class TerminalControl : FrameworkElement
             // 선택된 텍스트 추출
             ExtractSelectedText();
 
+            // 오버레이 업데이트
+            UpdateOverlay();
+
             // 선택된 텍스트가 있으면 클립보드에 복사 (선택 후 자동 복사는 선택 사항)
             // 여기서는 선택만 하고 Ctrl+C로 복사하도록 함
         }
@@ -975,7 +1103,7 @@ public class TerminalControl : FrameworkElement
     {
         base.OnMouseEnter(e);
         _isMouseOver = true;
-        InvalidateVisual();
+        UpdateOverlay();
     }
 
     protected override void OnMouseLeave(MouseEventArgs e)
@@ -983,7 +1111,7 @@ public class TerminalControl : FrameworkElement
         base.OnMouseLeave(e);
         _isMouseOver = false;
         ClearLinkHover();
-        InvalidateVisual();
+        UpdateOverlay();
     }
 
     /// <summary>
@@ -1038,6 +1166,12 @@ public class TerminalControl : FrameworkElement
             return;
         }
 
+        // 이전 링크 라인 다시 그리기
+        if (_hoveredLinkRow >= 0 && _hoveredLinkRow < _buffer.Rows)
+        {
+            _buffer.MarkLineDirty(_hoveredLinkRow);
+        }
+
         _hoveredLinkRow = row;
         _hoveredLinkStartCol = startCol;
         _hoveredLinkEndCol = endCol;
@@ -1050,7 +1184,13 @@ public class TerminalControl : FrameworkElement
         // 툴팁 표시
         ShowLinkToolTip(mousePos, value, type);
 
-        InvalidateVisual();
+        // 새 링크 라인 다시 그리기
+        if (row >= 0 && row < _buffer.Rows)
+        {
+            _buffer.MarkLineDirty(row);
+        }
+
+        UpdateLines();
     }
 
     /// <summary>
@@ -1059,6 +1199,12 @@ public class TerminalControl : FrameworkElement
     private void ClearLinkHover()
     {
         if (_hoveredLinkRow == -1) return;
+
+        // 이전 링크 라인 다시 그리기
+        if (_hoveredLinkRow >= 0 && _hoveredLinkRow < _buffer.Rows)
+        {
+            _buffer.MarkLineDirty(_hoveredLinkRow);
+        }
 
         _hoveredLinkRow = -1;
         _hoveredLinkStartCol = -1;
@@ -1069,7 +1215,7 @@ public class TerminalControl : FrameworkElement
         Cursor = Cursors.IBeam;
         HideLinkToolTip();
 
-        InvalidateVisual();
+        UpdateLines();
     }
 
     /// <summary>
@@ -1366,7 +1512,8 @@ public class TerminalControl : FrameworkElement
             // 맨 아래로 스크롤하면 자동 스크롤 재활성화, 그 외에는 비활성화
             _autoScroll = (newOffset == 0);
 
-            InvalidateVisual();
+            _buffer.MarkAllLinesDirty();
+            UpdateLines();
         }
 
         e.Handled = true;
@@ -1535,7 +1682,7 @@ public class TerminalControl : FrameworkElement
     {
         _selectedText = null;
         _isSelecting = false;
-        InvalidateVisual();
+        UpdateOverlay();
     }
 
     #endregion

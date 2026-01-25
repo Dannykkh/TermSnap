@@ -75,6 +75,9 @@ public class AppConfig
     // AI CLI 설정 (Claude Code, Codex, Gemini CLI 등)
     public AICLISettings AICLISettings { get; set; } = new();
 
+    // 로컬 터미널 UI 설정
+    public LocalTerminalUISettings LocalTerminalUI { get; set; } = new();
+
     // 선택된 AI 제공자
     public AIProviderType SelectedProvider { get; set; } = AIProviderType.Gemini;
     
@@ -401,4 +404,20 @@ public class AICLIInfo
     /// 공식 웹사이트 URL
     /// </summary>
     public string WebsiteUrl { get; set; } = "";
+}
+
+/// <summary>
+/// 로컬 터미널 UI 설정 (마지막 선택 옵션 저장)
+/// </summary>
+public class LocalTerminalUISettings
+{
+    /// <summary>
+    /// 블록 UI 사용 여부 (true: 채팅 스타일, false: 터미널 스타일)
+    /// </summary>
+    public bool UseBlockUI { get; set; } = true;
+
+    /// <summary>
+    /// 마지막으로 선택한 쉘 타입
+    /// </summary>
+    public string LastShellType { get; set; } = "PowerShell";
 }

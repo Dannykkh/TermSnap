@@ -139,14 +139,31 @@ public class SftpService : IDisposable
         {
             var files = _sftpClient!.ListDirectory(remotePath)
                 .Where(f => f.Name != "." && f.Name != "..")
-                .Select(f => new RemoteFileInfo
+                .Select(f =>
                 {
-                    Name = f.Name,
-                    FullPath = f.FullName,
-                    IsDirectory = f.IsDirectory,
-                    Size = f.Length,
-                    LastModified = f.LastWriteTime,
-                    Permissions = null // TODO: SSH.NET doesn't expose PermissionsString
+                    // SSH.NET의 SftpFile에서 권한 정보 추출
+                    string? permissions = null;
+                    try
+                    {
+                        // GroupCanRead, OwnerCanRead 등의 속성을 직접 사용
+                        permissions = $"{(f.OwnerCanRead ? 'r' : '-')}{(f.OwnerCanWrite ? 'w' : '-')}{(f.OwnerCanExecute ? 'x' : '-')}" +
+                                    $"{(f.GroupCanRead ? 'r' : '-')}{(f.GroupCanWrite ? 'w' : '-')}{(f.GroupCanExecute ? 'x' : '-')}" +
+                                    $"{(f.OthersCanRead ? 'r' : '-')}{(f.OthersCanWrite ? 'w' : '-')}{(f.OthersCanExecute ? 'x' : '-')}";
+                    }
+                    catch
+                    {
+                        // 권한 정보를 가져올 수 없으면 null로 유지
+                    }
+
+                    return new RemoteFileInfo
+                    {
+                        Name = f.Name,
+                        FullPath = f.FullName,
+                        IsDirectory = f.IsDirectory,
+                        Size = f.Length,
+                        LastModified = f.LastWriteTime,
+                        Permissions = permissions
+                    };
                 })
                 .OrderByDescending(f => f.IsDirectory)
                 .ThenBy(f => f.Name)
@@ -589,6 +606,39 @@ public class SftpService : IDisposable
         newClient.Connect();
         OptimizeSftpPerformance(newClient);
         return newClient;
+    }
+
+    #endregion
+
+    #region Permission Helpers
+
+    /// <summary>
+    /// Unix 파일 권한을 문자열로 변환 (예: 0755 → rwxr-xr-x)
+    /// </summary>
+    private static string FormatPermissions(uint permissions)
+    {
+        // Unix 권한 비트에서 파일 타입과 권한 추출
+        // permissions의 하위 9비트가 rwxrwxrwx를 나타냄
+        // Owner: bits 8-6, Group: bits 5-3, Others: bits 2-0
+
+        var result = new char[9];
+
+        // Owner (User) permissions
+        result[0] = (permissions & 0x100) != 0 ? 'r' : '-';  // Read
+        result[1] = (permissions & 0x080) != 0 ? 'w' : '-';  // Write
+        result[2] = (permissions & 0x040) != 0 ? 'x' : '-';  // Execute
+
+        // Group permissions
+        result[3] = (permissions & 0x020) != 0 ? 'r' : '-';  // Read
+        result[4] = (permissions & 0x010) != 0 ? 'w' : '-';  // Write
+        result[5] = (permissions & 0x008) != 0 ? 'x' : '-';  // Execute
+
+        // Others permissions
+        result[6] = (permissions & 0x004) != 0 ? 'r' : '-';  // Read
+        result[7] = (permissions & 0x002) != 0 ? 'w' : '-';  // Write
+        result[8] = (permissions & 0x001) != 0 ? 'x' : '-';  // Execute
+
+        return new string(result);
     }
 
     #endregion

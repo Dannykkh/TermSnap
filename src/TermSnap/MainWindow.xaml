@@ -7,7 +7,8 @@
         Title="TermSnap"
         Height="850" Width="1300"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource BackgroundBrush}">
+        Background="{DynamicResource BackgroundBrush}"
+        Icon="Resources/termsnap_icon2.ico">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
@@ -40,6 +41,7 @@
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0,0,2,0"/>
+            <Setter Property="MaxWidth" Value="180"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
@@ -47,7 +49,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderThickness="0,0,0,2"
                                 BorderBrush="Transparent"
-                                Padding="12,8"
+                                Padding="8,8"
                                 Cursor="Hand">
                             <ContentPresenter ContentSource="Header"/>
                         </Border>
@@ -95,46 +97,131 @@
                         </TabControl.ItemContainerStyle>
                         <TabControl.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Width="14" Height="14"
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 아이콘 (쉘 타입별) -->
+                                    <materialDesign:PackIcon Grid.Column="0"
+                                                             Width="16" Height="16"
                                                              VerticalAlignment="Center"
                                                              Margin="0,0,6,0">
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
+                                                <!-- SSH 세션 기본 아이콘 -->
                                                 <Setter Property="Kind" Value="Server"/>
                                                 <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Type}" Value="Local">
+                                                    <!-- 로컬 세션: 쉘 타입별 아이콘 -->
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding Type}" Value="Local"/>
+                                                            <Condition Binding="{Binding ShellType}" Value="PowerShell"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="Powershell"/>
+                                                        <Setter Property="Foreground" Value="#0088FF"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding Type}" Value="Local"/>
+                                                            <Condition Binding="{Binding ShellType}" Value="Cmd"/>
+                                                        </MultiDataTrigger.Conditions>
                                                         <Setter Property="Kind" Value="Console"/>
-                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
-                                                    </DataTrigger>
+                                                        <Setter Property="Foreground" Value="#CCCCCC"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding Type}" Value="Local"/>
+                                                            <Condition Binding="{Binding ShellType}" Value="WSL"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="Linux"/>
+                                                        <Setter Property="Foreground" Value="#FFA500"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding Type}" Value="Local"/>
+                                                            <Condition Binding="{Binding ShellType}" Value="GitBash"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="Git"/>
+                                                        <Setter Property="Foreground" Value="#F05032"/>
+                                                    </MultiDataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </materialDesign:PackIcon.Style>
                                     </materialDesign:PackIcon>
-                                    <!-- 데이터 수신 스피너 -->
-                                    <TextBlock Text="{Binding SpinnerText}"
-                                               VerticalAlignment="Center"
-                                               FontSize="13"
-                                               FontFamily="Consolas"
-                                               Foreground="{DynamicResource SuccessBrush}"
-                                               Margin="0,0,4,0"
-                                               Visibility="{Binding SpinnerText, Converter={StaticResource StringToVisibilityConverter}}"/>
-                                    <TextBlock Text="{Binding TabHeader}"
-                                               VerticalAlignment="Center"
-                                               FontSize="13"
-                                               Margin="0,0,8,0"/>
-                                    <Button Content="✕"
+
+                                    <!-- 중앙: 스피너 + 상태 + 탭 헤더 -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <!-- 데이터 수신 스피너 -->
+                                        <TextBlock Text="{Binding SpinnerText}"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   FontFamily="Consolas"
+                                                   Foreground="{DynamicResource SuccessBrush}"
+                                                   Margin="0,0,4,0"
+                                                   Visibility="{Binding SpinnerText, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                        <!-- 포트 포워딩 상태 -->
+                                        <TextBlock Text="{Binding PortForwardingStatusText}"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="10"
+                                                   Foreground="{DynamicResource PrimaryBrush}"
+                                                   Margin="0,0,4,0"
+                                                   Visibility="{Binding PortForwardingStatusText, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                        <!-- 탭 헤더 (텍스트 잘림 처리) -->
+                                        <TextBlock Text="{Binding TabHeader}"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="13"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="120"/>
+                                    </StackPanel>
+
+                                    <!-- 오른쪽: 닫기 버튼 (마우스 오버시에만 표시) -->
+                                    <Button Grid.Column="2"
+                                            x:Name="CloseButton"
+                                            Content="✕"
                                             Width="16" Height="16"
                                             Padding="0"
-                                            FontSize="9"
+                                            FontSize="10"
                                             Background="Transparent"
                                             Foreground="{DynamicResource TextSecondaryBrush}"
                                             BorderThickness="0"
                                             VerticalAlignment="Center"
+                                            Margin="8,0,0,0"
+                                            Opacity="0"
                                             Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding}"/>
-                                </StackPanel>
+                                            CommandParameter="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}"
+                                                                    CornerRadius="2"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource ErrorBrush}"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </Grid>
+                                <DataTemplate.Triggers>
+                                    <!-- 탭에 마우스 오버시 닫기 버튼 표시 -->
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="CloseButton" Property="Opacity" Value="1"/>
+                                    </Trigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </TabControl.ItemTemplate>
                         <!-- 컨텐츠는 별도로 표시하므로 여기선 빈 템플릿 -->
@@ -450,34 +537,57 @@
                     </Border>
 
                     <!-- 명령어 목록 -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding CurrentSession.FrequentCommands}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="8,4"
-                                            CornerRadius="6"
-                                            Cursor="Hand"
-                                            BorderBrush="{DynamicResource BorderBrush}"
-                                            BorderThickness="1"
-                                            Tag="{Binding}">
-                                        <Border.InputBindings>
-                                            <MouseBinding MouseAction="LeftClick"
-                                                          Command="{Binding DataContext.CurrentSession.UseFrequentCommandCmd, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                          CommandParameter="{Binding}"/>
-                                            <MouseBinding MouseAction="LeftDoubleClick"
-                                                          Command="{Binding DataContext.CurrentSession.ShowCommandDetailCmd, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                          CommandParameter="{Binding}"/>
-                                        </Border.InputBindings>
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
-                                                <Style.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="{DynamicResource PrimaryLightBrush}"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
+                    <ListBox Grid.Row="1"
+                             x:Name="FrequentCommandsListBox"
+                             ItemsSource="{Binding CurrentSession.FrequentCommands}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             AllowDrop="True"
+                             PreviewMouseMove="FrequentCommandsList_PreviewMouseMove"
+                             Drop="FrequentCommandsList_Drop"
+                             DragOver="FrequentCommandsList_DragOver">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter/>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="8,4"
+                                        CornerRadius="6"
+                                        Cursor="Hand"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1"
+                                        Tag="{Binding}">
+                                    <Border.InputBindings>
+                                        <MouseBinding MouseAction="LeftClick"
+                                                      Command="{Binding DataContext.CurrentSession.UseFrequentCommandCmd, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      CommandParameter="{Binding}"/>
+                                        <MouseBinding MouseAction="LeftDoubleClick"
+                                                      Command="{Binding DataContext.CurrentSession.ShowCommandDetailCmd, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      CommandParameter="{Binding}"/>
+                                    </Border.InputBindings>
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource PrimaryLightBrush}"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                         <Grid Margin="10,8">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -540,9 +650,8 @@
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
 
                     <!-- 명령어 없을 때 안내 -->
                     <StackPanel Grid.Row="1"
