@@ -67,6 +67,14 @@ public class HistoryDatabaseService : IDisposable
     }
 
     /// <summary>
+    /// SQLite 연결 객체 반환 (내부용)
+    /// </summary>
+    public SqliteConnection GetConnection()
+    {
+        return _connection ?? throw new InvalidOperationException("Database not initialized");
+    }
+
+    /// <summary>
     /// 테이블 생성 (FTS5 포함)
     /// </summary>
     private void CreateTables()
@@ -89,7 +97,8 @@ public class HistoryDatabaseService : IDisposable
                 executed_at TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 embedding_vector TEXT,
-                use_count INTEGER DEFAULT 1
+                use_count INTEGER DEFAULT 1,
+                display_order INTEGER DEFAULT 0
             );
 
             -- 인덱스 생성
@@ -111,6 +120,13 @@ public class HistoryDatabaseService : IDisposable
         try
         {
             command.CommandText = "ALTER TABLE command_history ADD COLUMN use_count INTEGER DEFAULT 1";
+            command.ExecuteNonQuery();
+        }
+        catch (SqliteException) { /* 이미 존재하면 무시 */ }
+
+        try
+        {
+            command.CommandText = "ALTER TABLE command_history ADD COLUMN display_order INTEGER DEFAULT 0";
             command.ExecuteNonQuery();
         }
         catch (SqliteException) { /* 이미 존재하면 무시 */ }
@@ -270,23 +286,37 @@ public class HistoryDatabaseService : IDisposable
     }
 
     /// <summary>
-    /// 자주 사용하는 명령어 조회 (빈도 기반)
+    /// 자주 사용하는 명령어 조회 (빈도 기반 + 드래그앤드롭 정렬 지원)
     /// </summary>
     public List<FrequentCommand> GetFrequentCommands(int limit = 20, string? serverProfile = null)
     {
         var results = new List<FrequentCommand>();
 
+        // display_order 컬럼 추가 (없으면)
+        try
+        {
+            using var alterCommand = _connection!.CreateCommand();
+            alterCommand.CommandText = "ALTER TABLE command_history ADD COLUMN display_order INTEGER DEFAULT 0";
+            alterCommand.ExecuteNonQuery();
+        }
+        catch
+        {
+            // 컬럼이 이미 존재하면 예외 무시
+        }
+
         using var command = _connection!.CreateCommand();
-        
+
         if (string.IsNullOrEmpty(serverProfile))
         {
             command.CommandText = @"
-                SELECT generated_command, user_input, explanation, SUM(use_count) as total_use, 
-                       COUNT(*) as exec_count, MAX(executed_at) as last_used
+                SELECT generated_command, user_input, explanation, SUM(use_count) as total_use,
+                       COUNT(*) as exec_count, MAX(executed_at) as last_used,
+                       COALESCE(MAX(display_order), 0) as display_order
                 FROM command_history
                 WHERE is_success = 1
                 GROUP BY generated_command
-                ORDER BY total_use DESC, exec_count DESC
+                ORDER BY CASE WHEN COALESCE(MAX(display_order), 0) > 0 THEN COALESCE(MAX(display_order), 0) ELSE 999999 END,
+                         total_use DESC, exec_count DESC
                 LIMIT @limit
             ";
         }
@@ -294,16 +324,18 @@ public class HistoryDatabaseService : IDisposable
         {
             command.CommandText = @"
                 SELECT generated_command, user_input, explanation, SUM(use_count) as total_use,
-                       COUNT(*) as exec_count, MAX(executed_at) as last_used
+                       COUNT(*) as exec_count, MAX(executed_at) as last_used,
+                       COALESCE(MAX(display_order), 0) as display_order
                 FROM command_history
                 WHERE is_success = 1 AND server_profile = @serverProfile
                 GROUP BY generated_command
-                ORDER BY total_use DESC, exec_count DESC
+                ORDER BY CASE WHEN COALESCE(MAX(display_order), 0) > 0 THEN COALESCE(MAX(display_order), 0) ELSE 999999 END,
+                         total_use DESC, exec_count DESC
                 LIMIT @limit
             ";
             command.Parameters.AddWithValue("@serverProfile", serverProfile);
         }
-        
+
         command.Parameters.AddWithValue("@limit", limit);
 
         using var reader = command.ExecuteReader();
@@ -316,7 +348,8 @@ public class HistoryDatabaseService : IDisposable
                 Explanation = reader.IsDBNull(2) ? null : reader.GetString(2),
                 TotalUseCount = reader.GetInt64(3),
                 ExecutionCount = reader.GetInt64(4),
-                LastUsed = DateTime.Parse(reader.GetString(5))
+                LastUsed = DateTime.Parse(reader.GetString(5)),
+                DisplayOrder = reader.GetInt32(6)
             });
         }
 
@@ -569,6 +602,36 @@ public class HistoryDatabaseService : IDisposable
     }
 
     /// <summary>
+    /// 자주 사용하는 명령어 정렬 순서 업데이트
+    /// </summary>
+    public bool UpdateFrequentCommandOrder(string commandText, int displayOrder)
+    {
+        // display_order 컬럼이 없을 수 있으므로, 먼저 컬럼 추가 시도 (이미 있으면 무시됨)
+        try
+        {
+            using var alterCommand = _connection!.CreateCommand();
+            alterCommand.CommandText = "ALTER TABLE command_history ADD COLUMN display_order INTEGER DEFAULT 0";
+            alterCommand.ExecuteNonQuery();
+        }
+        catch
+        {
+            // 컬럼이 이미 존재하면 예외 무시
+        }
+
+        // 정렬 순서 업데이트
+        using var command = _connection!.CreateCommand();
+        command.CommandText = @"
+            UPDATE command_history
+            SET display_order = @displayOrder
+            WHERE generated_command = @command
+        ";
+        command.Parameters.AddWithValue("@displayOrder", displayOrder);
+        command.Parameters.AddWithValue("@command", commandText ?? "");
+
+        return command.ExecuteNonQuery() > 0;
+    }
+
+    /// <summary>
     /// 전체 히스토리 삭제
     /// </summary>
     public void ClearAllHistory()
@@ -589,6 +652,26 @@ public class HistoryDatabaseService : IDisposable
     {
         using var command = _connection!.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM command_history";
+        return (long)command.ExecuteScalar()!;
+    }
+
+    /// <summary>
+    /// 서버 프로필별 히스토리 개수 조회
+    /// </summary>
+    public long GetHistoryCount(string? serverProfile = null)
+    {
+        using var command = _connection!.CreateCommand();
+
+        if (string.IsNullOrEmpty(serverProfile))
+        {
+            command.CommandText = "SELECT COUNT(*) FROM command_history";
+        }
+        else
+        {
+            command.CommandText = "SELECT COUNT(*) FROM command_history WHERE server_profile = @serverProfile";
+            command.Parameters.AddWithValue("@serverProfile", serverProfile);
+        }
+
         return (long)command.ExecuteScalar()!;
     }
 
@@ -705,4 +788,5 @@ public class FrequentCommand
     public long TotalUseCount { get; set; }
     public long ExecutionCount { get; set; }
     public DateTime LastUsed { get; set; }
+    public int DisplayOrder { get; set; } = 0; // 드래그앤드롭 정렬 순서
 }

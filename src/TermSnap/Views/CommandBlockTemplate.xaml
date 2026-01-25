@@ -10,6 +10,32 @@
                 BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Style.Triggers>
+                        <!-- Executing 상태: 주황색 테두리 + 약간 밝은 배경 -->
+                        <DataTrigger Binding="{Binding Status}" Value="Executing">
+                            <Setter Property="BorderBrush" Value="#FF9800"/>
+                            <Setter Property="BorderThickness" Value="2"/>
+                            <Setter Property="Background" Value="#2A2A2A"/>
+                        </DataTrigger>
+                        <!-- Success 상태: 초록색 테두리 -->
+                        <DataTrigger Binding="{Binding Status}" Value="Success">
+                            <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+                        </DataTrigger>
+                        <!-- Failed 상태: 빨간색 테두리 -->
+                        <DataTrigger Binding="{Binding Status}" Value="Failed">
+                            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+                        </DataTrigger>
+                        <!-- Confirming 상태: 노란색 테두리 -->
+                        <DataTrigger Binding="{Binding Status}" Value="Confirming">
+                            <Setter Property="BorderBrush" Value="#FFC107"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -23,6 +49,17 @@
                         Background="{DynamicResource SurfaceBrush}"
                         Padding="12,8"
                         CornerRadius="8,8,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                            <Style.Triggers>
+                                <!-- Executing 상태: 약간 밝은 배경 -->
+                                <DataTrigger Binding="{Binding Status}" Value="Executing">
+                                    <Setter Property="Background" Value="#2D2D2D"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -95,26 +132,38 @@
                 <Border Grid.Row="2" Padding="12,8">
                     <StackPanel>
                         <!-- 성공 출력 -->
-                        <TextBox Text="{Binding Output, Mode=OneWay}"
-                                 FontFamily="Consolas, Cascadia Code, monospace"
-                                 FontSize="12"
-                                 Foreground="{DynamicResource TextPrimaryBrush}"
-                                 Background="Transparent"
-                                 BorderThickness="0"
-                                 IsReadOnly="True"
-                                 TextWrapping="Wrap"
-                                 Visibility="{Binding HasOutput, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <ScrollViewer MaxHeight="300"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Visibility="{Binding HasOutput, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBox Text="{Binding Output, Mode=OneWay}"
+                                     FontFamily="Consolas, Cascadia Code, monospace"
+                                     FontSize="12"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     IsReadOnly="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Disabled"
+                                     HorizontalScrollBarVisibility="Disabled"/>
+                        </ScrollViewer>
 
                         <!-- 에러 출력 -->
-                        <TextBox Text="{Binding Error, Mode=OneWay}"
-                                 FontFamily="Consolas, Cascadia Code, monospace"
-                                 FontSize="12"
-                                 Foreground="{DynamicResource ErrorBrush}"
-                                 Background="Transparent"
-                                 BorderThickness="0"
-                                 IsReadOnly="True"
-                                 TextWrapping="Wrap"
-                                 Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <ScrollViewer MaxHeight="300"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBox Text="{Binding Error, Mode=OneWay}"
+                                     FontFamily="Consolas, Cascadia Code, monospace"
+                                     FontSize="12"
+                                     Foreground="{DynamicResource ErrorBrush}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     IsReadOnly="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Disabled"
+                                     HorizontalScrollBarVisibility="Disabled"/>
+                        </ScrollViewer>
 
                         <!-- 출력 없음 -->
                         <TextBlock Text="{DynamicResource CommandBlock.NoOutput}"
@@ -321,27 +370,40 @@
                     <Border Grid.Row="2"
                             Background="{DynamicResource TerminalBackgroundBrush}"
                             CornerRadius="6"
-                            Padding="10,8">
+                            Padding="10,8"
+                            VerticalAlignment="Top">
                         <StackPanel>
-                            <TextBox Text="{Binding Output, Mode=OneWay}"
-                                     FontFamily="Consolas, Cascadia Code, monospace"
-                                     FontSize="12"
-                                     Foreground="{DynamicResource TextPrimaryBrush}"
-                                     Background="Transparent"
-                                     BorderThickness="0"
-                                     IsReadOnly="True"
-                                     TextWrapping="Wrap"
-                                     Visibility="{Binding HasOutput, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <ScrollViewer MaxHeight="300"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          Visibility="{Binding HasOutput, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBox Text="{Binding Output, Mode=OneWay}"
+                                         FontFamily="Consolas, Cascadia Code, monospace"
+                                         FontSize="12"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         IsReadOnly="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Disabled"
+                                         HorizontalScrollBarVisibility="Disabled"/>
+                            </ScrollViewer>
 
-                            <TextBox Text="{Binding Error, Mode=OneWay}"
-                                     FontFamily="Consolas, Cascadia Code, monospace"
-                                     FontSize="12"
-                                     Foreground="{DynamicResource ErrorBrush}"
-                                     Background="Transparent"
-                                     BorderThickness="0"
-                                     IsReadOnly="True"
-                                     TextWrapping="Wrap"
-                                     Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <ScrollViewer MaxHeight="300"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBox Text="{Binding Error, Mode=OneWay}"
+                                         FontFamily="Consolas, Cascadia Code, monospace"
+                                         FontSize="12"
+                                         Foreground="{DynamicResource ErrorBrush}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         IsReadOnly="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Disabled"
+                                         HorizontalScrollBarVisibility="Disabled"/>
+                            </ScrollViewer>
 
                             <TextBlock Text="{DynamicResource CommandBlock.NoOutput}"
                                        FontSize="11"

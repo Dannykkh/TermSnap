@@ -1,5 +1,134 @@
 # Release Notes
 
+## v1.4.0 - 2026-01-25
+
+### 🎨 UI/UX Improvements
+
+#### Tab UI Redesign
+- **Fixed Tab Width**: Tabs now have consistent width (MaxWidth: 180px)
+  - Prevents excessively long tabs that waste space
+  - Text trimming with ellipsis for long folder names
+  - Better visual consistency across multiple tabs
+
+- **Shell Type Icons**: Visual indicators replace text labels
+  - PowerShell: Blue icon
+  - CMD: Gray icon
+  - WSL: Orange icon
+  - Git Bash: Red icon
+  - SSH Server: Primary color icon
+
+- **Hover-Only Close Button**: Improved accidental click prevention
+  - X button hidden by default (opacity: 0)
+  - Appears on mouse hover (opacity: 1)
+  - Positioned at far right of tab
+  - Reduced risk of unintentional tab closure
+
+- **Simplified Tab Headers**: Cleaner tab text
+  - Shows only folder name instead of "ShellType (folder)"
+  - Status message still shows full details in status bar
+
+#### Status Bar Optimization
+- **Removed Duplicate Path Display**: Eliminated redundancy
+  - Current directory already shown in input box
+  - Removed from status bar to reduce clutter
+  - Git branch indicator preserved
+
+#### FileViewerPanel Integration
+- **Fixed Panel Display**: Markdown viewer now works correctly
+  - Fixed Grid.Column placement (Column 0 → Column 1)
+  - Panel now overlays terminal area (right-aligned)
+  - Proper view resolution from MainContentControl
+  - Added comprehensive debug logging
+
+- **Theme Integration**: Consistent color scheme
+  - Applied dynamic theme colors to all icons
+  - LocalizationService integration for text
+  - Proper background transparency (95% opacity)
+
+### ⚡ Performance Improvements
+
+#### Output Batch Processing
+- **60fps Output Limit**: Reduced UI thread load
+  - Output buffered in StringBuilder
+  - 16ms timer (60fps) for batch processing
+  - Dramatically reduces Dispatcher.BeginInvoke calls
+  - Prevents CPU spikes during high-frequency output
+  - Eliminates fan noise and UI freezing
+
+#### IME Detection Optimization
+- **Event-Based IME Monitoring**: Removed polling overhead
+  - Eliminated 200ms polling timer
+  - Uses InputLanguageChanged event exclusively
+  - Reduced main UI thread load
+  - More responsive and efficient
+
+### 🔧 Technical Improvements
+
+#### LocalTerminalView
+- `LocalTerminalView.xaml.cs`: Enhanced output handling
+  - `_outputBuffer`: StringBuilder for batch accumulation
+  - `_outputBatchTimer`: 16ms DispatcherTimer for 60fps rendering
+  - `OnRawOutputReceived()`: Append to buffer instead of immediate dispatch
+  - `OnOutputBatchTimerTick()`: Process all buffered output at once
+  - Cleanup in `OnUnloaded()` for timer disposal
+
+- `LocalTerminalView.xaml`: UI cleanup
+  - Removed current directory display from status bar
+  - Simplified Grid structure
+
+#### MainWindow
+- `MainWindow.xaml.cs`: Fixed FileViewerPanel access
+  - Changed from `TabItem.Content` to `MainContentControl.Content`
+  - Added IsSplitMode detection for future split-view support
+  - Comprehensive debug logging for file opening workflow
+
+- `MainWindow.xaml`: Tab style improvements
+  - Added MaxWidth to WarpTabItemStyle
+  - Redesigned ItemTemplate with Grid layout
+  - Shell type icons with MultiDataTrigger styling
+  - Close button with hover trigger
+
+#### LocalTerminalViewModel
+- `LocalTerminalViewModel.cs`: Simplified tab header logic
+  - TabHeader shows only folder name
+  - StatusMessage retains full details
+  - Fixed shellName variable scope issues
+
+#### FileViewerPanel
+- `FileViewerPanel.xaml.cs`: Enhanced integration
+  - Added LocalizationService import
+  - Debug logging throughout OpenFileAsync workflow
+  - LocalizationService for Close button text
+  - TODO comments for v2.0 features
+
+- `FileViewerPanel.xaml`: Layout fixes
+  - Grid.Column="1" for proper overlay positioning
+  - Added x:Name="FileViewerBorder" for code access
+  - Applied theme colors to all UI elements
+
+### 🐛 Bug Fixes
+- Fixed FileViewerPanel not appearing when clicking .md files
+- Fixed FileViewerPanel overlaying file tree instead of terminal
+- Fixed TabItem.Content being null (wrong view access method)
+- Fixed IME button not updating (removed timer-based approach)
+- Fixed shellName variable scope in LocalTerminalViewModel
+- Fixed CPU fan noise during terminal output
+- Fixed UI freezing during high-frequency output
+
+### 📋 Planned for v2.0
+- FileViewerPanel edit mode (toggle between view/edit)
+- Line numbers display (like Claude Code)
+- Support for more file types (.bat, .sh, .ps1, .json, .xml, .yaml)
+- Auto-save and change detection
+
+### 🎯 Performance
+- Output rendering: Reduced from hundreds/sec to 60/sec (stable 60fps)
+- IME detection: Eliminated 200ms polling overhead
+- CPU usage: Significantly reduced during terminal output
+- UI responsiveness: No more freezing during intensive operations
+
+---
+
 ## v1.3.0 - 2026-01-24
 
 ### 🎉 Major Improvements

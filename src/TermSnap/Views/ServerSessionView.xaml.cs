@@ -273,15 +273,21 @@ public partial class ServerSessionView : UserControl
         // UI 상태 복원 (Visibility)
         RestoreUIState();
 
+        // 스크롤 위치 복원
+        RestoreScrollPosition();
+
         // 파일 워처 활성화
         ActivateFileWatcher();
     }
 
     /// <summary>
-    /// ViewModel 비활성화 시 파일 워처 비활성화
+    /// ViewModel 비활성화 시 파일 워처 비활성화 및 스크롤 위치 저장
     /// </summary>
     private void OnViewModelDeactivated(object? sender, EventArgs e)
     {
+        // 스크롤 위치 저장
+        SaveScrollPosition();
+
         DeactivateFileWatcher();
     }
 
@@ -376,15 +382,100 @@ public partial class ServerSessionView : UserControl
         }
     }
 
+    /// <summary>
+    /// 스크롤 위치 저장 (탭 전환 시)
+    /// </summary>
+    private void SaveScrollPosition()
+    {
+        if (DataContext is ServerSessionViewModel vm)
+        {
+            if (BlockScrollViewer != null)
+            {
+                vm.SavedScrollVerticalOffset = BlockScrollViewer.VerticalOffset;
+                System.Diagnostics.Debug.WriteLine($"[ServerSessionView] Block 스크롤 위치 저장: {vm.SavedScrollVerticalOffset}");
+            }
 
+            if (TerminalScrollViewer != null)
+            {
+                vm.SavedTerminalScrollVerticalOffset = TerminalScrollViewer.VerticalOffset;
+                System.Diagnostics.Debug.WriteLine($"[ServerSessionView] Terminal 스크롤 위치 저장: {vm.SavedTerminalScrollVerticalOffset}");
+            }
+        }
+    }
 
     /// <summary>
-    /// 입력창 키 입력 처리 - 클립보드 이미지 붙여넣기 지원
+    /// 스크롤 위치 복원 (탭 전환 시)
+    /// </summary>
+    private void RestoreScrollPosition()
+    {
+        if (DataContext is ServerSessionViewModel vm)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (BlockScrollViewer != null && vm.SavedScrollVerticalOffset > 0)
+                {
+                    BlockScrollViewer.ScrollToVerticalOffset(vm.SavedScrollVerticalOffset);
+                    System.Diagnostics.Debug.WriteLine($"[ServerSessionView] Block 스크롤 위치 복원: {vm.SavedScrollVerticalOffset}");
+                }
+
+                if (TerminalScrollViewer != null && vm.SavedTerminalScrollVerticalOffset > 0)
+                {
+                    TerminalScrollViewer.ScrollToVerticalOffset(vm.SavedTerminalScrollVerticalOffset);
+                    System.Diagnostics.Debug.WriteLine($"[ServerSessionView] Terminal 스크롤 위치 복원: {vm.SavedTerminalScrollVerticalOffset}");
+                }
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+    }
+
+    /// <summary>
+    /// 입력창 키 입력 처리 - 클립보드 이미지 붙여넣기 지원 + 히스토리 네비게이션
     /// </summary>
     private void InputTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // Up 키: 이전 명령어
+        if (e.Key == Key.Up && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            if (DataContext is ServerSessionViewModel vm)
+            {
+                var previousCommand = vm.GetPreviousCommand(vm.UserInput ?? "");
+                if (previousCommand != null)
+                {
+                    vm.UserInput = previousCommand;
+
+                    // 커서를 맨 끝으로 이동
+                    if (sender is TextBox textBox)
+                    {
+                        textBox.SelectionStart = textBox.Text.Length;
+                        textBox.SelectionLength = 0;
+                    }
+
+                    e.Handled = true;
+                }
+            }
+        }
+        // Down 키: 다음 명령어
+        else if (e.Key == Key.Down && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            if (DataContext is ServerSessionViewModel vm)
+            {
+                var nextCommand = vm.GetNextCommand();
+                if (nextCommand != null)
+                {
+                    vm.UserInput = nextCommand;
+
+                    // 커서를 맨 끝으로 이동
+                    if (sender is TextBox textBox)
+                    {
+                        textBox.SelectionStart = textBox.Text.Length;
+                        textBox.SelectionLength = 0;
+                    }
+
+                    e.Handled = true;
+                }
+            }
+        }
         // Ctrl+V 감지
-        if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
+        else if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
         {
             // 클립보드에 이미지가 있는 경우 처리
             if (ClipboardService.HasImage())
@@ -849,6 +940,127 @@ public partial class ServerSessionView : UserControl
     public void DeactivateFileWatcher()
     {
         // FileTreePanelControl (MainWindow에서 관리).DisableFileWatcher();
+    }
+
+    /// <summary>
+    /// 검색/필터 초기화
+    /// </summary>
+    private void ClearSearch_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is ServerSessionViewModel vm)
+        {
+            vm.SearchText = string.Empty;
+            vm.StatusFilter = null;
+            StatusFilterComboBox.SelectedIndex = 0; // "전체" 선택
+        }
+    }
+
+    /// <summary>
+    /// 상태 필터 변경
+    /// </summary>
+    private void StatusFilter_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (DataContext is not ServerSessionViewModel vm)
+            return;
+
+        if (StatusFilterComboBox.SelectedItem is ComboBoxItem item)
+        {
+            var tag = item.Tag as string;
+            if (string.IsNullOrEmpty(tag))
+            {
+                vm.StatusFilter = null;
+            }
+            else if (Enum.TryParse<BlockStatus>(tag, out var status))
+            {
+                vm.StatusFilter = status;
+            }
+        }
+    }
+
+    #endregion
+
+    #region 드래그앤드롭 - 파일 경로 입력
+
+    /// <summary>
+    /// 드래그 엔터 이벤트
+    /// </summary>
+    private void InputTextBox_DragEnter(object sender, DragEventArgs e)
+    {
+        // 파일이 드롭되는 경우만 허용
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// 드래그 오버 이벤트
+    /// </summary>
+    private void InputTextBox_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// 드롭 이벤트 - 파일 경로를 입력창에 추가
+    /// </summary>
+    private void InputTextBox_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+            return;
+
+        try
+        {
+            // 드롭된 파일 목록 가져오기
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files == null || files.Length == 0)
+                return;
+
+            if (DataContext is not ServerSessionViewModel vm)
+                return;
+
+            // 파일 경로를 공백으로 구분하여 입력창에 추가
+            var paths = string.Join(" ", files.Select(f =>
+            {
+                // 공백이 포함된 경로는 따옴표로 감싸기
+                if (f.Contains(' '))
+                    return $"\"{f}\"";
+                return f;
+            }));
+
+            // 기존 입력 뒤에 공백과 함께 추가
+            if (!string.IsNullOrEmpty(vm.UserInput))
+            {
+                vm.UserInput += " " + paths;
+            }
+            else
+            {
+                vm.UserInput = paths;
+            }
+
+            // 입력창에 포커스 및 커서를 끝으로 이동
+            InputTextBox.Focus();
+            InputTextBox.CaretIndex = InputTextBox.Text.Length;
+
+            e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[InputTextBox_Drop] 오류: {ex.Message}");
+        }
     }
 
     #endregion

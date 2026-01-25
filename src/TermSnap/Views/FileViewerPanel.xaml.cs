@@ -12,11 +12,19 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using MaterialDesignThemes.Wpf;
+using TermSnap.Services;
 
 namespace TermSnap.Views;
 
 /// <summary>
 /// 파일 뷰어 패널 - Markdown, 코드, 이미지, 텍스트 파일 표시
+///
+/// TODO (v2.0):
+/// - 편집 모드 추가 (IsReadOnly 토글, 저장 버튼)
+/// - 라인 번호 표시 (Claude Code처럼 몇번째 줄 수정하는지 확인용)
+/// - 변경 감지 및 자동 저장
+/// - 더 많은 파일 타입 지원 (.bat, .sh, .ps1, .json, .xml, .yaml 등)
+///   → MainWindow.xaml.cs에서 .md만 FileViewerPanel로 보내는 로직을 확장 필요
 /// </summary>
 public partial class FileViewerPanel : UserControl
 {
@@ -68,8 +76,11 @@ public partial class FileViewerPanel : UserControl
     /// </summary>
     public async Task OpenFileAsync(string filePath)
     {
+        Debug.WriteLine($"[FileViewerPanel] OpenFileAsync called with: {filePath}");
+
         if (!File.Exists(filePath))
         {
+            Debug.WriteLine($"[FileViewerPanel] File not found: {filePath}");
             MessageBox.Show($"파일을 찾을 수 없습니다:\n{filePath}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
@@ -78,12 +89,15 @@ public partial class FileViewerPanel : UserControl
         var fileName = Path.GetFileName(filePath);
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
 
+        Debug.WriteLine($"[FileViewerPanel] File: {fileName}, Extension: {extension}");
+
         FileNameText.Text = fileName;
         UpdateFileIcon(extension);
 
         // 외부 프로그램으로 열어야 하는 파일
         if (ExternalExtensions.Contains(extension))
         {
+            Debug.WriteLine($"[FileViewerPanel] Opening with external program: {extension}");
             OpenWithExternalProgram(filePath);
             return;
         }
@@ -95,24 +109,31 @@ public partial class FileViewerPanel : UserControl
         {
             if (MarkdownExtensions.Contains(extension))
             {
+                Debug.WriteLine($"[FileViewerPanel] Loading as Markdown");
                 await LoadMarkdownAsync(filePath);
             }
             else if (ImageExtensions.Contains(extension))
             {
+                Debug.WriteLine($"[FileViewerPanel] Loading as Image");
                 await LoadImageAsync(filePath);
             }
             else if (CodeExtensions.Contains(extension) || TextExtensions.Contains(extension))
             {
+                Debug.WriteLine($"[FileViewerPanel] Loading as Text/Code");
                 await LoadTextAsync(filePath, CodeExtensions.Contains(extension));
             }
             else
             {
+                Debug.WriteLine($"[FileViewerPanel] Loading as unknown text file");
                 // 알 수 없는 확장자 - 텍스트로 시도
                 await LoadTextAsync(filePath, false);
             }
+
+            Debug.WriteLine($"[FileViewerPanel] File loaded successfully");
         }
         catch (Exception ex)
         {
+            Debug.WriteLine($"[FileViewerPanel] Error loading file: {ex.Message}\n{ex.StackTrace}");
             MessageBox.Show($"파일을 열 수 없습니다:\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -617,11 +638,15 @@ public partial class FileViewerPanel : UserControl
 
     private void Close_Click(object sender, RoutedEventArgs e)
     {
+        Debug.WriteLine("[FileViewerPanel] Close_Click called");
+
         _currentFilePath = null;
         HideAllViewers();
         EmptyState.Visibility = Visibility.Visible;
-        FileNameText.Text = "파일을 선택하세요";
+        FileNameText.Text = LocalizationService.Instance.GetString("FileViewer.SelectFile") ?? "파일을 선택하세요";
         FileIcon.Kind = PackIconKind.File;
+
+        Debug.WriteLine("[FileViewerPanel] Invoking CloseRequested event");
         CloseRequested?.Invoke();
     }
 

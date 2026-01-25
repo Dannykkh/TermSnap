@@ -40,6 +40,48 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     // Port Forwarding
     private ObservableCollection<PortForwardingConfig> _portForwardings = new();
 
+    // Spinner for data receiving indicator
+    private static readonly string[] SpinnerFrames = { "/", "-", "\\", "|" };
+    private int _spinnerFrameIndex = 0;
+    private string _spinnerText = string.Empty;
+    private System.Windows.Threading.DispatcherTimer? _spinnerTimer;
+    private System.Windows.Threading.DispatcherTimer? _dataReceivedTimer;
+    private DateTime _lastDataReceivedTime = DateTime.MinValue;
+
+    // Scroll position for tab switching
+    private double _savedScrollVerticalOffset = 0;
+    private double _savedTerminalScrollVerticalOffset = 0;
+
+    // Command history navigation
+    private List<string> _commandHistoryList = new();
+    private int _commandHistoryIndex = -1;
+    private string _currentEditingCommand = string.Empty;
+
+    // CommandBlock search/filter
+    private string _searchText = string.Empty;
+    private BlockStatus? _statusFilter = null;
+
+    // Real-time output streaming
+    private CommandBlock? _currentExecutingBlock = null;
+
+    /// <summary>
+    /// Block UI 스크롤 위치 (탭 전환 시 유지)
+    /// </summary>
+    public double SavedScrollVerticalOffset
+    {
+        get => _savedScrollVerticalOffset;
+        set { _savedScrollVerticalOffset = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// Terminal (Messages) 스크롤 위치 (탭 전환 시 유지)
+    /// </summary>
+    public double SavedTerminalScrollVerticalOffset
+    {
+        get => _savedTerminalScrollVerticalOffset;
+        set { _savedTerminalScrollVerticalOffset = value; OnPropertyChanged(); }
+    }
+
     // Ring Buffer 설정 - 메모리 누수 방지
     private const int MaxMessages = 500;        // 최대 메시지 수
     private const int MaxCommandBlocks = 200;   // 최대 명령 블록 수
@@ -54,6 +96,65 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     /// Command Block 목록 (Ring Buffer 적용 - 최대 200개)
     /// </summary>
     public ObservableCollection<CommandBlock> CommandBlocks { get; } = new();
+
+    /// <summary>
+    /// 필터링된 Command Block 목록 (검색어 적용)
+    /// </summary>
+    public IEnumerable<CommandBlock> FilteredCommandBlocks
+    {
+        get
+        {
+            var blocks = CommandBlocks.AsEnumerable();
+
+            // 검색어 필터
+            if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                var search = _searchText.ToLower();
+                blocks = blocks.Where(b =>
+                    b.UserInput?.ToLower().Contains(search) == true ||
+                    b.GeneratedCommand?.ToLower().Contains(search) == true ||
+                    b.Output?.ToLower().Contains(search) == true ||
+                    b.Error?.ToLower().Contains(search) == true
+                );
+            }
+
+            // 상태 필터
+            if (_statusFilter.HasValue)
+            {
+                blocks = blocks.Where(b => b.Status == _statusFilter.Value);
+            }
+
+            return blocks;
+        }
+    }
+
+    /// <summary>
+    /// CommandBlock 검색어
+    /// </summary>
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            _searchText = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(FilteredCommandBlocks));
+        }
+    }
+
+    /// <summary>
+    /// CommandBlock 상태 필터
+    /// </summary>
+    public BlockStatus? StatusFilter
+    {
+        get => _statusFilter;
+        set
+        {
+            _statusFilter = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(FilteredCommandBlocks));
+        }
+    }
 
     /// <summary>
     /// Block UI 사용 여부
@@ -109,9 +210,34 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
     }
 
     /// <summary>
-    /// 데이터 수신 중 스피너 텍스트 (서버 세션에서는 사용 안 함)
+    /// 데이터 수신 중 스피너 텍스트
     /// </summary>
-    public string SpinnerText => string.Empty;
+    public string SpinnerText
+    {
+        get => _spinnerText;
+        private set
+        {
+            _spinnerText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// 활성 포트 포워딩 개수
+    /// </summary>
+    public int ActivePortForwardingCount => PortForwardings?.Count(pf => pf.Status == PortForwardingStatus.Running) ?? 0;
+
+    /// <summary>
+    /// 포트 포워딩 상태 텍스트 (탭 헤더용)
+    /// </summary>
+    public string PortForwardingStatusText
+    {
+        get
+        {
+            int count = ActivePortForwardingCount;
+            return count > 0 ? $"🔌{count}" : string.Empty;
+        }
+    }
 
     /// <summary>
     /// 자주 사용하는 명령어 목록
@@ -331,6 +457,9 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
                     await _sshService.InitializeShellStreamAsync();
                     CurrentDirectory = _sshService.CurrentDirectory;
                     AddMessage($"📁 현재 디렉토리: {CurrentDirectory}", false, MessageType.Info);
+
+                    // 실시간 출력 스트리밍을 위한 이벤트 구독
+                    _sshService.OutputReceived += OnShellOutputReceived;
                 }
                 catch (Exception ex)
                 {
@@ -414,6 +543,9 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
 
         var userMessage = UserInput.Trim();
         UserInput = string.Empty;
+
+        // 명령어 히스토리에 추가
+        AddToCommandHistory(userMessage);
 
         // 탭 제목을 질문 내용으로 변경 (최대 30자)
         var tabTitle = userMessage.Length > 30 ? userMessage[..30] + "..." : userMessage;
@@ -548,6 +680,12 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
             StatusMessage = "명령어 실행 중...";
             block.Status = BlockStatus.Executing;
 
+            // 실시간 출력 스트리밍을 위해 현재 실행 중인 블록 설정
+            _currentExecutingBlock = block;
+
+            // 스피너 시작
+            StartDataReceivingSpinner();
+
             bool success;
             string output = "";
             string? error = null;
@@ -600,6 +738,10 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
             }
 
             stopwatch.Stop();
+
+            // 스피너 중지
+            StopDataReceivingSpinner();
+
             history.IsSuccess = success;
             history.Output = output;
             history.Error = error;
@@ -651,6 +793,9 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
         }
         catch (Exception ex)
         {
+            // 스피너 중지
+            StopDataReceivingSpinner();
+
             block.Error = ex.Message;
             block.Status = BlockStatus.Failed;
             AddMessage($"오류 발생: {ex.Message}", false, MessageType.Error);
@@ -665,6 +810,9 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
         }
         finally
         {
+            // 실시간 출력 스트리밍 종료
+            _currentExecutingBlock = null;
+
             IsBusy = false;
             StatusMessage = IsConnected ? $"연결됨 ({_serverProfile?.ProfileName})" : "연결되지 않음";
         }
@@ -946,6 +1094,9 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
             if (success)
             {
                 AddMessage($"Port Forwarding 시작: {config.Description}", false, MessageType.Info);
+                // 포트 포워딩 상태 업데이트
+                OnPropertyChanged(nameof(ActivePortForwardingCount));
+                OnPropertyChanged(nameof(PortForwardingStatusText));
             }
             else if (!string.IsNullOrEmpty(config.ErrorMessage))
             {
@@ -955,6 +1106,12 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
         catch (Exception ex)
         {
             AddMessage($"Port Forwarding 오류: {ex.Message}", false, MessageType.Error);
+        }
+        finally
+        {
+            // 항상 상태 업데이트 (실패 시에도)
+            OnPropertyChanged(nameof(ActivePortForwardingCount));
+            OnPropertyChanged(nameof(PortForwardingStatusText));
         }
     }
 
@@ -1084,9 +1241,209 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
         Deactivated?.Invoke(this, EventArgs.Empty);
     }
 
+    #region Spinner Methods
+
+    /// <summary>
+    /// 데이터 수신 중 스피너 시작
+    /// </summary>
+    private void StartDataReceivingSpinner()
+    {
+        _lastDataReceivedTime = DateTime.Now;
+
+        if (_spinnerTimer == null)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                _spinnerTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(100)
+                };
+                _spinnerTimer.Tick += OnSpinnerTick;
+                _spinnerTimer.Start();
+                UpdateSpinnerFrame();
+            });
+        }
+
+        if (_dataReceivedTimer == null)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                _dataReceivedTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(500)
+                };
+                _dataReceivedTimer.Tick += OnDataReceivedTimerTick;
+                _dataReceivedTimer.Start();
+            });
+        }
+    }
+
+    /// <summary>
+    /// 데이터 수신 중 스피너 중지
+    /// </summary>
+    private void StopDataReceivingSpinner()
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            _spinnerTimer?.Stop();
+            _spinnerTimer = null;
+
+            _dataReceivedTimer?.Stop();
+            _dataReceivedTimer = null;
+
+            SpinnerText = string.Empty;
+        });
+    }
+
+    /// <summary>
+    /// 스피너 프레임 업데이트
+    /// </summary>
+    private void UpdateSpinnerFrame()
+    {
+        SpinnerText = SpinnerFrames[_spinnerFrameIndex];
+        _spinnerFrameIndex = (_spinnerFrameIndex + 1) % SpinnerFrames.Length;
+    }
+
+    /// <summary>
+    /// 스피너 타이머 틱 (애니메이션)
+    /// </summary>
+    private void OnSpinnerTick(object? sender, EventArgs e)
+    {
+        UpdateSpinnerFrame();
+    }
+
+    /// <summary>
+    /// 데이터 수신 체크 타이머 틱 (자동 숨김)
+    /// </summary>
+    private void OnDataReceivedTimerTick(object? sender, EventArgs e)
+    {
+        var elapsed = DateTime.Now - _lastDataReceivedTime;
+        if (elapsed.TotalMilliseconds > 500)
+        {
+            StopDataReceivingSpinner();
+        }
+    }
+
+    #endregion
+
+    #region Command History Navigation
+
+    /// <summary>
+    /// 명령어를 히스토리에 추가 (중복 제거)
+    /// </summary>
+    private void AddToCommandHistory(string command)
+    {
+        if (string.IsNullOrWhiteSpace(command))
+            return;
+
+        // 이미 있으면 제거 (최신 순서로 유지)
+        _commandHistoryList.Remove(command);
+
+        // 맨 앞에 추가
+        _commandHistoryList.Insert(0, command);
+
+        // 최대 100개까지만 유지
+        if (_commandHistoryList.Count > 100)
+            _commandHistoryList.RemoveAt(_commandHistoryList.Count - 1);
+
+        // 인덱스 초기화
+        _commandHistoryIndex = -1;
+        _currentEditingCommand = string.Empty;
+    }
+
+    /// <summary>
+    /// 이전 명령어 가져오기 (Up 키)
+    /// </summary>
+    public string? GetPreviousCommand(string currentInput)
+    {
+        if (_commandHistoryList.Count == 0)
+            return null;
+
+        // 첫 Up 키 누름: 현재 입력 저장
+        if (_commandHistoryIndex == -1)
+        {
+            _currentEditingCommand = currentInput;
+            _commandHistoryIndex = 0;
+        }
+        // 이미 히스토리 탐색 중: 다음 이전 명령어로 이동
+        else if (_commandHistoryIndex < _commandHistoryList.Count - 1)
+        {
+            _commandHistoryIndex++;
+        }
+
+        return _commandHistoryList[_commandHistoryIndex];
+    }
+
+    /// <summary>
+    /// 다음 명령어 가져오기 (Down 키)
+    /// </summary>
+    public string? GetNextCommand()
+    {
+        if (_commandHistoryIndex <= -1)
+            return null;
+
+        _commandHistoryIndex--;
+
+        // 맨 끝까지 왔으면 편집 중이던 명령어 복원
+        if (_commandHistoryIndex < 0)
+        {
+            _commandHistoryIndex = -1;
+            return _currentEditingCommand;
+        }
+
+        return _commandHistoryList[_commandHistoryIndex];
+    }
+
+    /// <summary>
+    /// 히스토리 네비게이션 초기화 (Enter 키 등)
+    /// </summary>
+    public void ResetHistoryNavigation()
+    {
+        _commandHistoryIndex = -1;
+        _currentEditingCommand = string.Empty;
+    }
+
+    #endregion
+
+    #region Real-time Output Streaming
+
+    /// <summary>
+    /// ShellStream 실시간 출력 이벤트 핸들러
+    /// </summary>
+    private void OnShellOutputReceived(object? sender, ShellOutputEventArgs e)
+    {
+        if (_currentExecutingBlock == null || string.IsNullOrEmpty(e.Data))
+            return;
+
+        // UI 스레드에서 CommandBlock 업데이트
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            try
+            {
+                // 실시간으로 출력을 누적
+                _currentExecutingBlock.Output += e.Data;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OnShellOutputReceived] 출력 업데이트 오류: {ex.Message}");
+            }
+        });
+    }
+
+    #endregion
+
     public void Dispose()
     {
+        // OutputReceived 이벤트 구독 해제
+        if (_sshService != null)
+        {
+            _sshService.OutputReceived -= OnShellOutputReceived;
+        }
+
         Disconnect();
+
+        // 스피너 타이머 정리
+        StopDataReceivingSpinner();
 
         // 큰 컬렉션 정리 (메모리 누수 방지)
         try

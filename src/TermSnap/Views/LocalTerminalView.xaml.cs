@@ -98,11 +98,11 @@ public partial class LocalTerminalView : UserControl
         // IME 상태 변경 이벤트 구독 해제
         InputLanguageManager.Current.InputLanguageChanged -= OnInputLanguageChanged;
 
-        // IME 타이머 정리
-        if (_imeCheckTimer != null)
+        // 출력 배치 타이머 정리
+        if (_outputBatchTimer != null)
         {
-            _imeCheckTimer.Stop();
-            _imeCheckTimer = null;
+            _outputBatchTimer.Stop();
+            _outputBatchTimer = null;
         }
 
         // 터미널 컨트롤 정리
@@ -657,19 +657,59 @@ public partial class LocalTerminalView : UserControl
         }
     }
 
+    // 출력 배치 처리 (UI 쓰레드 부하 감소)
+    private readonly System.Text.StringBuilder _outputBuffer = new();
+    private System.Windows.Threading.DispatcherTimer? _outputBatchTimer;
+    private readonly object _outputLock = new();
+
     /// <summary>
-    /// 인터랙티브 모드에서 원시 출력 수신 시 터미널 컨트롤에 전달
+    /// 인터랙티브 모드에서 원시 출력 수신 시 터미널 컨트롤에 전달 (배치 처리)
     /// </summary>
     private void OnRawOutputReceived(string rawData)
     {
-        // 디버그 로깅
-        var preview = rawData.Length > 100 ? rawData.Substring(0, 100) + "..." : rawData;
-        System.Diagnostics.Debug.WriteLine($"[OnRawOutputReceived] Length: {rawData.Length}, Preview: '{preview}'");
-
-        Dispatcher.BeginInvoke(() =>
+        lock (_outputLock)
         {
-            TerminalCtrl?.Write(rawData);
-        });
+            _outputBuffer.Append(rawData);
+
+            // 타이머가 없으면 생성 (16ms = 60fps)
+            if (_outputBatchTimer == null)
+            {
+                _outputBatchTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Normal)
+                {
+                    Interval = TimeSpan.FromMilliseconds(16)
+                };
+                _outputBatchTimer.Tick += OnOutputBatchTimerTick;
+            }
+
+            // 타이머 시작 (이미 실행 중이면 무시)
+            if (!_outputBatchTimer.IsEnabled)
+            {
+                _outputBatchTimer.Start();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 배치 타이머: 버퍼의 모든 출력을 한 번에 처리
+    /// </summary>
+    private void OnOutputBatchTimerTick(object? sender, EventArgs e)
+    {
+        string buffered;
+        lock (_outputLock)
+        {
+            // 버퍼가 비어있으면 타이머 중지
+            if (_outputBuffer.Length == 0)
+            {
+                _outputBatchTimer?.Stop();
+                return;
+            }
+
+            buffered = _outputBuffer.ToString();
+            _outputBuffer.Clear();
+        }
+
+        // 터미널 컨트롤에 한 번에 전달 (메인 UI 쓰레드)
+        TerminalCtrl?.Write(buffered);
     }
 
     /// <summary>
@@ -744,7 +784,10 @@ public partial class LocalTerminalView : UserControl
     {
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            BlockScrollViewer?.ScrollToEnd();
+            if (BlockScrollViewer != null && BlockScrollViewer.Items.Count > 0)
+            {
+                BlockScrollViewer.ScrollIntoView(BlockScrollViewer.Items[BlockScrollViewer.Items.Count - 1]);
+            }
         }), System.Windows.Threading.DispatcherPriority.Background);
     }
 
@@ -757,7 +800,10 @@ public partial class LocalTerminalView : UserControl
         {
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                TerminalScrollViewer?.ScrollToEnd();
+                if (TerminalScrollViewer != null && TerminalScrollViewer.Items.Count > 0)
+                {
+                    TerminalScrollViewer.ScrollIntoView(TerminalScrollViewer.Items[TerminalScrollViewer.Items.Count - 1]);
+                }
             }), System.Windows.Threading.DispatcherPriority.Background);
         }
     }
@@ -1542,32 +1588,8 @@ public partial class LocalTerminalView : UserControl
     {
         _isFileViewerOverlay = overlay;
 
-        if (overlay)
-        {
-            // 오버레이 모드: Column 1에 겹쳐서 표시
-            Grid.SetColumn(FileViewerPanelControl, 1);
-            FileViewerPanelControl.HorizontalAlignment = HorizontalAlignment.Right;
-            FileViewerPanelControl.Margin = new Thickness(0);
-            FileViewerPanelControl.SetValue(Panel.ZIndexProperty, 100);
-
-            // 반투명 배경으로 오버레이 효과
-            FileViewerPanelControl.Opacity = 0.98;
-
-            // GridSplitter 숨김
-            FileViewerSplitter.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            // 분할 모드: Column 4에 표시
-            Grid.SetColumn(FileViewerPanelControl, 4);
-            FileViewerPanelControl.HorizontalAlignment = HorizontalAlignment.Stretch;
-            FileViewerPanelControl.Margin = new Thickness(0);
-            FileViewerPanelControl.SetValue(Panel.ZIndexProperty, 0);
-            FileViewerPanelControl.Opacity = 1.0;
-
-            // GridSplitter 표시
-            FileViewerSplitter.Visibility = Visibility.Visible;
-        }
+        // 오버레이 모드는 XAML에서 이미 설정됨 (Grid.Column="1", Panel.ZIndex="100")
+        // 이 메서드는 향후 비-오버레이 모드 지원 시 사용
     }
 
     /// <summary>
@@ -1575,8 +1597,7 @@ public partial class LocalTerminalView : UserControl
     /// </summary>
     private void HideFileViewer()
     {
-        FileViewerSplitter.Visibility = Visibility.Collapsed;
-        FileViewerPanelControl.Visibility = Visibility.Collapsed;
+        // FileViewerPanelControl은 Binding으로 자동 숨김됨
 
         // 원래 위치로 복원
         if (_isFileViewerOverlay)
@@ -1607,8 +1628,6 @@ public partial class LocalTerminalView : UserControl
 
     private const byte VK_HANGUL = 0x15;  // 한영 전환 키
     private const uint KEYEVENTF_KEYUP = 0x0002;
-
-    private System.Windows.Threading.DispatcherTimer? _imeCheckTimer;
 
     /// <summary>
     /// 인터랙티브 입력창 Loaded 시 CommandBindings 설정
@@ -1701,19 +1720,12 @@ public partial class LocalTerminalView : UserControl
     }
 
     /// <summary>
-    /// IME 모니터링 시작
+    /// IME 모니터링 시작 (이벤트 기반)
     /// </summary>
     private void StartImeMonitoring()
     {
-        if (_imeCheckTimer == null)
-        {
-            _imeCheckTimer = new System.Windows.Threading.DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(200)
-            };
-            _imeCheckTimer.Tick += (s, e) => UpdateImeButtonText();
-            _imeCheckTimer.Start();
-        }
+        // 타이머 대신 InputLanguageChanged 이벤트만 사용 (성능 개선)
+        // 이벤트는 생성자에서 이미 구독됨
     }
 
     /// <summary>
@@ -1721,10 +1733,7 @@ public partial class LocalTerminalView : UserControl
     /// </summary>
     private void StopImeMonitoring()
     {
-        if (_imeCheckTimer != null)
-        {
-            _imeCheckTimer.Stop();
-        }
+        // 타이머 없음
     }
 
     /// <summary>
@@ -1743,14 +1752,12 @@ public partial class LocalTerminalView : UserControl
 
             Debug.WriteLine("[ToggleIme] 한영 전환 키 전송");
 
-            // IME 버튼 텍스트 업데이트 (여러 번 지연 후 체크)
+            // IME 버튼 텍스트 업데이트 (InputLanguageChanged 이벤트로 자동 업데이트됨)
+            // 이벤트가 지연될 수 있으므로 한 번 명시적으로 호출
             Task.Run(async () =>
             {
-                await Task.Delay(50);
-                Dispatcher.Invoke(UpdateImeButtonText);
-
                 await Task.Delay(100);
-                Dispatcher.Invoke(UpdateImeButtonText);
+                await Dispatcher.InvokeAsync(() => UpdateImeButtonText());
             });
         }
         catch (Exception ex)
@@ -1832,17 +1839,12 @@ public partial class LocalTerminalView : UserControl
 
             Debug.WriteLine("[ImeToggleButton_Click] 한영 전환 키 전송");
 
-            // 여러 번 지연 후 체크 (IME 상태 변경에 시간이 걸림)
+            // IME 버튼 텍스트 업데이트 (InputLanguageChanged 이벤트로 자동 업데이트됨)
+            // 이벤트가 지연될 수 있으므로 한 번 명시적으로 호출
             Task.Run(async () =>
             {
-                await Task.Delay(50);
-                Dispatcher.Invoke(UpdateImeButtonText);
-
                 await Task.Delay(100);
-                Dispatcher.Invoke(UpdateImeButtonText);
-
-                await Task.Delay(150);
-                Dispatcher.Invoke(UpdateImeButtonText);
+                await Dispatcher.InvokeAsync(() => UpdateImeButtonText());
             });
         }
         catch (Exception ex)
@@ -1922,6 +1924,164 @@ public partial class LocalTerminalView : UserControl
         catch (Exception ex)
         {
             Debug.WriteLine($"[RestoreInteractiveBuffer] 오류: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region 드래그앤드롭 - 파일 경로 입력
+
+    /// <summary>
+    /// 드래그 엔터 이벤트
+    /// </summary>
+    private void InputTextBox_DragEnter(object sender, DragEventArgs e)
+    {
+        // 파일이 드롭되는 경우만 허용
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// 드래그 오버 이벤트
+    /// </summary>
+    private void InputTextBox_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// 드롭 이벤트 - 파일 경로를 입력창에 추가
+    /// </summary>
+    private void InputTextBox_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+            return;
+
+        try
+        {
+            // 드롭된 파일 목록 가져오기
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files == null || files.Length == 0)
+                return;
+
+            if (DataContext is not LocalTerminalViewModel vm)
+                return;
+
+            // 파일 경로를 공백으로 구분하여 입력창에 추가
+            var paths = string.Join(" ", files.Select(f =>
+            {
+                // 공백이 포함된 경로는 따옴표로 감싸기
+                if (f.Contains(' '))
+                    return $"\"{f}\"";
+                return f;
+            }));
+
+            // 기존 입력 뒤에 공백과 함께 추가
+            if (!string.IsNullOrEmpty(vm.UserInput))
+            {
+                vm.UserInput += " " + paths;
+            }
+            else
+            {
+                vm.UserInput = paths;
+            }
+
+            // 입력창에 포커스 및 커서를 끝으로 이동
+            InputTextBox.Focus();
+            InputTextBox.CaretIndex = InputTextBox.Text.Length;
+
+            e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[InputTextBox_Drop] 오류: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region 드래그앤드롭 - 인터랙티브 터미널
+
+    private void TerminalCtrl_DragEnter(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    private void TerminalCtrl_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    private async void TerminalCtrl_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+            return;
+
+        try
+        {
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files == null || files.Length == 0)
+                return;
+
+            if (DataContext is not LocalTerminalViewModel vm)
+                return;
+
+            // 공백이 포함된 경로는 따옴표로 감싸기
+            var paths = string.Join(" ", files.Select(f =>
+            {
+                if (f.Contains(' '))
+                    return $"\"{f}\"";
+                return f;
+            }));
+
+            // 인터랙티브 모드인 경우 SendSpecialKeyAsync로 전송
+            if (vm.IsInteractiveMode)
+            {
+                await vm.SendSpecialKeyAsync(paths);
+            }
+
+            // 포커스를 터미널로 이동
+            if (TerminalCtrl != null)
+            {
+                TerminalCtrl.Focus();
+            }
+
+            e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[TerminalCtrl_Drop] 오류: {ex.Message}");
         }
     }
 

@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using TermSnap.Core.Sessions;
 using TermSnap.Mcp;
 using TermSnap.Models;
@@ -39,6 +41,9 @@ public partial class MainWindow : Window
 
         // Sessions 컬렉션 변경 감지 (탭 닫기 시 구독 해제)
         _viewModel.Sessions.CollectionChanged += Sessions_CollectionChanged;
+
+        // 창 닫기 이벤트 (UI 설정 저장)
+        Closing += MainWindow_Closing;
 
         // 초기 레이아웃 설정
         Loaded += (s, e) =>
@@ -244,20 +249,65 @@ public partial class MainWindow : Window
         if (item == null || item.IsDirectory)
             return;
 
-        // 로컬 세션: 기본 애플리케이션으로 파일 열기
-        if (_viewModel.CurrentSession is LocalTerminalViewModel)
+        var extension = System.IO.Path.GetExtension(item.FullPath).ToLowerInvariant();
+
+        // 로컬 세션: 마크다운 파일은 FileViewerPanel에 표시, 나머지는 기본 애플리케이션으로 열기
+        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
         {
-            try
+            // TODO (v2.0): .bat, .sh, .ps1, .json, .xml, .yaml 등 텍스트 기반 파일도 FileViewerPanel에서 열기
+            // FileViewerPanel.IsViewableFile(extension) 같은 헬퍼 메서드 추가 고려
+
+            // 마크다운 파일: FileViewerPanel에 표시
+            if (extension == ".md" || extension == ".markdown" || extension == ".mdown" || extension == ".mkd")
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                try
                 {
-                    FileName = item.FullPath,
-                    UseShellExecute = true
-                });
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] Opening .md file: {item.FullPath}");
+
+                    // 파일 뷰어 패널 표시
+                    localVm.IsFileViewerVisible = true;
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] IsFileViewerVisible set to true");
+
+                    // MainContentControl에서 LocalTerminalView 가져오기
+                    // (TabControl.ContentTemplate이 비어있으므로 ContentControl 사용)
+                    LocalTerminalView? currentView = MainContentControl.Content as LocalTerminalView;
+
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] IsSplitMode: {_viewModel.IsSplitMode}");
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] currentView: {(currentView != null ? "found" : "null")}");
+
+                    if (currentView != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MainWindow] Calling OpenFileInViewerAsync");
+                        await currentView.OpenFileInViewerAsync(item.FullPath);
+                        System.Diagnostics.Debug.WriteLine($"[MainWindow] OpenFileInViewerAsync completed");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[MainWindow] FileViewerPanel: currentView is null");
+                        MessageBox.Show("파일 뷰어를 찾을 수 없습니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] Error opening file: {ex.Message}\n{ex.StackTrace}");
+                    MessageBox.Show($"파일을 열 수 없습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
-            catch (Exception ex)
+            // 기타 파일: 기본 애플리케이션으로 열기
+            else
             {
-                MessageBox.Show($"파일을 열 수 없습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = item.FullPath,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"파일을 열 수 없습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
         // SSH 세션: SFTP로 파일 편집기 열기
@@ -499,6 +549,107 @@ public partial class MainWindow : Window
         }
     }
 
+    #region FrequentCommands 드래그앤드롭
+
+    private FrequentCommand? _draggedCommand = null;
+
+    /// <summary>
+    /// FrequentCommands 드래그 시작
+    /// </summary>
+    private void FrequentCommandsList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed && sender is ListBox listBox)
+        {
+            var item = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
+            if (item != null && item.DataContext is FrequentCommand command)
+            {
+                _draggedCommand = command;
+                DragDrop.DoDragDrop(item, command, DragDropEffects.Move);
+                _draggedCommand = null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// FrequentCommands 드래그 오버
+    /// </summary>
+    private void FrequentCommandsList_DragOver(object sender, DragEventArgs e)
+    {
+        if (_draggedCommand != null)
+        {
+            e.Effects = DragDropEffects.Move;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// FrequentCommands 드롭
+    /// </summary>
+    private void FrequentCommandsList_Drop(object sender, DragEventArgs e)
+    {
+        if (_draggedCommand == null || _viewModel.CurrentSession is not ServerSessionViewModel serverVm)
+            return;
+
+        var targetItem = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
+        if (targetItem?.DataContext is FrequentCommand targetCommand)
+        {
+            var commands = serverVm.FrequentCommands;
+            int oldIndex = commands.IndexOf(_draggedCommand);
+            int newIndex = commands.IndexOf(targetCommand);
+
+            if (oldIndex != -1 && newIndex != -1 && oldIndex != newIndex)
+            {
+                // 아이템 이동
+                commands.Move(oldIndex, newIndex);
+
+                // DisplayOrder 업데이트
+                for (int i = 0; i < commands.Count; i++)
+                {
+                    commands[i].DisplayOrder = i;
+                }
+
+                // DB에 저장 (비동기)
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        foreach (var cmd in commands)
+                        {
+                            HistoryDatabaseService.Instance.UpdateFrequentCommandOrder(cmd.Command, cmd.DisplayOrder);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"FrequentCommand 정렬 저장 실패: {ex.Message}");
+                    }
+                });
+            }
+        }
+
+        _draggedCommand = null;
+    }
+
+    /// <summary>
+    /// 부모 요소 찾기 (드래그앤드롭용)
+    /// </summary>
+    private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
+    {
+        do
+        {
+            if (current is T ancestor)
+                return ancestor;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        while (current != null);
+        return null;
+    }
+
+    #endregion
+
     private void MainWindow_KeyDown(object sender, KeyEventArgs e)
     {
         // Ctrl+Shift+P: Command Palette
@@ -673,6 +824,28 @@ public partial class MainWindow : Window
             {
                 session.Dispose();
             }
+        }
+    }
+
+    /// <summary>
+    /// 창 닫기 이벤트 - UI 설정 저장
+    /// </summary>
+    private void MainWindow_Closing(object? sender, CancelEventArgs e)
+    {
+        try
+        {
+            // 모든 로컬 터미널 세션의 UI 설정 저장
+            foreach (var session in _viewModel.Sessions)
+            {
+                if (session is LocalTerminalViewModel localVm)
+                {
+                    localVm.SaveUISettings();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] UI 설정 저장 실패: {ex.Message}");
         }
     }
 }

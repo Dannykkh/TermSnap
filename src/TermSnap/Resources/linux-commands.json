@@ -1,0 +1,951 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-01-24",
+  "description": "Pre-populated Linux command knowledge base for TermSnap",
+  "knowledgeBase": [
+    {
+      "question": "nginx 설치하는 방법",
+      "command": "sudo apt install nginx -y",
+      "explanation": "nginx 웹서버를 설치합니다. -y 옵션은 자동으로 yes를 선택합니다.",
+      "category": "패키지 관리",
+      "tags": ["nginx", "웹서버", "설치", "apt"],
+      "language": "ko"
+    },
+    {
+      "question": "How to install nginx",
+      "command": "sudo apt install nginx -y",
+      "explanation": "Install nginx web server. The -y option automatically answers yes to prompts.",
+      "category": "Package Management",
+      "tags": ["nginx", "web server", "install", "apt"],
+      "language": "en"
+    },
+    {
+      "question": "패키지 업데이트 하는 방법",
+      "command": "sudo apt update && sudo apt upgrade -y",
+      "explanation": "패키지 목록을 업데이트하고 설치된 패키지들을 최신 버전으로 업그레이드합니다.",
+      "category": "패키지 관리",
+      "tags": ["apt", "업데이트", "업그레이드"],
+      "language": "ko"
+    },
+    {
+      "question": "How to update packages",
+      "command": "sudo apt update && sudo apt upgrade -y",
+      "explanation": "Update package lists and upgrade all installed packages to the latest version.",
+      "category": "Package Management",
+      "tags": ["apt", "update", "upgrade"],
+      "language": "en"
+    },
+    {
+      "question": "특정 패키지 제거",
+      "command": "sudo apt remove <package>",
+      "explanation": "지정한 패키지를 제거합니다. --purge 옵션을 추가하면 설정 파일까지 삭제됩니다.",
+      "category": "패키지 관리",
+      "tags": ["apt", "제거", "삭제"],
+      "language": "ko"
+    },
+    {
+      "question": "How to remove a package",
+      "command": "sudo apt remove <package>",
+      "explanation": "Remove the specified package. Add --purge to also remove configuration files.",
+      "category": "Package Management",
+      "tags": ["apt", "remove", "uninstall"],
+      "language": "en"
+    },
+    {
+      "question": "Docker 설치하는 방법",
+      "command": "curl -fsSL https://get.docker.com | sh",
+      "explanation": "Docker 공식 설치 스크립트를 사용하여 Docker를 설치합니다.",
+      "category": "패키지 관리",
+      "tags": ["docker", "설치", "컨테이너"],
+      "language": "ko"
+    },
+    {
+      "question": "How to install Docker",
+      "command": "curl -fsSL https://get.docker.com | sh",
+      "explanation": "Install Docker using the official installation script.",
+      "category": "Package Management",
+      "tags": ["docker", "install", "container"],
+      "language": "en"
+    },
+    {
+      "question": "디스크 용량 확인",
+      "command": "df -h",
+      "explanation": "파일시스템별 디스크 사용량을 사람이 읽기 쉬운 형태(GB, MB 등)로 표시합니다.",
+      "category": "시스템 관리",
+      "tags": ["디스크", "용량", "df"],
+      "language": "ko"
+    },
+    {
+      "question": "Check disk usage",
+      "command": "df -h",
+      "explanation": "Display disk usage for each filesystem in human-readable format (GB, MB, etc.).",
+      "category": "System Management",
+      "tags": ["disk", "usage", "df", "storage"],
+      "language": "en"
+    },
+    {
+      "question": "메모리 사용량 확인",
+      "command": "free -h",
+      "explanation": "시스템의 메모리 사용 현황을 사람이 읽기 쉬운 형태로 보여줍니다.",
+      "category": "시스템 관리",
+      "tags": ["메모리", "RAM", "free"],
+      "language": "ko"
+    },
+    {
+      "question": "Check memory usage",
+      "command": "free -h",
+      "explanation": "Display system memory usage in human-readable format.",
+      "category": "System Management",
+      "tags": ["memory", "RAM", "free"],
+      "language": "en"
+    },
+    {
+      "question": "실시간 CPU/메모리 모니터링",
+      "command": "htop",
+      "explanation": "대화형 프로세스 뷰어로 실시간 시스템 리소스를 모니터링합니다. top보다 사용하기 편리합니다.",
+      "category": "모니터링",
+      "tags": ["htop", "모니터링", "CPU", "메모리"],
+      "language": "ko"
+    },
+    {
+      "question": "Real-time CPU and memory monitoring",
+      "command": "htop",
+      "explanation": "Interactive process viewer for real-time system resource monitoring. More user-friendly than top.",
+      "category": "Monitoring",
+      "tags": ["htop", "monitoring", "CPU", "memory"],
+      "language": "en"
+    },
+    {
+      "question": "시스템 리소스 사용량 확인",
+      "command": "top",
+      "explanation": "실행 중인 프로세스와 시스템 리소스 사용량을 실시간으로 보여줍니다.",
+      "category": "모니터링",
+      "tags": ["top", "프로세스", "리소스"],
+      "language": "ko"
+    },
+    {
+      "question": "View system resource usage",
+      "command": "top",
+      "explanation": "Display running processes and system resource usage in real-time.",
+      "category": "Monitoring",
+      "tags": ["top", "processes", "resources"],
+      "language": "en"
+    },
+    {
+      "question": "특정 폴더 용량 확인",
+      "command": "du -sh <directory>",
+      "explanation": "지정한 폴더의 총 사용 용량을 사람이 읽기 쉬운 형태로 표시합니다.",
+      "category": "시스템 관리",
+      "tags": ["du", "폴더", "용량"],
+      "language": "ko"
+    },
+    {
+      "question": "Check directory size",
+      "command": "du -sh <directory>",
+      "explanation": "Display total disk usage of the specified directory in human-readable format.",
+      "category": "System Management",
+      "tags": ["du", "directory", "size"],
+      "language": "en"
+    },
+    {
+      "question": "특정 포트를 사용하는 프로세스 찾기",
+      "command": "sudo lsof -i :<port>",
+      "explanation": "지정한 포트를 사용 중인 프로세스를 찾습니다.",
+      "category": "네트워크",
+      "tags": ["lsof", "포트", "프로세스"],
+      "language": "ko"
+    },
+    {
+      "question": "Find process using a specific port",
+      "command": "sudo lsof -i :<port>",
+      "explanation": "Find the process that is using the specified port.",
+      "category": "Networking",
+      "tags": ["lsof", "port", "process"],
+      "language": "en"
+    },
+    {
+      "question": "열린 포트 확인",
+      "command": "sudo netstat -tuln",
+      "explanation": "현재 열려있는 모든 TCP/UDP 포트를 표시합니다.",
+      "category": "네트워크",
+      "tags": ["netstat", "포트", "네트워크"],
+      "language": "ko"
+    },
+    {
+      "question": "Check open ports",
+      "command": "sudo netstat -tuln",
+      "explanation": "Display all currently open TCP/UDP ports.",
+      "category": "Networking",
+      "tags": ["netstat", "ports", "network"],
+      "language": "en"
+    },
+    {
+      "question": "방화벽 상태 확인",
+      "command": "sudo ufw status",
+      "explanation": "UFW 방화벽의 현재 상태와 규칙을 표시합니다.",
+      "category": "네트워크",
+      "tags": ["ufw", "방화벽", "보안"],
+      "language": "ko"
+    },
+    {
+      "question": "Check firewall status",
+      "command": "sudo ufw status",
+      "explanation": "Display current UFW firewall status and rules.",
+      "category": "Networking",
+      "tags": ["ufw", "firewall", "security"],
+      "language": "en"
+    },
+    {
+      "question": "특정 포트 방화벽 열기",
+      "command": "sudo ufw allow <port>",
+      "explanation": "지정한 포트에 대한 인바운드 연결을 허용합니다.",
+      "category": "네트워크",
+      "tags": ["ufw", "방화벽", "포트"],
+      "language": "ko"
+    },
+    {
+      "question": "Open firewall port",
+      "command": "sudo ufw allow <port>",
+      "explanation": "Allow inbound connections on the specified port.",
+      "category": "Networking",
+      "tags": ["ufw", "firewall", "port"],
+      "language": "en"
+    },
+    {
+      "question": "공인 IP 주소 확인",
+      "command": "curl ifconfig.me",
+      "explanation": "서버의 공인 IP 주소를 확인합니다.",
+      "category": "네트워크",
+      "tags": ["IP", "공인IP", "curl"],
+      "language": "ko"
+    },
+    {
+      "question": "Check public IP address",
+      "command": "curl ifconfig.me",
+      "explanation": "Display the server's public IP address.",
+      "category": "Networking",
+      "tags": ["IP", "public IP", "curl"],
+      "language": "en"
+    },
+    {
+      "question": "특정 프로세스 종료",
+      "command": "sudo kill -9 <PID>",
+      "explanation": "지정한 프로세스 ID를 강제로 종료합니다. -9는 SIGKILL 시그널입니다.",
+      "category": "프로세스 관리",
+      "tags": ["kill", "프로세스", "종료"],
+      "language": "ko"
+    },
+    {
+      "question": "Kill a specific process",
+      "command": "sudo kill -9 <PID>",
+      "explanation": "Forcefully terminate the process with the specified PID. -9 sends SIGKILL signal.",
+      "category": "Process Management",
+      "tags": ["kill", "process", "terminate"],
+      "language": "en"
+    },
+    {
+      "question": "프로세스 이름으로 찾기",
+      "command": "ps aux | grep <process_name>",
+      "explanation": "실행 중인 프로세스 중에서 특정 이름을 포함한 프로세스를 찾습니다.",
+      "category": "프로세스 관리",
+      "tags": ["ps", "grep", "프로세스"],
+      "language": "ko"
+    },
+    {
+      "question": "Find process by name",
+      "command": "ps aux | grep <process_name>",
+      "explanation": "Find running processes that contain the specified name.",
+      "category": "Process Management",
+      "tags": ["ps", "grep", "process"],
+      "language": "en"
+    },
+    {
+      "question": "백그라운드 실행",
+      "command": "nohup <command> &",
+      "explanation": "명령어를 백그라운드에서 실행하고 터미널 종료 후에도 계속 실행되도록 합니다.",
+      "category": "프로세스 관리",
+      "tags": ["nohup", "백그라운드", "실행"],
+      "language": "ko"
+    },
+    {
+      "question": "Run in background",
+      "command": "nohup <command> &",
+      "explanation": "Run command in background and keep it running after terminal is closed.",
+      "category": "Process Management",
+      "tags": ["nohup", "background", "daemon"],
+      "language": "en"
+    },
+    {
+      "question": "nginx 시작하는 방법",
+      "command": "sudo systemctl start nginx",
+      "explanation": "nginx 서비스를 시작합니다.",
+      "category": "서비스 관리",
+      "tags": ["nginx", "systemctl", "시작"],
+      "language": "ko"
+    },
+    {
+      "question": "How to start nginx",
+      "command": "sudo systemctl start nginx",
+      "explanation": "Start the nginx service.",
+      "category": "Service Management",
+      "tags": ["nginx", "systemctl", "start"],
+      "language": "en"
+    },
+    {
+      "question": "nginx 중지하는 방법",
+      "command": "sudo systemctl stop nginx",
+      "explanation": "nginx 서비스를 중지합니다.",
+      "category": "서비스 관리",
+      "tags": ["nginx", "systemctl", "중지"],
+      "language": "ko"
+    },
+    {
+      "question": "How to stop nginx",
+      "command": "sudo systemctl stop nginx",
+      "explanation": "Stop the nginx service.",
+      "category": "Service Management",
+      "tags": ["nginx", "systemctl", "stop"],
+      "language": "en"
+    },
+    {
+      "question": "nginx 재시작하는 방법",
+      "command": "sudo systemctl restart nginx",
+      "explanation": "nginx 서비스를 재시작합니다. 설정 변경 후 적용할 때 사용합니다.",
+      "category": "서비스 관리",
+      "tags": ["nginx", "systemctl", "재시작"],
+      "language": "ko"
+    },
+    {
+      "question": "How to restart nginx",
+      "command": "sudo systemctl restart nginx",
+      "explanation": "Restart the nginx service. Use this after configuration changes.",
+      "category": "Service Management",
+      "tags": ["nginx", "systemctl", "restart"],
+      "language": "en"
+    },
+    {
+      "question": "서비스 상태 확인",
+      "command": "sudo systemctl status <service>",
+      "explanation": "지정한 서비스의 현재 상태와 최근 로그를 확인합니다.",
+      "category": "서비스 관리",
+      "tags": ["systemctl", "상태", "서비스"],
+      "language": "ko"
+    },
+    {
+      "question": "Check service status",
+      "command": "sudo systemctl status <service>",
+      "explanation": "Check the current status and recent logs of the specified service.",
+      "category": "Service Management",
+      "tags": ["systemctl", "status", "service"],
+      "language": "en"
+    },
+    {
+      "question": "부팅 시 자동 시작 설정",
+      "command": "sudo systemctl enable <service>",
+      "explanation": "시스템 부팅 시 서비스가 자동으로 시작되도록 설정합니다.",
+      "category": "서비스 관리",
+      "tags": ["systemctl", "enable", "자동시작"],
+      "language": "ko"
+    },
+    {
+      "question": "Enable service at boot",
+      "command": "sudo systemctl enable <service>",
+      "explanation": "Configure the service to start automatically at system boot.",
+      "category": "Service Management",
+      "tags": ["systemctl", "enable", "autostart"],
+      "language": "en"
+    },
+    {
+      "question": "파일 검색하는 방법",
+      "command": "find <path> -name '<filename>'",
+      "explanation": "지정한 경로에서 파일명으로 파일을 검색합니다.",
+      "category": "파일 관리",
+      "tags": ["find", "검색", "파일"],
+      "language": "ko"
+    },
+    {
+      "question": "How to find files",
+      "command": "find <path> -name '<filename>'",
+      "explanation": "Search for files by name in the specified path.",
+      "category": "File Management",
+      "tags": ["find", "search", "file"],
+      "language": "en"
+    },
+    {
+      "question": "텍스트 파일 내용 검색",
+      "command": "grep -r '<text>' <path>",
+      "explanation": "지정한 경로의 모든 파일에서 특정 텍스트를 재귀적으로 검색합니다.",
+      "category": "파일 관리",
+      "tags": ["grep", "검색", "텍스트"],
+      "language": "ko"
+    },
+    {
+      "question": "Search text in files",
+      "command": "grep -r '<text>' <path>",
+      "explanation": "Recursively search for specific text in all files within the specified path.",
+      "category": "File Management",
+      "tags": ["grep", "search", "text"],
+      "language": "en"
+    },
+    {
+      "question": "파일 권한 변경",
+      "command": "chmod 755 <file>",
+      "explanation": "파일의 권한을 변경합니다. 755는 소유자는 읽기/쓰기/실행, 그룹과 기타는 읽기/실행 권한입니다.",
+      "category": "파일 관리",
+      "tags": ["chmod", "권한", "파일"],
+      "language": "ko"
+    },
+    {
+      "question": "Change file permissions",
+      "command": "chmod 755 <file>",
+      "explanation": "Change file permissions. 755 means owner has read/write/execute, group and others have read/execute.",
+      "category": "File Management",
+      "tags": ["chmod", "permissions", "file"],
+      "language": "en"
+    },
+    {
+      "question": "파일 소유자 변경",
+      "command": "sudo chown <user>:<group> <file>",
+      "explanation": "파일의 소유자와 그룹을 변경합니다.",
+      "category": "파일 관리",
+      "tags": ["chown", "소유자", "파일"],
+      "language": "ko"
+    },
+    {
+      "question": "Change file owner",
+      "command": "sudo chown <user>:<group> <file>",
+      "explanation": "Change the owner and group of a file.",
+      "category": "File Management",
+      "tags": ["chown", "owner", "file"],
+      "language": "en"
+    },
+    {
+      "question": "압축 파일 압축 해제",
+      "command": "tar -xzf <file.tar.gz>",
+      "explanation": "tar.gz 압축 파일을 현재 디렉토리에 압축 해제합니다.",
+      "category": "파일 관리",
+      "tags": ["tar", "압축해제", "아카이브"],
+      "language": "ko"
+    },
+    {
+      "question": "Extract compressed file",
+      "command": "tar -xzf <file.tar.gz>",
+      "explanation": "Extract tar.gz archive to the current directory.",
+      "category": "File Management",
+      "tags": ["tar", "extract", "archive"],
+      "language": "en"
+    },
+    {
+      "question": "파일 압축하기",
+      "command": "tar -czf <output.tar.gz> <directory>",
+      "explanation": "디렉토리를 tar.gz 형식으로 압축합니다.",
+      "category": "파일 관리",
+      "tags": ["tar", "압축", "아카이브"],
+      "language": "ko"
+    },
+    {
+      "question": "Compress files",
+      "command": "tar -czf <output.tar.gz> <directory>",
+      "explanation": "Compress directory into tar.gz format.",
+      "category": "File Management",
+      "tags": ["tar", "compress", "archive"],
+      "language": "en"
+    },
+    {
+      "question": "실시간 로그 보기",
+      "command": "tail -f <logfile>",
+      "explanation": "로그 파일을 실시간으로 모니터링합니다. 새로운 내용이 추가되면 자동으로 표시됩니다.",
+      "category": "로그 관리",
+      "tags": ["tail", "로그", "모니터링"],
+      "language": "ko"
+    },
+    {
+      "question": "View logs in real-time",
+      "command": "tail -f <logfile>",
+      "explanation": "Monitor log file in real-time. New content is automatically displayed.",
+      "category": "Log Management",
+      "tags": ["tail", "log", "monitoring"],
+      "language": "en"
+    },
+    {
+      "question": "nginx 에러 로그 확인",
+      "command": "sudo tail -f /var/log/nginx/error.log",
+      "explanation": "nginx 에러 로그를 실시간으로 확인합니다.",
+      "category": "로그 관리",
+      "tags": ["nginx", "로그", "에러"],
+      "language": "ko"
+    },
+    {
+      "question": "View nginx error log",
+      "command": "sudo tail -f /var/log/nginx/error.log",
+      "explanation": "Monitor nginx error log in real-time.",
+      "category": "Log Management",
+      "tags": ["nginx", "log", "error"],
+      "language": "en"
+    },
+    {
+      "question": "마지막 100줄 로그 보기",
+      "command": "tail -n 100 <logfile>",
+      "explanation": "로그 파일의 마지막 100줄을 표시합니다.",
+      "category": "로그 관리",
+      "tags": ["tail", "로그"],
+      "language": "ko"
+    },
+    {
+      "question": "View last 100 log lines",
+      "command": "tail -n 100 <logfile>",
+      "explanation": "Display the last 100 lines of the log file.",
+      "category": "Log Management",
+      "tags": ["tail", "log"],
+      "language": "en"
+    },
+    {
+      "question": "Git 저장소 복제",
+      "command": "git clone <repository_url>",
+      "explanation": "원격 Git 저장소를 로컬로 복제합니다.",
+      "category": "Git",
+      "tags": ["git", "clone", "저장소"],
+      "language": "ko"
+    },
+    {
+      "question": "Clone Git repository",
+      "command": "git clone <repository_url>",
+      "explanation": "Clone a remote Git repository to local machine.",
+      "category": "Git",
+      "tags": ["git", "clone", "repository"],
+      "language": "en"
+    },
+    {
+      "question": "Git 브랜치 확인",
+      "command": "git branch -a",
+      "explanation": "로컬과 원격의 모든 브랜치를 표시합니다.",
+      "category": "Git",
+      "tags": ["git", "branch", "브랜치"],
+      "language": "ko"
+    },
+    {
+      "question": "List Git branches",
+      "command": "git branch -a",
+      "explanation": "Display all local and remote branches.",
+      "category": "Git",
+      "tags": ["git", "branch", "list"],
+      "language": "en"
+    },
+    {
+      "question": "Git 변경사항 커밋",
+      "command": "git add . && git commit -m '<message>'",
+      "explanation": "모든 변경사항을 스테이징하고 커밋합니다.",
+      "category": "Git",
+      "tags": ["git", "commit", "변경사항"],
+      "language": "ko"
+    },
+    {
+      "question": "Commit Git changes",
+      "command": "git add . && git commit -m '<message>'",
+      "explanation": "Stage all changes and commit with a message.",
+      "category": "Git",
+      "tags": ["git", "commit", "changes"],
+      "language": "en"
+    },
+    {
+      "question": "Docker 컨테이너 목록 확인",
+      "command": "docker ps -a",
+      "explanation": "실행 중이거나 중지된 모든 Docker 컨테이너를 표시합니다.",
+      "category": "Docker",
+      "tags": ["docker", "컨테이너", "목록"],
+      "language": "ko"
+    },
+    {
+      "question": "List Docker containers",
+      "command": "docker ps -a",
+      "explanation": "Display all Docker containers, running or stopped.",
+      "category": "Docker",
+      "tags": ["docker", "container", "list"],
+      "language": "en"
+    },
+    {
+      "question": "Docker 이미지 목록 확인",
+      "command": "docker images",
+      "explanation": "로컬에 저장된 Docker 이미지 목록을 표시합니다.",
+      "category": "Docker",
+      "tags": ["docker", "이미지", "목록"],
+      "language": "ko"
+    },
+    {
+      "question": "List Docker images",
+      "command": "docker images",
+      "explanation": "Display all Docker images stored locally.",
+      "category": "Docker",
+      "tags": ["docker", "image", "list"],
+      "language": "en"
+    },
+    {
+      "question": "Docker 컨테이너 시작",
+      "command": "docker start <container>",
+      "explanation": "중지된 Docker 컨테이너를 시작합니다.",
+      "category": "Docker",
+      "tags": ["docker", "시작", "컨테이너"],
+      "language": "ko"
+    },
+    {
+      "question": "Start Docker container",
+      "command": "docker start <container>",
+      "explanation": "Start a stopped Docker container.",
+      "category": "Docker",
+      "tags": ["docker", "start", "container"],
+      "language": "en"
+    },
+    {
+      "question": "Docker 컨테이너 중지",
+      "command": "docker stop <container>",
+      "explanation": "실행 중인 Docker 컨테이너를 중지합니다.",
+      "category": "Docker",
+      "tags": ["docker", "중지", "컨테이너"],
+      "language": "ko"
+    },
+    {
+      "question": "Stop Docker container",
+      "command": "docker stop <container>",
+      "explanation": "Stop a running Docker container.",
+      "category": "Docker",
+      "tags": ["docker", "stop", "container"],
+      "language": "en"
+    },
+    {
+      "question": "Docker 로그 확인",
+      "command": "docker logs -f <container>",
+      "explanation": "Docker 컨테이너의 로그를 실시간으로 확인합니다.",
+      "category": "Docker",
+      "tags": ["docker", "로그", "컨테이너"],
+      "language": "ko"
+    },
+    {
+      "question": "View Docker logs",
+      "command": "docker logs -f <container>",
+      "explanation": "Monitor Docker container logs in real-time.",
+      "category": "Docker",
+      "tags": ["docker", "logs", "container"],
+      "language": "en"
+    },
+    {
+      "question": "새 사용자 추가",
+      "command": "sudo adduser <username>",
+      "explanation": "새로운 사용자 계정을 생성합니다. 대화형으로 비밀번호와 정보를 입력받습니다.",
+      "category": "사용자 관리",
+      "tags": ["adduser", "사용자", "생성"],
+      "language": "ko"
+    },
+    {
+      "question": "Add new user",
+      "command": "sudo adduser <username>",
+      "explanation": "Create a new user account. Prompts for password and user information.",
+      "category": "User Management",
+      "tags": ["adduser", "user", "create"],
+      "language": "en"
+    },
+    {
+      "question": "사용자에게 sudo 권한 부여",
+      "command": "sudo usermod -aG sudo <username>",
+      "explanation": "지정한 사용자를 sudo 그룹에 추가하여 관리자 권한을 부여합니다.",
+      "category": "사용자 관리",
+      "tags": ["usermod", "sudo", "권한"],
+      "language": "ko"
+    },
+    {
+      "question": "Grant sudo privileges",
+      "command": "sudo usermod -aG sudo <username>",
+      "explanation": "Add the specified user to the sudo group to grant administrator privileges.",
+      "category": "User Management",
+      "tags": ["usermod", "sudo", "privileges"],
+      "language": "en"
+    },
+    {
+      "question": "현재 로그인한 사용자 확인",
+      "command": "whoami",
+      "explanation": "현재 로그인한 사용자의 이름을 표시합니다.",
+      "category": "사용자 관리",
+      "tags": ["whoami", "사용자"],
+      "language": "ko"
+    },
+    {
+      "question": "Check current user",
+      "command": "whoami",
+      "explanation": "Display the name of the currently logged-in user.",
+      "category": "User Management",
+      "tags": ["whoami", "user"],
+      "language": "en"
+    },
+    {
+      "question": "시스템 재부팅",
+      "command": "sudo reboot",
+      "explanation": "시스템을 재부팅합니다.",
+      "category": "시스템 관리",
+      "tags": ["reboot", "재부팅", "시스템"],
+      "language": "ko"
+    },
+    {
+      "question": "Reboot system",
+      "command": "sudo reboot",
+      "explanation": "Reboot the system.",
+      "category": "System Management",
+      "tags": ["reboot", "restart", "system"],
+      "language": "en"
+    },
+    {
+      "question": "시스템 종료",
+      "command": "sudo shutdown -h now",
+      "explanation": "시스템을 즉시 종료합니다.",
+      "category": "시스템 관리",
+      "tags": ["shutdown", "종료", "시스템"],
+      "language": "ko"
+    },
+    {
+      "question": "Shutdown system",
+      "command": "sudo shutdown -h now",
+      "explanation": "Shutdown the system immediately.",
+      "category": "System Management",
+      "tags": ["shutdown", "halt", "system"],
+      "language": "en"
+    },
+    {
+      "question": "네트워크 인터페이스 확인",
+      "command": "ip addr show",
+      "explanation": "모든 네트워크 인터페이스와 IP 주소를 표시합니다.",
+      "category": "네트워크",
+      "tags": ["ip", "네트워크", "인터페이스"],
+      "language": "ko"
+    },
+    {
+      "question": "Show network interfaces",
+      "command": "ip addr show",
+      "explanation": "Display all network interfaces and IP addresses.",
+      "category": "Networking",
+      "tags": ["ip", "network", "interface"],
+      "language": "en"
+    },
+    {
+      "question": "호스트 연결 테스트",
+      "command": "ping -c 4 <host>",
+      "explanation": "지정한 호스트로 4개의 ping 패킷을 보내 연결을 테스트합니다.",
+      "category": "네트워크",
+      "tags": ["ping", "연결", "테스트"],
+      "language": "ko"
+    },
+    {
+      "question": "Test host connectivity",
+      "command": "ping -c 4 <host>",
+      "explanation": "Send 4 ping packets to test connectivity to the specified host.",
+      "category": "Networking",
+      "tags": ["ping", "connectivity", "test"],
+      "language": "en"
+    },
+    {
+      "question": "DNS 조회",
+      "command": "nslookup <domain>",
+      "explanation": "도메인 이름의 DNS 정보를 조회합니다.",
+      "category": "네트워크",
+      "tags": ["nslookup", "DNS", "도메인"],
+      "language": "ko"
+    },
+    {
+      "question": "DNS lookup",
+      "command": "nslookup <domain>",
+      "explanation": "Query DNS information for a domain name.",
+      "category": "Networking",
+      "tags": ["nslookup", "DNS", "domain"],
+      "language": "en"
+    },
+    {
+      "question": "파일 다운로드",
+      "command": "wget <url>",
+      "explanation": "URL에서 파일을 다운로드합니다.",
+      "category": "네트워크",
+      "tags": ["wget", "다운로드", "파일"],
+      "language": "ko"
+    },
+    {
+      "question": "Download file",
+      "command": "wget <url>",
+      "explanation": "Download a file from the specified URL.",
+      "category": "Networking",
+      "tags": ["wget", "download", "file"],
+      "language": "en"
+    },
+    {
+      "question": "SSH 키 생성",
+      "command": "ssh-keygen -t rsa -b 4096",
+      "explanation": "4096비트 RSA SSH 키 쌍을 생성합니다.",
+      "category": "보안",
+      "tags": ["ssh", "키", "보안"],
+      "language": "ko"
+    },
+    {
+      "question": "Generate SSH key",
+      "command": "ssh-keygen -t rsa -b 4096",
+      "explanation": "Generate a 4096-bit RSA SSH key pair.",
+      "category": "Security",
+      "tags": ["ssh", "key", "security"],
+      "language": "en"
+    },
+    {
+      "question": "현재 디렉토리 확인",
+      "command": "pwd",
+      "explanation": "현재 작업 디렉토리의 전체 경로를 표시합니다.",
+      "category": "파일 관리",
+      "tags": ["pwd", "디렉토리", "경로"],
+      "language": "ko"
+    },
+    {
+      "question": "Print working directory",
+      "command": "pwd",
+      "explanation": "Display the full path of the current working directory.",
+      "category": "File Management",
+      "tags": ["pwd", "directory", "path"],
+      "language": "en"
+    },
+    {
+      "question": "디렉토리 생성",
+      "command": "mkdir -p <directory>",
+      "explanation": "디렉토리를 생성합니다. -p 옵션은 상위 디렉토리도 함께 생성합니다.",
+      "category": "파일 관리",
+      "tags": ["mkdir", "디렉토리", "생성"],
+      "language": "ko"
+    },
+    {
+      "question": "Create directory",
+      "command": "mkdir -p <directory>",
+      "explanation": "Create a directory. The -p option creates parent directories as needed.",
+      "category": "File Management",
+      "tags": ["mkdir", "directory", "create"],
+      "language": "en"
+    },
+    {
+      "question": "파일 복사",
+      "command": "cp -r <source> <destination>",
+      "explanation": "파일이나 디렉토리를 복사합니다. -r 옵션은 재귀적으로 복사합니다.",
+      "category": "파일 관리",
+      "tags": ["cp", "복사", "파일"],
+      "language": "ko"
+    },
+    {
+      "question": "Copy files",
+      "command": "cp -r <source> <destination>",
+      "explanation": "Copy files or directories. The -r option copies recursively.",
+      "category": "File Management",
+      "tags": ["cp", "copy", "file"],
+      "language": "en"
+    },
+    {
+      "question": "파일 이동",
+      "command": "mv <source> <destination>",
+      "explanation": "파일이나 디렉토리를 이동하거나 이름을 변경합니다.",
+      "category": "파일 관리",
+      "tags": ["mv", "이동", "파일"],
+      "language": "ko"
+    },
+    {
+      "question": "Move files",
+      "command": "mv <source> <destination>",
+      "explanation": "Move or rename files and directories.",
+      "category": "File Management",
+      "tags": ["mv", "move", "file"],
+      "language": "en"
+    },
+    {
+      "question": "파일 삭제",
+      "command": "rm -rf <file_or_directory>",
+      "explanation": "파일이나 디렉토리를 강제로 삭제합니다. 주의해서 사용해야 합니다.",
+      "category": "파일 관리",
+      "tags": ["rm", "삭제", "파일"],
+      "language": "ko"
+    },
+    {
+      "question": "Delete files",
+      "command": "rm -rf <file_or_directory>",
+      "explanation": "Forcefully delete files or directories. Use with caution.",
+      "category": "File Management",
+      "tags": ["rm", "delete", "file"],
+      "language": "en"
+    },
+    {
+      "question": "파일 내용 보기",
+      "command": "cat <file>",
+      "explanation": "파일의 전체 내용을 출력합니다.",
+      "category": "파일 관리",
+      "tags": ["cat", "파일", "내용"],
+      "language": "ko"
+    },
+    {
+      "question": "View file contents",
+      "command": "cat <file>",
+      "explanation": "Display the entire contents of a file.",
+      "category": "File Management",
+      "tags": ["cat", "file", "view"],
+      "language": "en"
+    },
+    {
+      "question": "시스템 정보 확인",
+      "command": "uname -a",
+      "explanation": "시스템의 모든 정보(커널 버전, 호스트명, 아키텍처 등)를 표시합니다.",
+      "category": "시스템 관리",
+      "tags": ["uname", "시스템", "정보"],
+      "language": "ko"
+    },
+    {
+      "question": "Show system information",
+      "command": "uname -a",
+      "explanation": "Display all system information (kernel version, hostname, architecture, etc.).",
+      "category": "System Management",
+      "tags": ["uname", "system", "info"],
+      "language": "en"
+    },
+    {
+      "question": "가동 시간 확인",
+      "command": "uptime",
+      "explanation": "시스템이 얼마나 실행되었는지, 사용자 수, 평균 부하를 표시합니다.",
+      "category": "시스템 관리",
+      "tags": ["uptime", "가동시간", "시스템"],
+      "language": "ko"
+    },
+    {
+      "question": "Check system uptime",
+      "command": "uptime",
+      "explanation": "Display how long the system has been running, number of users, and load average.",
+      "category": "System Management",
+      "tags": ["uptime", "system", "runtime"],
+      "language": "en"
+    },
+    {
+      "question": "환경 변수 확인",
+      "command": "env",
+      "explanation": "모든 환경 변수를 표시합니다.",
+      "category": "시스템 관리",
+      "tags": ["env", "환경변수", "변수"],
+      "language": "ko"
+    },
+    {
+      "question": "Show environment variables",
+      "command": "env",
+      "explanation": "Display all environment variables.",
+      "category": "System Management",
+      "tags": ["env", "environment", "variables"],
+      "language": "en"
+    },
+    {
+      "question": "명령어 히스토리 확인",
+      "command": "history",
+      "explanation": "이전에 실행한 명령어 목록을 표시합니다.",
+      "category": "시스템 관리",
+      "tags": ["history", "히스토리", "명령어"],
+      "language": "ko"
+    },
+    {
+      "question": "View command history",
+      "command": "history",
+      "explanation": "Display list of previously executed commands.",
+      "category": "System Management",
+      "tags": ["history", "commands"],
+      "language": "en"
+    }
+  ]
+}

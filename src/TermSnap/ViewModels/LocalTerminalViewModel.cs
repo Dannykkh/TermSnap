@@ -118,7 +118,14 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     public bool UseBlockUI
     {
         get => _useBlockUI;
-        set { _useBlockUI = value; OnPropertyChanged(); }
+        set
+        {
+            if (_useBlockUI != value)
+            {
+                _useBlockUI = value;
+                OnPropertyChanged();
+            }
+        }
     }
 
     /// <summary>
@@ -320,7 +327,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     public LocalTerminalViewModel(LocalSession.LocalShellType shellType = LocalSession.LocalShellType.PowerShell)
     {
         _shellType = shellType;
-        _tabHeader = GetShellDisplayName(shellType);
+        _tabHeader = "Terminal";  // 기본값 (아이콘으로 쉘 타입 표시)
 
         SendMessageCommand = new RelayCommand(async () => await ExecuteCommand(), () => CanSendMessage);
         DisconnectCommand = new RelayCommand(() => Disconnect(), () => IsConnected);
@@ -340,6 +347,9 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
 
         // 출력 핸들러 초기화
         InitializeOutputHandlers();
+
+        // 저장된 UI 설정 복원
+        LoadUISettings();
 
         AddMessage("로컬 터미널이 준비되었습니다.", false, MessageType.Info);
     }
@@ -704,7 +714,9 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
                 }
             }
 
-            TabHeader = $"{GetShellDisplayName(_shellType)} ({CurrentDirectory})";
+            // 폴더명만 표시 (쉘 타입은 아이콘으로)
+            var folderName = System.IO.Path.GetFileName(CurrentDirectory) ?? CurrentDirectory;
+            TabHeader = string.IsNullOrEmpty(folderName) ? CurrentDirectory : folderName;
             StatusMessage = $"{GetShellDisplayName(_shellType)} - {CurrentDirectory}";
         }
         catch (Exception ex)
@@ -742,7 +754,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
 
         IsConnected = false;
         StatusMessage = LocalizationService.Instance.GetString("ViewModel.Disconnected");
-        TabHeader = $"{GetShellDisplayName(_shellType)}{LocalizationService.Instance.GetString("ViewModel.DisconnectedSuffix")}";
+        TabHeader = LocalizationService.Instance.GetString("ViewModel.DisconnectedSuffix");
         AddMessage("로컬 셸이 종료되었습니다.", false, MessageType.Info);
     }
 
@@ -788,10 +800,9 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         CurrentDirectory = folderPath;
         ShowWelcome = false;  // 웰컴 화면 숨기기
 
-        // 폴더 이름을 탭 헤더에 표시 (쉘 이름 포함)
-        var shellName = _selectedShell?.DisplayName ?? GetShellDisplayName(_shellType);
+        // 폴더 이름을 탭 헤더에 표시 (쉘 타입은 아이콘으로)
         var folderName = System.IO.Path.GetFileName(folderPath);
-        TabHeader = $"{shellName} ({folderName})";
+        TabHeader = folderName;
 
         // 아직 연결되지 않았으면 연결
         if (!IsConnected)
@@ -815,6 +826,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             _session.StateChanged += OnStateChanged;
 
             // 초기 출력을 받을 블록 생성 (Block UI 모드)
+            var shellName = _selectedShell?.DisplayName ?? GetShellDisplayName(_shellType);
             if (_useBlockUI)
             {
                 _currentBlock = new CommandBlock
@@ -866,6 +878,9 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             var cdResult = await _session!.ExecuteCommandAsync($"cd \"{folderPath}\"");
             CurrentDirectory = folderPath;
             StatusMessage = $"{GetShellDisplayName(_shellType)} - {CurrentDirectory}";
+
+            // TabHeader 업데이트
+            TabHeader = folderName;
         }
     }
 
@@ -1223,4 +1238,46 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
         Activated = null;
         Deactivated = null;
     }
+
+    #region UI 설정 저장/복원
+
+    /// <summary>
+    /// 저장된 UI 설정 로드
+    /// </summary>
+    private void LoadUISettings()
+    {
+        try
+        {
+            var config = ConfigService.Load();
+            if (config.LocalTerminalUI != null)
+            {
+                // UseBlockUI는 setter를 거치지 않고 직접 설정 (저장 방지)
+                _useBlockUI = config.LocalTerminalUI.UseBlockUI;
+                OnPropertyChanged(nameof(UseBlockUI));
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LocalTerminalViewModel] UI 설정 로드 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// UI 설정 저장 (프로그램 종료 시에만 호출)
+    /// </summary>
+    public void SaveUISettings()
+    {
+        try
+        {
+            var config = ConfigService.Load();
+            config.LocalTerminalUI.UseBlockUI = _useBlockUI;
+            ConfigService.Save(config);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LocalTerminalViewModel] UI 설정 저장 실패: {ex.Message}");
+        }
+    }
+
+    #endregion
 }

@@ -13,6 +13,10 @@ public class TerminalBuffer
     private readonly List<TerminalCell[]> _scrollbackBuffer;
     private readonly int _maxScrollback;
 
+    // 변경된 라인 추적 (DrawingVisual 캐싱 최적화)
+    private readonly HashSet<int> _dirtyLines = new();
+    private bool _allLinesDirty = true;
+
     // 대체 화면 버퍼 (Alternate Screen Buffer)
     private TerminalCell[,]? _alternateScreenCells;
     private bool _isAlternateScreen = false;
@@ -103,6 +107,9 @@ public class TerminalBuffer
         CursorX = Math.Min(CursorX, columns - 1);
         CursorY = Math.Min(CursorY, rows - 1);
 
+        // 모든 라인 다시 그리기
+        MarkAllLinesDirty();
+
         BufferChanged?.Invoke();
     }
 
@@ -121,6 +128,10 @@ public class TerminalBuffer
         }
         CursorX = 0;
         CursorY = 0;
+
+        // 모든 라인 다시 그리기
+        MarkAllLinesDirty();
+
         BufferChanged?.Invoke();
     }
 
@@ -198,6 +209,9 @@ public class TerminalBuffer
                     IsWideCharTail = true
                 };
             }
+
+            // 라인 변경 마크
+            MarkLineDirty(CursorY);
         }
 
         CursorX += charWidth;
@@ -301,6 +315,13 @@ public class TerminalBuffer
                 _cells[scrollBottom, x] = CreateEmptyCell();
             }
         }
+
+        // 스크롤된 라인들 마크
+        for (int y = scrollTop; y <= scrollBottom; y++)
+        {
+            MarkLineDirty(y);
+        }
+
         BufferChanged?.Invoke();
     }
 
@@ -329,6 +350,13 @@ public class TerminalBuffer
                 _cells[scrollTop, x] = CreateEmptyCell();
             }
         }
+
+        // 스크롤된 라인들 마크
+        for (int y = scrollTop; y <= scrollBottom; y++)
+        {
+            MarkLineDirty(y);
+        }
+
         BufferChanged?.Invoke();
     }
 
@@ -356,6 +384,13 @@ public class TerminalBuffer
                 _cells[CursorY, x] = CreateEmptyCell();
             }
         }
+
+        // 영향받은 라인들 마크
+        for (int y = CursorY; y < Rows; y++)
+        {
+            MarkLineDirty(y);
+        }
+
         BufferChanged?.Invoke();
     }
 
@@ -383,6 +418,13 @@ public class TerminalBuffer
                 _cells[Rows - 1, x] = CreateEmptyCell();
             }
         }
+
+        // 영향받은 라인들 마크
+        for (int y = CursorY; y < Rows; y++)
+        {
+            MarkLineDirty(y);
+        }
+
         BufferChanged?.Invoke();
     }
 
@@ -406,6 +448,10 @@ public class TerminalBuffer
         {
             _cells[CursorY, x] = CreateEmptyCell();
         }
+
+        // 현재 라인 마크
+        MarkLineDirty(CursorY);
+
         BufferChanged?.Invoke();
     }
 
@@ -429,6 +475,10 @@ public class TerminalBuffer
         {
             _cells[CursorY, x] = CreateEmptyCell();
         }
+
+        // 현재 라인 마크
+        MarkLineDirty(CursorY);
+
         BufferChanged?.Invoke();
     }
 
@@ -445,6 +495,10 @@ public class TerminalBuffer
         {
             _cells[CursorY, x] = CreateEmptyCell();
         }
+
+        // 현재 라인 마크
+        MarkLineDirty(CursorY);
+
         BufferChanged?.Invoke();
     }
 
@@ -551,6 +605,10 @@ public class TerminalBuffer
         {
             _cells[CursorY, x] = CreateEmptyCell();
         }
+
+        // 현재 라인 마크
+        MarkLineDirty(CursorY);
+
         BufferChanged?.Invoke();
     }
 
@@ -563,6 +621,10 @@ public class TerminalBuffer
         {
             _cells[CursorY, x] = CreateEmptyCell();
         }
+
+        // 현재 라인 마크
+        MarkLineDirty(CursorY);
+
         BufferChanged?.Invoke();
     }
 
@@ -575,6 +637,10 @@ public class TerminalBuffer
         {
             _cells[CursorY, x] = CreateEmptyCell();
         }
+
+        // 현재 라인 마크
+        MarkLineDirty(CursorY);
+
         BufferChanged?.Invoke();
     }
 
@@ -592,6 +658,7 @@ public class TerminalBuffer
             {
                 _cells[y, x] = CreateEmptyCell();
             }
+            MarkLineDirty(y);
         }
         BufferChanged?.Invoke();
     }
@@ -608,6 +675,7 @@ public class TerminalBuffer
             {
                 _cells[y, x] = CreateEmptyCell();
             }
+            MarkLineDirty(y);
         }
         // 현재 줄의 처음부터 커서까지
         EraseToStartOfLine();
@@ -626,6 +694,10 @@ public class TerminalBuffer
                 _cells[y, x] = CreateEmptyCell();
             }
         }
+
+        // 모든 라인 다시 그리기
+        MarkAllLinesDirty();
+
         BufferChanged?.Invoke();
     }
 
@@ -671,6 +743,10 @@ public class TerminalBuffer
         CursorY = 0;
 
         _isAlternateScreen = true;
+
+        // 모든 라인 다시 그리기
+        MarkAllLinesDirty();
+
         BufferChanged?.Invoke();
     }
 
@@ -690,6 +766,10 @@ public class TerminalBuffer
         CursorY = _savedCursorY;
 
         _isAlternateScreen = false;
+
+        // 모든 라인 다시 그리기
+        MarkAllLinesDirty();
+
         BufferChanged?.Invoke();
     }
 
@@ -733,4 +813,58 @@ public class TerminalBuffer
         }
         return sb.ToString();
     }
+
+    #region Dirty Line Tracking (DrawingVisual 최적화)
+
+    /// <summary>
+    /// 특정 라인을 변경됨으로 마크
+    /// </summary>
+    public void MarkLineDirty(int row)
+    {
+        if (row >= 0 && row < Rows)
+        {
+            _dirtyLines.Add(row);
+        }
+    }
+
+    /// <summary>
+    /// 모든 라인을 변경됨으로 마크
+    /// </summary>
+    public void MarkAllLinesDirty()
+    {
+        _allLinesDirty = true;
+        _dirtyLines.Clear();
+    }
+
+    /// <summary>
+    /// 변경된 라인 목록 가져오기
+    /// </summary>
+    public IEnumerable<int> GetDirtyLines()
+    {
+        if (_allLinesDirty)
+        {
+            for (int i = 0; i < Rows; i++)
+            {
+                yield return i;
+            }
+        }
+        else
+        {
+            foreach (var line in _dirtyLines)
+            {
+                yield return line;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Dirty 플래그 초기화
+    /// </summary>
+    public void ClearDirtyLines()
+    {
+        _allLinesDirty = false;
+        _dirtyLines.Clear();
+    }
+
+    #endregion
 }

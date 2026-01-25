@@ -2,7 +2,7 @@
 ; Inno Setup 6.0 or higher required
 
 #define MyAppName "TermSnap"
-#define MyAppVersion "1.3.0"
+#define MyAppVersion "1.4.0"
 #define MyAppPublisher "Dannykkh"
 #define MyAppURL "https://github.com/Dannykkh/TermSnap"
 #define MyAppExeName "TermSnap.exe"
@@ -28,6 +28,9 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+; Application Icons
+SetupIconFile=termsnap_icon2.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
 Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
