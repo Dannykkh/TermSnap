@@ -1,5 +1,110 @@
 # Release Notes
 
+## v1.5.0 - 2026-01-26
+
+### 🎨 IDE-Style File Editor (Major Update)
+
+TermSnap now features a full-featured code editor powered by AvalonEdit, transforming from a terminal tool into a CLI-centric IDE.
+
+#### Code Editor Features
+- **AvalonEdit Integration**: Professional code editing experience
+  - Line numbers with configurable margin
+  - Syntax highlighting for 20+ languages
+  - Code folding for `{}` blocks and XML tags
+  - Current line highlighting
+  - Dark theme optimized colors (VS Code style)
+
+- **Edit Mode (Ctrl+E)**: Toggle between view and edit modes
+  - View mode: Read-only, prevents accidental changes
+  - Edit mode: Full editing with save support
+  - Unsaved changes detection with confirmation dialog
+
+- **Search & Navigation**:
+  - `Ctrl+F`: Find text (AvalonEdit SearchPanel)
+  - `Ctrl+H`: Find and Replace dialog
+  - `Ctrl+G`: Go to line dialog
+  - `Ctrl+S`: Save file
+
+- **Font & Display**:
+  - `Ctrl+Wheel`: Zoom in/out (8-32pt)
+  - Word wrap toggle button
+  - Consolas font for code files
+
+#### Status Bar
+- **Cursor Position**: Line and column display
+- **Encoding**: UTF-8, UTF-16 detection via BOM
+- **Line Ending**: CRLF/LF/CR detection
+- **Word Wrap**: Toggle button with visual indicator
+
+#### Dark Theme Syntax Colors
+Optimized for dark backgrounds (VS Code inspired):
+- Keywords: Blue (#569CD6)
+- Strings: Orange (#CE9178)
+- Comments: Green (#6A9955)
+- Numbers: Light green (#B5CEA8)
+- Classes/Types: Cyan (#4EC9B0)
+- Methods: Yellow (#DCDCAA)
+
+### 📝 Markdown Renderer Improvements
+
+- **Extended Header Support**: h4 (`####`), h5 (`#####`), h6 (`######`)
+- **Inline Styles in Lists**: Bold, italic, code, links now work in list items
+- **Image Syntax**: `![alt](url)` displayed as placeholder text
+- **Quote Inline Styles**: Blockquotes now support inline formatting
+
+### 🖥️ Local Terminal Improvements
+
+- **Path Display Restored**: Current directory shown in input area
+  - Folder icon with path text
+  - Text trimming for long paths (max 400px)
+
+### 📚 Documentation
+
+- **Keyboard Shortcuts Section**: Added to both English and Korean README
+  - Global shortcuts (Ctrl+L, Ctrl+T, Ctrl+Tab, Ctrl+W)
+  - File editor shortcuts (Ctrl+E/S/F/H/G/Z/Y)
+  - Terminal shortcuts
+- **File Viewer Screenshot**: New screenshot added to docs
+
+### 🔧 Technical Improvements
+
+#### FileViewerPanel
+- `FileViewerPanel.xaml.cs`: Complete rewrite for IDE features
+  - `SearchPanel.Install()`: Built-in search functionality
+  - `FoldingManager`: Code folding for braces and XML
+  - `ApplyDarkThemeColors()`: Custom syntax highlighting colors
+  - `DetectEncoding()`: BOM-based encoding detection
+  - `DetectLineEnding()`: CRLF/LF/CR detection
+  - Keyboard shortcuts handler
+  - Mouse wheel zoom handler
+
+- `FileViewerPanel.xaml`: New status bar and controls
+  - Status bar with cursor position, encoding, line ending
+  - Word wrap toggle button
+  - Save and edit toggle buttons
+
+#### BraceFoldingStrategy
+- New class for `{}` block folding
+- Minimum 2-line requirement for fold creation
+- Sorted folding regions for proper nesting
+
+### 🐛 Bug Fixes
+- Fixed syntax highlighting colors invisible on dark theme
+- Fixed line numbers too close to code text
+- Fixed markdown h4-h6 headers not rendering
+- Fixed bold/italic not working inside list items
+- Fixed image syntax causing render issues
+
+### 📋 File Type Support
+Now viewable in file editor:
+- Text: `.txt`, `.log`, `.ini`, `.cfg`, `.conf`, `.env`
+- Code: `.cs`, `.py`, `.js`, `.ts`, `.java`, `.cpp`, `.go`, `.rs`, `.rb`, `.php`
+- Web: `.html`, `.css`, `.scss`, `.json`, `.xml`, `.yaml`
+- Scripts: `.sh`, `.bash`, `.ps1`, `.bat`, `.cmd`
+- Markup: `.md`, `.markdown`
+
+---
+
 ## v1.4.0 - 2026-01-25
 
 ### 🎨 UI/UX Improvements
