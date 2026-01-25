@@ -10,17 +10,60 @@
 
 ## Overview
 
-TermSnap is a modern terminal assistant that combines AI-powered command generation, SSH/SFTP management, and local terminal integration into one unified experience. Think of it as PuTTY + AI + integrated development environment for terminal workflows.
+TermSnap is a modern terminal assistant that combines AI-powered command generation, SSH/SFTP management, and local terminal integration into one unified experience. Think of it as **PuTTY + AI + IDE** for terminal workflows.
+
+### Why TermSnap?
+
+1. **Server management is hard** - Constantly searching for Linux commands
+2. **Repetitive commands** - Need to save frequently used commands
+3. **AI assistance needed** - Generate commands from natural language
+4. **Unified workspace** - Server access + local development in one tool
 
 ### Key Features
 
 - **AI Command Generation**: Convert natural language to Linux commands using Gemini, OpenAI, Claude, or Grok
 - **High-Performance SFTP**: 100-150 MB/s single file, 400 MB/s parallel transfers (up to 2.5x faster than FileZilla)
-- **IDE-Style File Editor**: View/edit mode separation, syntax highlighting, undo/redo support
+- **IDE-Style File Editor**: View/edit mode separation, syntax highlighting, code folding, undo/redo
 - **Local Terminal**: PowerShell, CMD, WSL, Git Bash with AI CLI integration (Claude Code, Aider, etc.)
 - **Q&A Vector Search**: Cache frequent queries to save API tokens
 - **Multi-Tab Sessions**: Mix SSH and local terminal sessions in tabs
 - **Dark/Light Theme**: Modern Material Design UI
+
+### Architecture
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                              TermSnap                                 │
+├───────────────────────────────────────────────────────────────────────┤
+│  [Tab 1]  [Tab 2]  [Tab 3]  [+]                                       │
+├───────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│   [SSH Server Session]              [Local Terminal Session]          │
+│   ┌──────────────────────┐          ┌──────────────────────┐          │
+│   │ AI Command Generation│          │ PowerShell / CMD     │          │
+│   │ SSH Connection       │          │ WSL / Git Bash       │          │
+│   │ File Transfer (SFTP) │          │                      │          │
+│   │ Server Monitoring    │          │ ┌──────────────────┐ │          │
+│   └──────────────────────┘          │ │  AI CLI Integration│ │          │
+│                                     │ │  - Claude Code    │ │          │
+│                                     │ │  - Codex CLI      │ │          │
+│                                     │ │  - Gemini CLI     │ │          │
+│                                     │ │  - Aider          │ │          │
+│                                     │ └──────────────────┘ │          │
+│                                     └──────────────────────┘          │
+│                    │                           │                      │
+│                    └───────────┬───────────────┘                      │
+│                                ↓                                      │
+│                    ┌─────────────────────┐                            │
+│                    │  Common Features    │                            │
+│                    │ - Command Snippets  │                            │
+│                    │ - Q&A Vector Search │                            │
+│                    │ - Execution History │                            │
+│                    │ - Dark/Light Theme  │                            │
+│                    └─────────────────────┘                            │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+```
 
 ## Quick Start
 
@@ -52,24 +95,41 @@ dotnet build
 
 # Run
 dotnet run --project src/TermSnap/TermSnap.csproj
+
+# (Optional) Release build
+dotnet publish src/TermSnap/TermSnap.csproj -c Release -r win-x64 --self-contained
 ```
 
 ### First Steps (5 Minutes)
 
-1. **Set up AI API Key**
-   - Open Settings ⚙️ → AI Models
-   - Enter your API key ([Get Gemini API key](https://ai.google.dev/) - free tier available)
+1. **Launch TermSnap**
+   ```
+   Run TermSnap.exe
+   ```
 
-2. **Connect to SSH Server**
+2. **Set up AI API Key**
+   - Open Settings ⚙️ → AI Models
+   - Enter your API key
+   - [Get Gemini API key](https://ai.google.dev/) (free tier available, recommended)
+   - [Get OpenAI API key](https://platform.openai.com/api-keys)
+   - [Get Anthropic API key](https://console.anthropic.com/)
+
+3. **Connect to SSH Server**
    - Click "New Tab" (+) → "SSH Server"
    - Enter server details (host, username, password/SSH key)
    - Connect and ask AI for commands!
    - Example: "show disk usage"
 
-3. **Use Local Terminal** (Optional)
+4. **Use Local Terminal** (Optional)
    - Click "New Tab" (+) → "Local Terminal"
    - Choose shell: PowerShell, CMD, WSL, or Git Bash
    - Open a folder → Run AI CLI tools (Claude Code, Aider, etc.)
+
+### Configuration
+
+Config file location: `%APPDATA%/TermSnap/config.json`
+
+See [`config.example.json`](config.example.json) for example configuration.
 
 ## Screenshots
 
@@ -112,6 +172,17 @@ Connect to saved servers or add new ones:
 - Password encryption using Windows DPAPI
 - Server profiles with custom names and notes
 
+### File Viewer
+
+![File Viewer](docs/images/file-viewer.png)
+
+The integrated file viewer supports:
+- **Syntax highlighting** for 20+ languages
+- **Line numbers** and **code folding**
+- **Edit mode** with save/undo/redo
+- **Dark theme** optimized colors
+- **Status bar** with cursor position, encoding, line ending
+
 ## Features
 
 ### 1. SSH Server Management
@@ -145,23 +216,67 @@ Connect to saved servers or add new ones:
 - Undo/Redo, line numbers, encoding selection (UTF-8, EUC-KR, etc.)
 - "Save" (Ctrl+S) or "Cancel" to exit
 
-**File Editor Features:**
+**Advanced Features:**
 - Code folding for `{}` blocks and XML tags
 - Current line highlighting
-- Status bar: cursor position, line ending (CRLF/LF), encoding (UTF-8)
+- Status bar: cursor position, line ending (CRLF/LF), encoding
 - Word wrap toggle
-- Dark theme optimized syntax colors
+- Dark theme optimized syntax colors (VS Code style)
 
-### File Viewer
+**Supported File Types:**
+- Text: `.txt`, `.log`, `.ini`, `.cfg`, `.conf`, `.env`
+- Code: `.cs`, `.py`, `.js`, `.ts`, `.java`, `.cpp`, `.go`, `.rs`, `.rb`, `.php`
+- Web: `.html`, `.css`, `.scss`, `.json`, `.xml`, `.yaml`
+- Scripts: `.sh`, `.bash`, `.ps1`, `.bat`, `.cmd`
+- Markup: `.md`, `.markdown`
 
-![File Viewer](docs/images/file-viewer.png)
+### 4. AI CLI Integration
 
-The integrated file viewer supports:
-- **Syntax highlighting** for 20+ languages
-- **Line numbers** and **code folding**
-- **Edit mode** with save/undo/redo
-- **Dark theme** optimized colors
-- **Status bar** with cursor position, encoding, line ending
+Run popular AI coding assistants with one click:
+
+| CLI | Description | Auto Mode Flag |
+|-----|-------------|----------------|
+| **Claude Code** | Anthropic's AI coding assistant | `--dangerously-skip-permissions` |
+| **Codex CLI** | OpenAI's code generation CLI | `--full-auto` |
+| **Gemini CLI** | Google's Gemini AI CLI | `-y` |
+| **Aider** | Open-source AI pair programming | `--yes` |
+| **Custom** | Your own AI CLI | Custom |
+
+Features:
+- Auto-detect installation status
+- One-click install button
+- CLI-specific options (Claude: `--print`, `--verbose`, `--resume`, etc.)
+- Save last selection
+- Initial prompt input support
+
+### 5. Q&A Vector Search (Token Saver)
+
+```
+User Question: "how to restart nginx"
+         ↓
+Step 1: Search registered Q&A with vector embeddings
+        → If match found, return instantly (no API call)
+         ↓
+Step 2: If no match, call AI API
+        → Save result to Q&A for reuse
+```
+
+- Pre-register frequent questions/answers
+- Embedding-based similarity search
+- Reduce API token usage
+
+### 6. Command Snippets
+
+- Save frequently used commands
+- Category/tag organization
+- Quick search and execution
+
+### 7. Multi-Tab Support
+
+- Manage multiple sessions in tabs
+- Mix SSH and local terminal sessions
+- Independent workspace per tab
+- Session type selection on new tab
 
 ## Keyboard Shortcuts
 
@@ -197,76 +312,6 @@ The integrated file viewer supports:
 | `Ctrl+L` | Clear terminal |
 | `Up/Down` | Command history |
 | `Tab` | Auto-complete |
-
-### 4. AI CLI Integration
-
-Run popular AI coding assistants with one click:
-
-| CLI | Description | Auto Mode Flag |
-|-----|-------------|----------------|
-| **Claude Code** | Anthropic's AI coding assistant | `--dangerously-skip-permissions` |
-| **Codex CLI** | OpenAI's code generation CLI | `--full-auto` |
-| **Gemini CLI** | Google's Gemini AI CLI | `-y` |
-| **Aider** | Open-source AI pair programming | `--yes` |
-| **Custom** | Your own AI CLI | Custom |
-
-Features:
-- Auto-detect installation status
-- One-click install button
-- CLI-specific options (Claude: `--print`, `--verbose`, `--resume`, etc.)
-- Save last selection
-
-#### Claude Orchestration (Claude Code Only)
-
-MCP (Model Context Protocol) based multi-agent execution:
-
-```
-Main Claude ──┬── Agent 1 (File Analysis)
-              ├── Agent 2 (Code Writing)
-              ├── Agent 3 (Testing)
-              └── Agent 4 (Refactoring)
-
-→ Complex tasks handled by multiple agents in parallel
-```
-
-### 5. Q&A Vector Search (Token Saver)
-
-```
-User Question: "how to restart nginx"
-         ↓
-Step 1: Search registered Q&A with vector embeddings
-        → If match found, return instantly (no API call)
-         ↓
-Step 2: If no match, call AI API
-        → Save result to Q&A for reuse
-```
-
-- Pre-register frequent questions/answers
-- Embedding-based similarity search
-- Reduce API token usage
-
-### 6. Command Snippets
-
-- Save frequently used commands
-- Category/tag organization
-- Quick search and execution
-
-### 7. Multi-Tab Support
-
-- Manage multiple sessions in tabs
-- Mix SSH and local terminal sessions
-- Independent workspace per tab
-
-## Technology Stack
-
-| Area | Technology |
-|------|------------|
-| Framework | .NET 8.0 / WPF |
-| AI | Gemini, OpenAI, Claude, Grok (Multi-provider) |
-| SSH/SFTP | SSH.NET, SshNet.PuttyKeyFile |
-| Vector Search | Local embeddings (sentence-transformers) |
-| UI | XAML, Material Design In XAML |
-| Security | Windows DPAPI (Encryption) |
 
 ## Usage Examples
 
@@ -318,28 +363,44 @@ Output: [partition list]
 3. Parallel download (4 at a time)
 ```
 
-## Configuration
+### File Editing (IDE Style)
 
-Config file location: `%APPDATA%/TermSnap/config.json`
-
-```json
-{
-  "ServerProfiles": [...],
-  "AIModels": [
-    { "Provider": "Gemini", "ModelId": "gemini-2.0-flash", "EncryptedApiKey": "..." },
-    { "Provider": "OpenAI", "ModelId": "gpt-4o", "EncryptedApiKey": "..." }
-  ],
-  "SelectedProvider": "Gemini",
-  "SelectedModelId": "gemini-2.0-flash",
-  "AICLISettings": {
-    "SelectedCLI": "claude",
-    "LastCommand": "claude",
-    "LastAutoMode": false
-  }
-}
+**Viewer Mode (Default):**
+```
+1. Double-click a text file in file list
+2. [Viewer Mode] File editor opens
+   - Read-only (grey background)
+   - Only "Edit" button shown
+   - Cannot accidentally modify files
 ```
 
+**Edit Mode:**
+```
+1. Click "Edit" button (✏️)
+2. [Edit Mode] Switch
+   - Editable (white background)
+   - "Save" / "Cancel" buttons shown
+   - Undo/Redo enabled
+3. Modify file
+4. "Save" (Ctrl+S) → Auto return to viewer mode
+   Or "Cancel" → Discard changes and return to viewer mode
+```
+
+## Technology Stack
+
+| Area | Technology |
+|------|------------|
+| Framework | .NET 8.0 / WPF |
+| AI | Gemini, OpenAI, Claude, Grok (Multi-provider) |
+| SSH/SFTP | SSH.NET, SshNet.PuttyKeyFile |
+| Code Editor | AvalonEdit |
+| Vector Search | Local embeddings (sentence-transformers) |
+| UI | XAML, Material Design In XAML |
+| Security | Windows DPAPI (Encryption) |
+
 ## AI CLI Installation
+
+TermSnap auto-detects AI CLI installation status. Click the install button to run installation in terminal.
 
 ### Claude Code
 ```bash
@@ -369,24 +430,6 @@ pip install aider-chat
 - Requirements: Python 3.9+
 - [Official GitHub](https://github.com/paul-gauthier/aider)
 
-## Contributing
-
-We welcome contributions! 🎉
-
-1. **Bug Reports**: Report bugs in [Issues](https://github.com/Dannykkh/TermSnap/issues)
-2. **Feature Requests**: Suggest new features in [Issues](https://github.com/Dannykkh/TermSnap/issues)
-3. **Code Contributions**:
-   ```bash
-   # Fork → Clone → Branch → Commit → Push → Pull Request
-   git checkout -b feature/amazing-feature
-   git commit -m "Add amazing feature"
-   git push origin feature/amazing-feature
-   ```
-4. **Documentation**: Improve README, comments, or guides
-5. **Translations**: Translate to other languages
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
 ## FAQ
 
 ### Q: Can I use TermSnap without an AI API key?
@@ -407,6 +450,18 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 ### Q: Are my API keys secure?
 **A**: Yes, all API keys and passwords are encrypted using Windows DPAPI (Data Protection API) and stored securely.
 
+### Q: Claude Code is installed but not detected?
+**A**:
+1. Verify in PowerShell: `claude --version`
+2. Add `npm global bin` path to PATH environment variable
+3. Restart TermSnap
+
+### Q: I'm worried about accidentally saving during file editing
+**A**: Default is **Viewer Mode** (read-only). You must explicitly click "Edit" button to modify files. Safe to use like an IDE!
+
+### Q: Does it only support dark mode?
+**A**: You can switch between Light/Dark theme in Settings.
+
 ## Troubleshooting
 
 ### Build Errors
@@ -421,6 +476,24 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 - Check firewall (allow port 22)
 - Verify SSH service is running: `sudo systemctl status sshd`
 - Verify host/port/credentials
+
+## Contributing
+
+We welcome contributions! 🎉
+
+1. **Bug Reports**: Report bugs in [Issues](https://github.com/Dannykkh/TermSnap/issues)
+2. **Feature Requests**: Suggest new features in [Issues](https://github.com/Dannykkh/TermSnap/issues)
+3. **Code Contributions**:
+   ```bash
+   # Fork → Clone → Branch → Commit → Push → Pull Request
+   git checkout -b feature/amazing-feature
+   git commit -m "Add amazing feature"
+   git push origin feature/amazing-feature
+   ```
+4. **Documentation**: Improve README, comments, or guides
+5. **Translations**: Translate to other languages
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Roadmap
 
@@ -451,12 +524,20 @@ The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 ```
 
+### What MIT License means:
+- ✅ **Commercial use**: Free to use in commercial projects
+- ✅ **Modification**: Free to modify and improve code
+- ✅ **Distribution**: Free to distribute modified versions
+- ✅ **Private use**: Can be included in proprietary products
+- ⚠️ **License notice required**: Must include copyright notice and license copy
+
 See [LICENSE](LICENSE) for full details.
 
 ## Acknowledgements
 
 This project uses the following open-source libraries:
 - [SSH.NET](https://github.com/sshnet/SSH.NET) - SSH/SFTP connections
+- [AvalonEdit](https://github.com/icsharpcode/AvalonEdit) - Code editor
 - [Material Design In XAML](https://github.com/MaterialDesignInXAML/MaterialDesignInXamlToolkit) - UI design
 - [sentence-transformers](https://www.sbert.net/) - Embedding models
 
