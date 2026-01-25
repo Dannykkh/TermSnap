@@ -145,6 +145,59 @@ Connect to saved servers or add new ones:
 - Undo/Redo, line numbers, encoding selection (UTF-8, EUC-KR, etc.)
 - "Save" (Ctrl+S) or "Cancel" to exit
 
+**File Editor Features:**
+- Code folding for `{}` blocks and XML tags
+- Current line highlighting
+- Status bar: cursor position, line ending (CRLF/LF), encoding (UTF-8)
+- Word wrap toggle
+- Dark theme optimized syntax colors
+
+### File Viewer
+
+![File Viewer](docs/images/file-viewer.png)
+
+The integrated file viewer supports:
+- **Syntax highlighting** for 20+ languages
+- **Line numbers** and **code folding**
+- **Edit mode** with save/undo/redo
+- **Dark theme** optimized colors
+- **Status bar** with cursor position, encoding, line ending
+
+## Keyboard Shortcuts
+
+### Global Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+L` | New Local Terminal tab |
+| `Ctrl+T` | New SSH Connection tab |
+| `Ctrl+Tab` | Switch to next tab |
+| `Ctrl+W` | Close current tab |
+
+### File Editor Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+E` | Toggle Edit/View mode |
+| `Ctrl+S` | Save file (edit mode) |
+| `Ctrl+F` | Find text |
+| `Ctrl+H` | Find and Replace (edit mode) |
+| `Ctrl+G` | Go to line |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` | Redo |
+| `Ctrl+A` | Select all |
+| `Ctrl+C/V/X` | Copy/Paste/Cut |
+| `Ctrl+Wheel` | Zoom in/out (font size) |
+
+### Terminal Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+C` | Cancel current command |
+| `Ctrl+L` | Clear terminal |
+| `Up/Down` | Command history |
+| `Tab` | Auto-complete |
+
 ### 4. AI CLI Integration
 
 Run popular AI coding assistants with one click:

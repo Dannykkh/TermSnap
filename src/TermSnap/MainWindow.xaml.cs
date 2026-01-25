@@ -251,18 +251,15 @@ public partial class MainWindow : Window
 
         var extension = System.IO.Path.GetExtension(item.FullPath).ToLowerInvariant();
 
-        // 로컬 세션: 마크다운 파일은 FileViewerPanel에 표시, 나머지는 기본 애플리케이션으로 열기
+        // 로컬 세션: 뷰어에서 볼 수 있는 파일은 FileViewerPanel에 표시, 나머지는 기본 애플리케이션으로 열기
         if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
         {
-            // TODO (v2.0): .bat, .sh, .ps1, .json, .xml, .yaml 등 텍스트 기반 파일도 FileViewerPanel에서 열기
-            // FileViewerPanel.IsViewableFile(extension) 같은 헬퍼 메서드 추가 고려
-
-            // 마크다운 파일: FileViewerPanel에 표시
-            if (extension == ".md" || extension == ".markdown" || extension == ".mdown" || extension == ".mkd")
+            // FileViewerPanel에서 지원하는 파일 타입 확인
+            if (FileViewerPanel.IsViewableFile(extension))
             {
                 try
                 {
-                    System.Diagnostics.Debug.WriteLine($"[MainWindow] Opening .md file: {item.FullPath}");
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] Opening viewable file: {item.FullPath}");
 
                     // 파일 뷰어 패널 표시
                     localVm.IsFileViewerVisible = true;
