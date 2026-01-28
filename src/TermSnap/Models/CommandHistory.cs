@@ -27,6 +27,56 @@ public class CommandHistory
     public bool WasEdited { get; set; } = false;
     public DateTime ExecutedAt { get; set; } = DateTime.Now;
 
+    #region AI JSON 응답 필드
+
+    /// <summary>
+    /// AI 신뢰도 (0.0 ~ 1.0)
+    /// </summary>
+    public double Confidence { get; set; } = 1.0;
+
+    /// <summary>
+    /// 경고 메시지
+    /// </summary>
+    public string? Warning { get; set; }
+
+    /// <summary>
+    /// 대체 명령어 목록 (JSON 문자열로 저장)
+    /// </summary>
+    public string? AlternativesJson { get; set; }
+
+    /// <summary>
+    /// 대체 명령어 목록 (편의용 프로퍼티)
+    /// </summary>
+    public List<string>? Alternatives
+    {
+        get => string.IsNullOrEmpty(AlternativesJson) ? null :
+            System.Text.Json.JsonSerializer.Deserialize<List<string>>(AlternativesJson);
+        set => AlternativesJson = value == null || value.Count == 0 ? null :
+            System.Text.Json.JsonSerializer.Serialize(value);
+    }
+
+    /// <summary>
+    /// sudo 필요 여부
+    /// </summary>
+    public bool RequiresSudo { get; set; }
+
+    /// <summary>
+    /// 위험한 명령어 여부
+    /// </summary>
+    public bool IsDangerous { get; set; }
+
+    /// <summary>
+    /// 명령어 카테고리 (파일, 네트워크, 프로세스, 시스템, 패키지)
+    /// </summary>
+    public string? Category { get; set; }
+
+    /// <summary>
+    /// 예상 실행 시간 (초)
+    /// </summary>
+    public int? EstimatedDuration { get; set; }
+
+    #endregion
+
     // 기존 필드명 호환성 (마이그레이션용)
     [Obsolete("Use UserInput instead")]
     public string UserRequest

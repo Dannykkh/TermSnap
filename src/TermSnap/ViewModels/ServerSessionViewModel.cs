@@ -616,28 +616,55 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
                 else
                 {
                     StatusMessage = "🤖 AI가 명령어를 생성하는 중...";
-                    command = await aiProvider!.ConvertToLinuxCommand(userMessage);
+                    var aiResponse = await aiProvider!.ConvertToLinuxCommandAsync(userMessage);
+                    command = aiResponse.Command;
 
-                    if (ErrorHandler.IsDangerousCommand(command))
+                    // AI 응답의 JSON 데이터를 CommandBlock에 매핑
+                    block.Confidence = aiResponse.Confidence;
+                    block.Warning = aiResponse.Warning;
+                    block.Alternatives = aiResponse.Alternatives;
+                    block.RequiresSudo = aiResponse.RequiresSudo;
+                    block.IsDangerous = aiResponse.IsDangerous;
+                    block.Category = aiResponse.Category;
+                    block.EstimatedDuration = aiResponse.EstimatedDuration;
+
+                    // AI가 설명을 제공했으면 사용
+                    if (!string.IsNullOrWhiteSpace(aiResponse.Explanation))
+                    {
+                        explanation = aiResponse.Explanation;
+                    }
+
+                    // AI가 위험하다고 판단하거나 ErrorHandler가 위험하다고 판단
+                    if (aiResponse.IsDangerous || ErrorHandler.IsDangerousCommand(command))
                     {
                         block.GeneratedCommand = command;
-                        block.Error = "위험한 명령어가 감지되어 실행이 차단되었습니다.";
+                        block.IsDangerous = true;
+                        block.Error = aiResponse.Warning ?? "위험한 명령어가 감지되어 실행이 차단되었습니다.";
                         block.Status = BlockStatus.Failed;
                         AddMessage($"⚠️ 위험한 명령어가 감지되었습니다: {command}", false, MessageType.Error);
                         AddMessage("안전을 위해 실행이 차단되었습니다.", false, MessageType.Warning);
                         return;
                     }
 
-                    StatusMessage = "명령어 설명 생성 중...";
-                    try
+                    // 설명이 없으면 별도로 생성
+                    if (string.IsNullOrWhiteSpace(explanation))
                     {
-                        explanation = await aiProvider.ExplainCommand(command);
+                        StatusMessage = "명령어 설명 생성 중...";
+                        try
+                        {
+                            var explainResponse = await aiProvider.ExplainCommandAsync(command);
+                            explanation = explainResponse.Summary;
+                            if (!string.IsNullOrWhiteSpace(explainResponse.Details))
+                                explanation += "\n" + explainResponse.Details;
+                        }
+                        catch { }
                     }
-                    catch { }
 
                     AddMessage($"생성된 명령어: {command}", false, MessageType.Command);
                     if (!string.IsNullOrWhiteSpace(explanation))
                         AddMessage($"💡 {explanation}", false, MessageType.Info);
+                    if (aiResponse.HasWarning)
+                        AddMessage($"⚠️ {aiResponse.Warning}", false, MessageType.Warning);
                 }
             }
 
@@ -648,7 +675,15 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
 
             history = new CommandHistory(userMessage, command, _serverProfile?.ProfileName ?? "Unknown")
             {
-                Explanation = explanation
+                Explanation = explanation,
+                // AI JSON 응답 필드 복사
+                Confidence = block.Confidence,
+                Warning = block.Warning,
+                Alternatives = block.Alternatives,
+                RequiresSudo = block.RequiresSudo,
+                IsDangerous = block.IsDangerous,
+                Category = block.Category,
+                EstimatedDuration = block.EstimatedDuration
             };
 
             string finalCommand = command;
@@ -752,6 +787,9 @@ public class ServerSessionViewModel : INotifyPropertyChanged, ISessionViewModel
             block.Status = success ? BlockStatus.Success : BlockStatus.Failed;
             block.Duration = stopwatch.Elapsed;
             block.CurrentDirectory = CurrentDirectory;
+
+            // 명령어 실행 통계 기록
+            UsageStatisticsService.Instance.RecordCommandExecution(success, block.Category);
 
             // 터미널 뷰 결과 업데이트
             if (success)

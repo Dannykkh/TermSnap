@@ -12,18 +12,34 @@ namespace TermSnap.Services;
 /// <summary>
 /// 사용자 정의 Q&A 데이터베이스 서비스
 /// SQLite + FTS5 전문검색 + 벡터 임베딩 지원
+///
+/// 두 개의 DB 사용:
+/// - base: 프로그램 폴더의 qa_knowledge.db (배포용, 읽기 전용)
+/// - custom: %APPDATA%의 qa_custom.db (사용자 추가용)
 /// </summary>
 public class QADatabaseService : IDisposable
 {
-    private static readonly string DatabaseDirectory = Path.Combine(
+    // 사용자 데이터 폴더 (%APPDATA%/TermSnap)
+    private static readonly string UserDataDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "TermSnap"
     );
 
-    private static readonly string DatabasePath = Path.Combine(DatabaseDirectory, "qa_knowledge.db");
+    // 프로그램 폴더 (exe 위치)
+    // 주의: 단일 파일 배포 시 AppDomain.CurrentDomain.BaseDirectory는 임시 폴더를 반환함
+    // Environment.ProcessPath를 사용해야 실제 exe 위치를 얻을 수 있음 (.NET 6+)
+    private static readonly string ProgramDirectory = Path.GetDirectoryName(Environment.ProcessPath)
+        ?? AppDomain.CurrentDomain.BaseDirectory;
+
+    // 기본 DB: 프로그램 폴더 (배포용)
+    private static readonly string BaseDatabasePath = Path.Combine(ProgramDirectory, "qa_knowledge.db");
+
+    // 사용자 DB: %APPDATA% (사용자 추가용)
+    private static readonly string CustomDatabasePath = Path.Combine(UserDataDirectory, "qa_custom.db");
 
     private SqliteConnection? _connection;
     private bool _disposed = false;
+    private bool _hasBaseDb = false;
 
     private static QADatabaseService? _instance;
     private static readonly object _lock = new();
@@ -61,18 +77,43 @@ public class QADatabaseService : IDisposable
 
     /// <summary>
     /// 데이터베이스 초기화
+    /// 사용자 DB를 메인으로 열고, 기본 DB를 ATTACH
     /// </summary>
     private void Initialize()
     {
-        if (!Directory.Exists(DatabaseDirectory))
+        // 사용자 데이터 폴더 생성
+        if (!Directory.Exists(UserDataDirectory))
         {
-            Directory.CreateDirectory(DatabaseDirectory);
+            Directory.CreateDirectory(UserDataDirectory);
         }
 
-        _connection = new SqliteConnection($"Data Source={DatabasePath}");
+        // 사용자 DB를 메인으로 연결 (쓰기 가능)
+        _connection = new SqliteConnection($"Data Source={CustomDatabasePath}");
         _connection.Open();
 
+        // 사용자 DB 테이블 생성
         CreateTables();
+
+        // 기본 DB가 있으면 ATTACH (읽기 전용)
+        if (File.Exists(BaseDatabasePath))
+        {
+            try
+            {
+                using var attachCmd = _connection.CreateCommand();
+                attachCmd.CommandText = $"ATTACH DATABASE '{BaseDatabasePath}' AS base";
+                attachCmd.ExecuteNonQuery();
+                _hasBaseDb = true;
+                System.Diagnostics.Debug.WriteLine($"[QA] 기본 DB 연결됨: {BaseDatabasePath}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[QA] 기본 DB ATTACH 실패: {ex.Message}");
+            }
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[QA] 기본 DB 없음: {BaseDatabasePath}");
+        }
     }
 
     /// <summary>
@@ -250,21 +291,40 @@ public class QADatabaseService : IDisposable
     }
 
     /// <summary>
-    /// 모든 활성 Q&A 항목 조회
+    /// 모든 활성 Q&A 항목 조회 (기본 DB + 사용자 DB)
     /// </summary>
     public List<QAEntry> GetAllEntries(bool includeInactive = false)
     {
         var entries = new List<QAEntry>();
 
         using var command = _connection!.CreateCommand();
-        command.CommandText = includeInactive
-            ? "SELECT * FROM qa_entries ORDER BY use_count DESC, created_at DESC"
-            : "SELECT * FROM qa_entries WHERE is_active = 1 ORDER BY use_count DESC, created_at DESC";
+
+        // 사용자 DB (main) + 기본 DB (base) 합쳐서 조회
+        var whereClause = includeInactive ? "" : "WHERE is_active = 1";
+
+        if (_hasBaseDb)
+        {
+            command.CommandText = $@"
+                SELECT *, 'custom' as source FROM main.qa_entries {whereClause}
+                UNION ALL
+                SELECT *, 'base' as source FROM base.qa_entries {whereClause}
+                ORDER BY use_count DESC, created_at DESC
+            ";
+        }
+        else
+        {
+            command.CommandText = $@"
+                SELECT *, 'custom' as source FROM qa_entries {whereClause}
+                ORDER BY use_count DESC, created_at DESC
+            ";
+        }
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
-            entries.Add(ReadQAEntry(reader));
+            var entry = ReadQAEntry(reader);
+            // source 컬럼으로 기본/사용자 구분 가능
+            entries.Add(entry);
         }
 
         return entries;
@@ -288,7 +348,7 @@ public class QADatabaseService : IDisposable
     }
 
     /// <summary>
-    /// FTS5 키워드 검색
+    /// FTS5 키워드 검색 (기본 DB + 사용자 DB)
     /// </summary>
     public List<QAEntry> Search(string query, int limit = 10)
     {
@@ -298,34 +358,67 @@ public class QADatabaseService : IDisposable
         // 한글/특수문자 처리를 위해 따옴표로 감싸기
         var sanitizedQuery = query.Replace("\"", "\"\"");
 
-        using var command = _connection!.CreateCommand();
-        command.CommandText = @"
-            SELECT qa_entries.*, bm25(qa_fts) as score
-            FROM qa_fts
-            JOIN qa_entries ON qa_fts.rowid = qa_entries.id
-            WHERE qa_fts MATCH @query AND qa_entries.is_active = 1
-            ORDER BY score
-            LIMIT @limit
-        ";
-
-        command.Parameters.AddWithValue("@query", $"\"{sanitizedQuery}\"");
-        command.Parameters.AddWithValue("@limit", limit);
-
-        try
+        // 사용자 DB에서 FTS 검색
+        using (var command = _connection!.CreateCommand())
         {
-            using var reader = command.ExecuteReader();
+            command.CommandText = @"
+                SELECT qa_entries.*, bm25(qa_fts) as score
+                FROM qa_fts
+                JOIN qa_entries ON qa_fts.rowid = qa_entries.id
+                WHERE qa_fts MATCH @query AND qa_entries.is_active = 1
+                ORDER BY score
+                LIMIT @limit
+            ";
+            command.Parameters.AddWithValue("@query", $"\"{sanitizedQuery}\"");
+            command.Parameters.AddWithValue("@limit", limit);
+
+            try
+            {
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    entries.Add(ReadQAEntry(reader));
+                }
+            }
+            catch (SqliteException)
+            {
+                // FTS 실패 시 LIKE 폴백
+                entries.AddRange(SearchByLike(query, limit));
+            }
+        }
+
+        // 기본 DB에서도 검색 (FTS는 ATTACH에서 지원 안됨, LIKE 사용)
+        if (_hasBaseDb)
+        {
+            using var baseCmd = _connection!.CreateCommand();
+            baseCmd.CommandText = @"
+                SELECT * FROM base.qa_entries
+                WHERE is_active = 1 AND (
+                    question LIKE @query OR
+                    answer LIKE @query OR
+                    category LIKE @query OR
+                    tags LIKE @query
+                )
+                ORDER BY use_count DESC
+                LIMIT @limit
+            ";
+            baseCmd.Parameters.AddWithValue("@query", $"%{query}%");
+            baseCmd.Parameters.AddWithValue("@limit", limit);
+
+            using var reader = baseCmd.ExecuteReader();
             while (reader.Read())
             {
                 entries.Add(ReadQAEntry(reader));
             }
         }
-        catch (SqliteException)
-        {
-            // FTS 쿼리 실패 시 LIKE 검색으로 폴백
-            return SearchByLike(query, limit);
-        }
 
-        return entries;
+        // 중복 제거 후 정렬
+        return entries
+            .GroupBy(e => e.Question)
+            .Select(g => g.First())
+            .OrderByDescending(e => e.UseCount)
+            .Take(limit)
+            .ToList();
     }
 
     /// <summary>

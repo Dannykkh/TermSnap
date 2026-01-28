@@ -96,6 +96,8 @@ public class TerminalControl : FrameworkElement
     private Point _selectionStartPoint;
     private Point _selectionEndPoint;
     private string? _selectedText = null;
+    private DateTime _lastCopyTime = DateTime.MinValue;  // 마지막 복사 시간
+    private const double CopyProtectionSeconds = 2.0;    // 복사 후 Ctrl+C 보호 시간 (초)
 
     // 입력 이벤트
     public event Action<string>? InputReceived;
@@ -128,6 +130,14 @@ public class TerminalControl : FrameworkElement
     }
 
     public TerminalBuffer Buffer => _buffer;
+
+    /// <summary>
+    /// 사용자 입력 전에 스타일 리셋 (배경색 아티팩트 방지)
+    /// </summary>
+    public void ResetStyleBeforeInput()
+    {
+        _buffer.ResetStyle();
+    }
 
     // Visual 자식 관리 (DrawingVisual 기반)
     protected override int VisualChildrenCount => _visualChildren.Count;
@@ -654,9 +664,11 @@ public class TerminalControl : FrameworkElement
 
                 double cellRenderWidth = cell.IsWideChar ? _cellWidth * 2 : _cellWidth;
 
-                // 배경색
+                // 배경색 (공백 문자에는 배경색을 렌더링하지 않음 - 커서 아티팩트 방지)
+                // 실제 문자가 있는 셀에만 배경색 적용
                 if (cell.Background != TerminalColors.DefaultBackground &&
-                    cell.Background != Colors.Transparent)
+                    cell.Background != Colors.Transparent &&
+                    cell.Character != ' ' && cell.Character != '\0')
                 {
                     var cellBackgroundBrush = GetOrCreateBrush(cell.Background);
                     dc.DrawRectangle(
@@ -827,18 +839,40 @@ public class TerminalControl : FrameworkElement
     {
         base.OnPreviewKeyDown(e);
 
+        // 이 컨트롤이 포커스를 가지고 있지 않으면 키 입력 무시
+        // (인터랙티브 입력창 등 다른 컨트롤이 포커스를 가진 경우)
+        if (!IsFocused && !IsKeyboardFocusWithin)
+        {
+            return;
+        }
+
         string? input = null;
 
         // Ctrl 조합
         if (Keyboard.Modifiers == ModifierKeys.Control)
         {
-            // Ctrl+C: 선택된 텍스트가 있으면 복사, 없으면 프로세스에 전송
+            // Ctrl+C: 선택된 텍스트가 있거나 최근 복사가 있었으면 복사만 (프로세스에 전송 안 함)
             if (e.Key == Key.C)
             {
-                if (!string.IsNullOrEmpty(_selectedText))
+                // 선택 영역이 있는지 확인 (시각적으로 선택 영역이 보이는지)
+                bool hasVisualSelection = _selectionStartPoint != _selectionEndPoint;
+                bool hasSelectedText = !string.IsNullOrEmpty(_selectedText);
+                bool recentlyCopied = (DateTime.Now - _lastCopyTime).TotalSeconds < CopyProtectionSeconds;
+
+                if (hasSelectedText || hasVisualSelection)
                 {
-                    CopySelectionToClipboard();
-                    ClearSelection();
+                    // 선택된 텍스트가 있으면 복사
+                    if (hasSelectedText)
+                    {
+                        CopySelectionToClipboard();
+                        _lastCopyTime = DateTime.Now;
+                    }
+                    e.Handled = true;
+                    return;
+                }
+                else if (recentlyCopied)
+                {
+                    // 최근에 복사했으면 Ctrl+C를 무시 (종료 방지)
                     e.Handled = true;
                     return;
                 }
@@ -850,23 +884,31 @@ public class TerminalControl : FrameworkElement
             // Ctrl+V: 클립보드 텍스트 붙여넣기
             else if (e.Key == Key.V)
             {
+                e.Handled = true; // Ctrl+V는 항상 처리됨으로 표시
                 try
                 {
+                    // STA 스레드에서 클립보드 접근
+                    string? text = null;
                     if (Clipboard.ContainsText())
                     {
-                        var text = Clipboard.GetText();
-                        if (!string.IsNullOrEmpty(text))
-                        {
-                            InputReceived?.Invoke(text);
-                        }
-                        e.Handled = true;
-                        return;
+                        text = Clipboard.GetText();
+                    }
+
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[TerminalControl] Ctrl+V: 붙여넣기 텍스트 길이={text.Length}");
+                        InputReceived?.Invoke(text);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[TerminalControl] Ctrl+V: 클립보드에 텍스트 없음");
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // 클립보드 접근 실패 무시
+                    System.Diagnostics.Debug.WriteLine($"[TerminalControl] Ctrl+V 실패: {ex.Message}");
                 }
+                return;
             }
             // Ctrl+Enter: 줄바꿈
             else if (e.Key == Key.Enter)
@@ -977,6 +1019,12 @@ public class TerminalControl : FrameworkElement
     {
         base.OnTextInput(e);
 
+        // 이 컨트롤이 포커스를 가지고 있지 않으면 텍스트 입력 무시
+        if (!IsFocused && !IsKeyboardFocusWithin)
+        {
+            return;
+        }
+
         if (!string.IsNullOrEmpty(e.Text))
         {
             InputReceived?.Invoke(e.Text);
@@ -1045,8 +1093,11 @@ public class TerminalControl : FrameworkElement
 
         var position = e.GetPosition(this);
 
-        // 마우스 트래킹 - any event tracking 모드
-        if (_buffer.MouseAnyEventTracking)
+        // Shift 키가 눌려있으면 마우스 트래킹 무시하고 텍스트 선택 모드
+        bool forceTextSelection = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || _isSelecting;
+
+        // 마우스 트래킹 - any event tracking 모드 (Shift 키로 우회 가능)
+        if (_buffer.MouseAnyEventTracking && !forceTextSelection)
         {
             int button = _lastMouseButtonLeft ? 0 : _lastMouseButtonMiddle ? 1 : _lastMouseButtonRight ? 2 : -1;
             if (button >= 0)
@@ -1074,15 +1125,7 @@ public class TerminalControl : FrameworkElement
 
         var position = e.GetPosition(this);
 
-        // 마우스 트래킹이 활성화되어 있으면 릴리스 이벤트 전송
-        if (_buffer.MouseTrackingEnabled || _buffer.MouseButtonTracking)
-        {
-            SendMouseEvent(position, 3, false); // 3 = release
-            _lastMouseButtonLeft = false;
-            e.Handled = true;
-            return;
-        }
-
+        // 텍스트 선택 중이면 마우스 트래킹보다 선택 완료를 우선
         if (_isSelecting)
         {
             _isSelecting = false;
@@ -1094,8 +1137,17 @@ public class TerminalControl : FrameworkElement
             // 오버레이 업데이트
             UpdateOverlay();
 
-            // 선택된 텍스트가 있으면 클립보드에 복사 (선택 후 자동 복사는 선택 사항)
-            // 여기서는 선택만 하고 Ctrl+C로 복사하도록 함
+            e.Handled = true;
+            return;
+        }
+
+        // 마우스 트래킹이 활성화되어 있으면 릴리스 이벤트 전송
+        if (_buffer.MouseTrackingEnabled || _buffer.MouseButtonTracking)
+        {
+            SendMouseEvent(position, 3, false); // 3 = release
+            _lastMouseButtonLeft = false;
+            e.Handled = true;
+            return;
         }
     }
 
@@ -1577,6 +1629,14 @@ public class TerminalControl : FrameworkElement
         int endCol = (int)(_selectionEndPoint.X / _cellWidth);
         int endRow = (int)(_selectionEndPoint.Y / _cellHeight);
 
+        System.Diagnostics.Debug.WriteLine($"[Selection] Start: ({_selectionStartPoint.X:F1}, {_selectionStartPoint.Y:F1}) -> Cell({startCol}, {startRow})");
+        System.Diagnostics.Debug.WriteLine($"[Selection] End: ({_selectionEndPoint.X:F1}, {_selectionEndPoint.Y:F1}) -> Cell({endCol}, {endRow})");
+        System.Diagnostics.Debug.WriteLine($"[Selection] CellSize: {_cellWidth:F1} x {_cellHeight:F1}");
+
+        // 컬럼 범위 제한
+        startCol = Math.Max(0, Math.Min(startCol, _buffer.Columns - 1));
+        endCol = Math.Max(0, Math.Min(endCol, _buffer.Columns - 1));
+
         // 시작점이 끝점보다 뒤에 있으면 교환
         if (startRow > endRow || (startRow == endRow && startCol > endCol))
         {
@@ -1589,32 +1649,40 @@ public class TerminalControl : FrameworkElement
         int scrollOffset = _buffer.ScrollOffset;
         int scrollbackCount = _buffer.ScrollbackCount;
 
-        for (int row = startRow; row <= endRow && row < _buffer.Rows; row++)
+        // 화면에 표시된 전체 행 수 계산
+        int visibleRows = Math.Max(_buffer.Rows, endRow + 1);
+
+        for (int screenRow = startRow; screenRow <= endRow; screenRow++)
         {
-            int dataRow = row - scrollOffset;
+            // 화면 좌표를 데이터 좌표로 변환
+            // scrollOffset이 양수이면 위로 스크롤한 상태 (스크롤백 영역 보임)
+            int dataRow = screenRow - scrollOffset;
             bool isScrollback = dataRow < 0;
             int scrollbackIndex = scrollbackCount + dataRow;
 
             string? lineText = null;
+            int lineStartCol = (screenRow == startRow) ? startCol : 0;
+            int lineEndCol = (screenRow == endRow) ? endCol : _buffer.Columns - 1;
 
             if (isScrollback && scrollbackIndex >= 0 && scrollbackIndex < scrollbackCount)
             {
+                // 스크롤백 영역에서 추출
                 var scrollbackLine = _buffer.GetScrollbackLine(scrollbackIndex);
                 if (scrollbackLine != null)
                 {
-                    lineText = ExtractLineText(scrollbackLine, row == startRow ? startCol : 0, row == endRow ? endCol : _buffer.Columns - 1);
+                    lineText = ExtractLineText(scrollbackLine, lineStartCol, lineEndCol);
                 }
             }
             else if (!isScrollback && dataRow >= 0 && dataRow < _buffer.Rows)
             {
-                // GetCell을 사용하여 라인 텍스트 추출
-                lineText = ExtractLineTextFromBuffer(dataRow, row == startRow ? startCol : 0, row == endRow ? endCol : _buffer.Columns - 1);
+                // 현재 버퍼에서 추출
+                lineText = ExtractLineTextFromBuffer(dataRow, lineStartCol, lineEndCol);
             }
 
             if (lineText != null)
             {
                 sb.Append(lineText);
-                if (row < endRow)
+                if (screenRow < endRow)
                 {
                     sb.AppendLine();
                 }
@@ -1622,6 +1690,7 @@ public class TerminalControl : FrameworkElement
         }
 
         _selectedText = sb.ToString();
+        System.Diagnostics.Debug.WriteLine($"[Selection] Result: '{_selectedText}' (length: {_selectedText?.Length ?? 0})");
     }
 
     /// <summary>

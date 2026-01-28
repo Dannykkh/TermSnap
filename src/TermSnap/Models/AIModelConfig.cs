@@ -34,6 +34,12 @@ public class AIModelConfig
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// 모델 티어 (Fast, Balanced, Powerful) - 스마트 라우팅용
+    /// </summary>
+    [JsonConverter(typeof(StringEnumConverter))]
+    public ModelTier Tier { get; set; } = ModelTier.Balanced;
+
+    /// <summary>
     /// API 키가 설정되어 있는지 확인 (Ollama는 BaseUrl만 있으면 됨)
     /// </summary>
     public bool IsConfigured => Provider == AIProviderType.Ollama

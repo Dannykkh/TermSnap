@@ -67,6 +67,11 @@ public class LocalSession : TerminalSessionBase
     };
     public override string ShellType => _shellType.ToString().ToLower();
 
+    /// <summary>
+    /// 셸 프로세스 ID (서브 프로세스 추적용)
+    /// </summary>
+    public int ProcessId => _shellProcess?.Id ?? 0;
+
     public LocalSession(LocalShellType shellType = LocalShellType.PowerShell)
     {
         _shellType = shellType;

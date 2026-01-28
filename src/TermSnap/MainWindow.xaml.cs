@@ -517,6 +517,23 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 통계 대시보드 버튼 클릭
+    /// </summary>
+    private void StatisticsButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dashboard = new StatisticsDashboardWindow();
+            dashboard.Owner = this;
+            dashboard.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] 통계 대시보드 열기 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Frequent Commands 검색 버튼 클릭
     /// </summary>
     private void SearchCommands_Click(object sender, RoutedEventArgs e)

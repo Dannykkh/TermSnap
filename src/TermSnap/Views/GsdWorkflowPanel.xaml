@@ -1,0 +1,493 @@
+<UserControl x:Class="TermSnap.Views.GsdWorkflowPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             Background="{DynamicResource SurfaceBrush}"
+             MinWidth="400">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+
+    <Border CornerRadius="8"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            Background="{DynamicResource SurfaceBrush}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 헤더 -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource PrimaryBrush}"
+                    CornerRadius="8,8,0,0"
+                    Padding="12,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="FormatListChecks"
+                                                 Width="20" Height="20"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="White"/>
+                        <TextBlock Text="GSD Workflow"
+                                   FontWeight="Bold"
+                                   FontSize="14"
+                                   Foreground="White"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- 상태 표시 (Execute 중) -->
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource SuccessBrush}"
+                            CornerRadius="4"
+                            Padding="8,2"
+                            Margin="12,0"
+                            HorizontalAlignment="Center"
+                            Visibility="{Binding IsExecuting, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Sync"
+                                                     Width="14" Height="14"
+                                                     Foreground="White"/>
+                            <TextBlock x:Name="ExecuteStatusText"
+                                       Text="Executing"
+                                       FontSize="11"
+                                       Foreground="White"
+                                       Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 닫기 버튼 -->
+                    <Button Grid.Column="2"
+                            Width="24" Height="24"
+                            Padding="0"
+                            Click="CloseButton_Click"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand">
+                        <materialDesign:PackIcon Kind="Close" Width="16" Height="16" Foreground="White"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Phase 및 Step 선택 -->
+            <Border Grid.Row="1" Padding="12,8" Background="{DynamicResource CardBrush}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Phase 선택 -->
+                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Phase:"
+                                   FontWeight="SemiBold"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <ComboBox x:Name="PhaseCombo"
+                                  Width="60"
+                                  SelectedIndex="0"
+                                  SelectionChanged="PhaseCombo_SelectionChanged"
+                                  Foreground="{DynamicResource TextPrimaryBrush}"
+                                  Background="{DynamicResource CardBrush}">
+                            <ComboBoxItem Content="1" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <ComboBoxItem Content="2" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <ComboBoxItem Content="3" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <ComboBoxItem Content="4" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <ComboBoxItem Content="5" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </ComboBox>
+
+                        <!-- Mode 선택 -->
+                        <TextBlock Text="Mode:"
+                                   FontWeight="SemiBold"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="16,0,8,0"/>
+                        <ComboBox x:Name="ExecutionModeCombo"
+                                  Width="100"
+                                  SelectedIndex="0"
+                                  SelectionChanged="ExecutionModeCombo_SelectionChanged"
+                                  Foreground="{DynamicResource TextPrimaryBrush}"
+                                  Background="{DynamicResource CardBrush}"
+                                  ToolTip="Select execution mode for agent system">
+                            <ComboBoxItem Content="Interactive" Tag="Interactive" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <ComboBoxItem Content="Eco" Tag="EcoMode" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <ComboBoxItem Content="Pipeline" Tag="Pipeline" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <ComboBoxItem Content="Swarm" Tag="Swarm" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <ComboBoxItem Content="Expert" Tag="Expert" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Step 선택 (RadioButton) -->
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <RadioButton x:Name="DiscussRadio"
+                                     Content="Discuss"
+                                     IsChecked="True"
+                                     Checked="StepRadio_Checked"
+                                     Tag="Discuss"
+                                     Margin="4,0"
+                                     Padding="8,4"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <RadioButton x:Name="PlanRadio"
+                                     Content="Plan"
+                                     Checked="StepRadio_Checked"
+                                     Tag="Plan"
+                                     Margin="4,0"
+                                     Padding="8,4"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <RadioButton x:Name="ExecuteRadio"
+                                     Content="Execute"
+                                     Checked="StepRadio_Checked"
+                                     Tag="Execute"
+                                     Margin="4,0"
+                                     Padding="8,4"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <RadioButton x:Name="VerifyRadio"
+                                     Content="Verify"
+                                     Checked="StepRadio_Checked"
+                                     Tag="Verify"
+                                     Margin="4,0"
+                                     Padding="8,4"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </StackPanel>
+
+                    <!-- Mode 설명 -->
+                    <TextBlock x:Name="ModeDescriptionText"
+                               Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                               Text="Step-by-step with user confirmation"
+                               FontSize="10"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="0,4,0,0"/>
+                </Grid>
+            </Border>
+
+            <!-- 탭 컨텐츠 영역 -->
+            <TabControl x:Name="StepTabControl"
+                        Grid.Row="2"
+                        Margin="0"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        SelectionChanged="StepTabControl_SelectionChanged">
+                <TabControl.ItemContainerStyle>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                    </Style>
+                </TabControl.ItemContainerStyle>
+
+                <!-- Discuss 탭 -->
+                <TabItem x:Name="DiscussTab">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="Discuss requirements and document in CONTEXT.md."
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="0,0,0,8"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBox x:Name="ContextTextBox"
+                                 Grid.Row="1"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 Background="{DynamicResource BackgroundBrush}"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}"
+                                 Padding="8"/>
+
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                            <Button Content="Save"
+                                    Click="SaveContext_Click"
+                                    Padding="12,6"
+                                    Margin="0,0,8,0"/>
+                            <Button Content="To Plan"
+                                    Click="GoToPlan_Click"
+                                    Background="{DynamicResource PrimaryBrush}"
+                                    Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                    Padding="12,6"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+                <!-- Plan 탭 -->
+                <TabItem x:Name="PlanTab">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="Create execution plan and define tasks."
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="0,0,0,8"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBox x:Name="PlanTextBox"
+                                 Grid.Row="1"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 Background="{DynamicResource BackgroundBrush}"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}"
+                                 Padding="8"/>
+
+                        <!-- 태스크 체크리스트 (미리보기) -->
+                        <Expander Grid.Row="2"
+                                  Header="Task Checklist"
+                                  IsExpanded="False"
+                                  Margin="0,8,0,0"
+                                  Foreground="{DynamicResource TextPrimaryBrush}">
+                            <ListBox x:Name="TaskListBox"
+                                     MaxHeight="150"
+                                     BorderThickness="0"
+                                     Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Content="{Binding Content}"
+                                                  IsChecked="{Binding IsCompleted}"
+                                                  Margin="4,2"
+                                                  Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Expander>
+
+                        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                            <Button Content="Save"
+                                    Click="SavePlan_Click"
+                                    Padding="12,6"
+                                    Margin="0,0,8,0"/>
+                            <Button Content="Start Execute"
+                                    Click="StartExecute_Click"
+                                    Background="{DynamicResource SuccessBrush}"
+                                    Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                    Padding="12,6"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+                <!-- Execute 탭 -->
+                <TabItem x:Name="ExecuteTab">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="Convert Plan to PRD and execute automatically (Ralph Loop)."
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="0,0,0,8"
+                                   TextWrapping="Wrap"/>
+
+                        <!-- PRD 내용 (Plan에서 자동 로드) -->
+                        <TextBox x:Name="PrdTextBox"
+                                 Grid.Row="1"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 MinHeight="120"
+                                 Background="{DynamicResource BackgroundBrush}"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}"
+                                 Padding="8"
+                                 Text="{Binding PrdContent, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <!-- 진행 상황 -->
+                        <Grid Grid.Row="2" Margin="0,8,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <ProgressBar Grid.Row="0"
+                                         Value="{Binding Progress, Mode=OneWay}"
+                                         Maximum="100"
+                                         Height="6"
+                                         Foreground="{DynamicResource PrimaryBrush}"
+                                         Background="{DynamicResource BorderBrush}"/>
+
+                            <Grid Grid.Row="1" Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding CurrentTask, Mode=OneWay}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextTrimming="CharacterEllipsis"/>
+
+                                <TextBlock x:Name="IterationText"
+                                           Grid.Column="1"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Text="Iteration: 0/100"/>
+                            </Grid>
+                        </Grid>
+
+                        <!-- AI CLI 선택 + 버튼 -->
+                        <Grid Grid.Row="3" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ComboBox x:Name="AiCliCombo"
+                                      Grid.Column="0"
+                                      Width="120"
+                                      HorizontalAlignment="Left"
+                                      SelectedIndex="0"
+                                      SelectionChanged="AiCliCombo_SelectionChanged"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      Background="{DynamicResource CardBrush}">
+                                <ComboBoxItem Content="Claude Code" Tag="claude" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <ComboBoxItem Content="Aider" Tag="aider" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <ComboBoxItem Content="Codex" Tag="codex" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <ComboBoxItem Content="Gemini CLI" Tag="gemini" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </ComboBox>
+
+                            <Button x:Name="ExecuteStartStopButton"
+                                    Grid.Column="1"
+                                    Content="Start"
+                                    Click="ExecuteStartStop_Click"
+                                    Background="{DynamicResource SuccessBrush}"
+                                    Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                    Padding="16,8"
+                                    Margin="8,0,0,0"/>
+
+                            <Button x:Name="ResetContextButton"
+                                    Content="Reset Context"
+                                    Grid.Column="2"
+                                    Click="ResetContext_Click"
+                                    Padding="12,8"
+                                    Margin="8,0,0,0"/>
+                        </Grid>
+
+                        <!-- Execute 완료 시 Verify로 -->
+                        <Button Grid.Row="4"
+                                Content="To Verify"
+                                Click="GoToVerify_Click"
+                                HorizontalAlignment="Right"
+                                Margin="0,8,0,0"
+                                Background="{DynamicResource PrimaryBrush}"
+                                Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                Padding="12,6"/>
+                    </Grid>
+                </TabItem>
+
+                <!-- Verify 탭 -->
+                <TabItem x:Name="VerifyTab">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="Verify results with UAT checklist."
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="0,0,0,8"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBox x:Name="UatTextBox"
+                                 Grid.Row="1"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 Background="{DynamicResource BackgroundBrush}"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}"
+                                 Padding="8"/>
+
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                            <Button Content="Gaps Found"
+                                    Click="GapsFound_Click"
+                                    Background="{DynamicResource WarningBrush}"
+                                    Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                    Padding="12,6"
+                                    Margin="0,0,8,0"/>
+                            <Button Content="Passed"
+                                    Click="Passed_Click"
+                                    Background="{DynamicResource SuccessBrush}"
+                                    Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                    Padding="12,6"
+                                    Margin="0,0,8,0"/>
+                            <Button Content="Next Phase"
+                                    Click="NextPhase_Click"
+                                    Background="{DynamicResource PrimaryBrush}"
+                                    Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                    Padding="12,6"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- 하단 상태바 -->
+            <Border Grid.Row="3" Padding="12,6" Background="{DynamicResource CardBrush}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock x:Name="StatusText"
+                               Grid.Column="0"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+
+                    <TextBlock x:Name="ElapsedTimeText"
+                               Grid.Column="1"
+                               FontSize="11"
+                               FontFamily="Consolas"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding IsExecuting, Mode=OneWay, Converter={StaticResource BoolToVis}}"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

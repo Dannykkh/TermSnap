@@ -89,6 +89,21 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
+        <!-- AI 장기기억 패널 (오버레이, 우측) -->
+        <Border x:Name="MemoryBorder"
+                Grid.Row="0"
+                Panel.ZIndex="100"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Visibility="Collapsed"
+                Margin="4">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="10" ShadowDepth="0"/>
+            </Border.Effect>
+            <local:MemoryPanel x:Name="MemoryPanelControl"
+                               Width="380"/>
+        </Border>
+
         <!-- 채팅 영역 (Block UI 또는 기존 메시지) -->
         <Grid Grid.Row="0" Grid.Column="0">
             <Grid.RowDefinitions>
@@ -468,6 +483,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- 추천 토글 (ON: AI 추천, OFF: 직접 명령어 실행) -->
@@ -483,28 +499,44 @@
                     <materialDesign:PackIcon Kind="LightbulbOnOutline" Width="20" Height="20"/>
                 </ToggleButton>
 
-                <TextBox Grid.Column="1"
-                         x:Name="InputTextBox"
-                         Text="{Binding UserInput, UpdateSourceTrigger=PropertyChanged}"
-                         FontSize="14"
-                         Padding="12"
-                         Height="56"
-                         VerticalContentAlignment="Center"
-                         Background="{DynamicResource CardBrush}"
-                         Foreground="{DynamicResource TextPrimaryBrush}"
-                         CaretBrush="{DynamicResource TextPrimaryBrush}"
-                         BorderBrush="{DynamicResource BorderBrush}"
-                         BorderThickness="1"
-                         AllowDrop="True"
-                         DragEnter="InputTextBox_DragEnter"
-                         DragOver="InputTextBox_DragOver"
-                         Drop="InputTextBox_Drop"
-                         PreviewKeyDown="InputTextBox_PreviewKeyDown"
-                         TextChanged="InputTextBox_TextChanged">
-                    <TextBox.InputBindings>
-                        <KeyBinding Key="Return" Command="{Binding SendMessageCommand}"/>
-                    </TextBox.InputBindings>
-                </TextBox>
+                <Grid Grid.Column="1">
+                    <TextBox x:Name="InputTextBox"
+                             Text="{Binding UserInput, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="14"
+                             Padding="12"
+                             Height="56"
+                             VerticalContentAlignment="Center"
+                             Background="{DynamicResource CardBrush}"
+                             Foreground="{DynamicResource TextPrimaryBrush}"
+                             CaretBrush="{DynamicResource TextPrimaryBrush}"
+                             BorderBrush="{DynamicResource BorderBrush}"
+                             BorderThickness="1"
+                             AllowDrop="True"
+                             DragEnter="InputTextBox_DragEnter"
+                             DragOver="InputTextBox_DragOver"
+                             Drop="InputTextBox_Drop"
+                             PreviewKeyDown="InputTextBox_PreviewKeyDown"
+                             TextChanged="InputTextBox_TextChanged">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding SendMessageCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <!-- 자동완성 팝업 -->
+                    <Popup x:Name="AutoCompletePopup"
+                           PlacementTarget="{Binding ElementName=InputTextBox}"
+                           Placement="Top"
+                           StaysOpen="False"
+                           AllowsTransparency="True"
+                           PopupAnimation="Fade"
+                           HorizontalOffset="0"
+                           VerticalOffset="-4">
+                        <local:AutoCompletePopup x:Name="AutoCompleteControl"
+                                                 Width="{Binding ActualWidth, ElementName=InputTextBox}"
+                                                 SuggestionConfirmed="AutoComplete_SuggestionConfirmed"
+                                                 CloseRequested="AutoComplete_CloseRequested"/>
+                    </Popup>
+                </Grid>
 
                 <!-- 파일 트리 토글 버튼 -->
                 <Button Grid.Column="2"
@@ -526,7 +558,20 @@
                     </Button.Style>
                 </Button>
 
-                <Button Grid.Column="3"
+                <!-- AI 장기기억 토글 버튼 -->
+                <Button x:Name="MemoryToggleButton"
+                        Grid.Column="3"
+                        Click="MemoryToggle_Click"
+                        ToolTip="AI 장기기억 (MEMORY.md)"
+                        Width="48" Height="48"
+                        Margin="10,0,0,0"
+                        Style="{StaticResource MaterialDesignIconButton}">
+                    <materialDesign:PackIcon Kind="Brain"
+                                             Width="20" Height="20"
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </Button>
+
+                <Button Grid.Column="4"
                         Command="{Binding SendMessageCommand}"
                         Margin="10,0,0,0"
                         Width="100"

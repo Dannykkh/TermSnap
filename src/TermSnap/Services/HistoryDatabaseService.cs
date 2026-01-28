@@ -131,6 +131,56 @@ public class HistoryDatabaseService : IDisposable
         }
         catch (SqliteException) { /* 이미 존재하면 무시 */ }
 
+        // AI JSON 응답 필드 마이그레이션
+        try
+        {
+            command.CommandText = "ALTER TABLE command_history ADD COLUMN confidence REAL DEFAULT 1.0";
+            command.ExecuteNonQuery();
+        }
+        catch (SqliteException) { /* 이미 존재하면 무시 */ }
+
+        try
+        {
+            command.CommandText = "ALTER TABLE command_history ADD COLUMN warning TEXT";
+            command.ExecuteNonQuery();
+        }
+        catch (SqliteException) { /* 이미 존재하면 무시 */ }
+
+        try
+        {
+            command.CommandText = "ALTER TABLE command_history ADD COLUMN alternatives_json TEXT";
+            command.ExecuteNonQuery();
+        }
+        catch (SqliteException) { /* 이미 존재하면 무시 */ }
+
+        try
+        {
+            command.CommandText = "ALTER TABLE command_history ADD COLUMN requires_sudo INTEGER DEFAULT 0";
+            command.ExecuteNonQuery();
+        }
+        catch (SqliteException) { /* 이미 존재하면 무시 */ }
+
+        try
+        {
+            command.CommandText = "ALTER TABLE command_history ADD COLUMN is_dangerous INTEGER DEFAULT 0";
+            command.ExecuteNonQuery();
+        }
+        catch (SqliteException) { /* 이미 존재하면 무시 */ }
+
+        try
+        {
+            command.CommandText = "ALTER TABLE command_history ADD COLUMN category TEXT";
+            command.ExecuteNonQuery();
+        }
+        catch (SqliteException) { /* 이미 존재하면 무시 */ }
+
+        try
+        {
+            command.CommandText = "ALTER TABLE command_history ADD COLUMN estimated_duration INTEGER";
+            command.ExecuteNonQuery();
+        }
+        catch (SqliteException) { /* 이미 존재하면 무시 */ }
+
         // FTS5 가상 테이블 생성 (전문 검색용)
         command.CommandText = @"
             CREATE VIRTUAL TABLE IF NOT EXISTS command_history_fts USING fts5(
@@ -185,10 +235,12 @@ public class HistoryDatabaseService : IDisposable
         command.CommandText = @"
             INSERT INTO command_history
                 (user_input, generated_command, original_command, explanation, output, error,
-                 server_profile, is_success, was_edited, executed_at, embedding_vector, use_count)
+                 server_profile, is_success, was_edited, executed_at, embedding_vector, use_count,
+                 confidence, warning, alternatives_json, requires_sudo, is_dangerous, category, estimated_duration)
             VALUES
                 (@userInput, @generatedCommand, @originalCommand, @explanation, @output, @error,
-                 @serverProfile, @isSuccess, @wasEdited, @executedAt, @embeddingVector, 1);
+                 @serverProfile, @isSuccess, @wasEdited, @executedAt, @embeddingVector, 1,
+                 @confidence, @warning, @alternativesJson, @requiresSudo, @isDangerous, @category, @estimatedDuration);
             SELECT last_insert_rowid();
         ";
 
@@ -203,6 +255,15 @@ public class HistoryDatabaseService : IDisposable
         command.Parameters.AddWithValue("@wasEdited", history.WasEdited ? 1 : 0);
         command.Parameters.AddWithValue("@executedAt", history.ExecutedAt.ToString("O"));
         command.Parameters.AddWithValue("@embeddingVector", embeddingVector ?? (object)DBNull.Value);
+
+        // AI JSON 응답 필드
+        command.Parameters.AddWithValue("@confidence", history.Confidence);
+        command.Parameters.AddWithValue("@warning", history.Warning ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@alternativesJson", history.AlternativesJson ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@requiresSudo", history.RequiresSudo ? 1 : 0);
+        command.Parameters.AddWithValue("@isDangerous", history.IsDangerous ? 1 : 0);
+        command.Parameters.AddWithValue("@category", history.Category ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@estimatedDuration", history.EstimatedDuration ?? (object)DBNull.Value);
 
         return (long)command.ExecuteScalar()!;
     }
@@ -739,7 +800,7 @@ public class HistoryDatabaseService : IDisposable
     /// </summary>
     private static CommandHistory ReadHistoryFromReader(SqliteDataReader reader)
     {
-        return new CommandHistory(
+        var history = new CommandHistory(
             reader.GetString(reader.GetOrdinal("user_input")),
             reader.GetString(reader.GetOrdinal("generated_command")),
             reader.IsDBNull(reader.GetOrdinal("server_profile")) ? "" : reader.GetString(reader.GetOrdinal("server_profile"))
@@ -754,6 +815,65 @@ public class HistoryDatabaseService : IDisposable
             WasEdited = reader.GetInt32(reader.GetOrdinal("was_edited")) == 1,
             ExecutedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("executed_at")))
         };
+
+        // AI JSON 응답 필드 (새 컬럼은 없을 수 있으므로 안전하게 읽기)
+        try
+        {
+            var confidenceOrdinal = reader.GetOrdinal("confidence");
+            if (!reader.IsDBNull(confidenceOrdinal))
+                history.Confidence = reader.GetDouble(confidenceOrdinal);
+        }
+        catch { /* 컬럼이 없으면 무시 */ }
+
+        try
+        {
+            var warningOrdinal = reader.GetOrdinal("warning");
+            if (!reader.IsDBNull(warningOrdinal))
+                history.Warning = reader.GetString(warningOrdinal);
+        }
+        catch { /* 컬럼이 없으면 무시 */ }
+
+        try
+        {
+            var alternativesOrdinal = reader.GetOrdinal("alternatives_json");
+            if (!reader.IsDBNull(alternativesOrdinal))
+                history.AlternativesJson = reader.GetString(alternativesOrdinal);
+        }
+        catch { /* 컬럼이 없으면 무시 */ }
+
+        try
+        {
+            var requiresSudoOrdinal = reader.GetOrdinal("requires_sudo");
+            if (!reader.IsDBNull(requiresSudoOrdinal))
+                history.RequiresSudo = reader.GetInt32(requiresSudoOrdinal) == 1;
+        }
+        catch { /* 컬럼이 없으면 무시 */ }
+
+        try
+        {
+            var isDangerousOrdinal = reader.GetOrdinal("is_dangerous");
+            if (!reader.IsDBNull(isDangerousOrdinal))
+                history.IsDangerous = reader.GetInt32(isDangerousOrdinal) == 1;
+        }
+        catch { /* 컬럼이 없으면 무시 */ }
+
+        try
+        {
+            var categoryOrdinal = reader.GetOrdinal("category");
+            if (!reader.IsDBNull(categoryOrdinal))
+                history.Category = reader.GetString(categoryOrdinal);
+        }
+        catch { /* 컬럼이 없으면 무시 */ }
+
+        try
+        {
+            var estimatedDurationOrdinal = reader.GetOrdinal("estimated_duration");
+            if (!reader.IsDBNull(estimatedDurationOrdinal))
+                history.EstimatedDuration = reader.GetInt32(estimatedDurationOrdinal);
+        }
+        catch { /* 컬럼이 없으면 무시 */ }
+
+        return history;
     }
 
     public void Dispose()

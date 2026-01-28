@@ -38,10 +38,12 @@
             </Border.Style>
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/> <!-- 헤더 -->
+                    <RowDefinition Height="Auto"/> <!-- 경고 메시지 -->
+                    <RowDefinition Height="Auto"/> <!-- 명령어 -->
+                    <RowDefinition Height="Auto"/> <!-- 출력 -->
+                    <RowDefinition Height="Auto"/> <!-- 대체 명령어 -->
+                    <RowDefinition Height="Auto"/> <!-- 푸터 -->
                 </Grid.RowDefinitions>
 
                 <!-- 헤더: 상태 아이콘 + 사용자 입력 + 캐시 배지 -->
@@ -83,30 +85,116 @@
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
 
-                        <!-- 캐시 배지 -->
-                        <Border Grid.Column="2"
-                                Background="{DynamicResource CacheBadgeBrush}"
-                                CornerRadius="10"
-                                Padding="8,3"
-                                Margin="8,0,0,0"
-                                Visibility="{Binding IsFromCache, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="DatabaseCheck"
-                                                         Width="12" Height="12"
-                                                         Foreground="{DynamicResource SuccessBrush}"
-                                                         VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding SimilarityText}"
-                                           FontSize="11"
+                        <!-- 배지 영역 -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <!-- 카테고리 배지 -->
+                            <Border Background="#2D3748"
+                                    CornerRadius="10"
+                                    Padding="6,3"
+                                    Margin="4,0,0,0"
+                                    Visibility="{Binding HasCategory, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="{Binding CategoryIcon}"
+                                                             Width="12" Height="12"
+                                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                                             VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Category}"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Margin="4,0,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 신뢰도 배지 -->
+                            <Border CornerRadius="10"
+                                    Padding="6,3"
+                                    Margin="4,0,0,0">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#1B5E20"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Confidence}" Value="0.7">
+                                                <Setter Property="Background" Value="#E65100"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Confidence}" Value="0.5">
+                                                <Setter Property="Background" Value="#B71C1C"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding ConfidencePercent}"
+                                           FontSize="10"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SuccessBrush}"
-                                           Margin="4,0,0,0"/>
-                            </StackPanel>
-                        </Border>
+                                           Foreground="White"/>
+                            </Border>
+
+                            <!-- 위험 아이콘 -->
+                            <Border Background="#B71C1C"
+                                    CornerRadius="10"
+                                    Padding="6,3"
+                                    Margin="4,0,0,0"
+                                    ToolTip="위험한 명령어"
+                                    Visibility="{Binding IsDangerous, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <materialDesign:PackIcon Kind="AlertCircle"
+                                                         Width="12" Height="12"
+                                                         Foreground="White"/>
+                            </Border>
+
+                            <!-- sudo 배지 -->
+                            <Border Background="#1565C0"
+                                    CornerRadius="10"
+                                    Padding="6,3"
+                                    Margin="4,0,0,0"
+                                    ToolTip="sudo 권한 필요"
+                                    Visibility="{Binding RequiresSudo, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="sudo"
+                                           FontSize="10"
+                                           FontWeight="Bold"
+                                           Foreground="White"/>
+                            </Border>
+
+                            <!-- 캐시 배지 -->
+                            <Border Background="{DynamicResource CacheBadgeBrush}"
+                                    CornerRadius="10"
+                                    Padding="8,3"
+                                    Margin="4,0,0,0"
+                                    Visibility="{Binding IsFromCache, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="DatabaseCheck"
+                                                             Width="12" Height="12"
+                                                             Foreground="{DynamicResource SuccessBrush}"
+                                                             VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SimilarityText}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SuccessBrush}"
+                                               Margin="4,0,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- 명령어 영역 -->
+                <!-- 경고 메시지 영역 -->
                 <Border Grid.Row="1"
+                        Background="#5C1A1A"
+                        Padding="12,8"
+                        Visibility="{Binding HasWarning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="AlertCircle"
+                                                 Width="16" Height="16"
+                                                 Foreground="#FF5252"
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding Warning}"
+                                   FontSize="12"
+                                   Foreground="#FF5252"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 명령어 영역 -->
+                <Border Grid.Row="2"
                         Background="{DynamicResource TerminalBackgroundBrush}"
                         Padding="12,8"
                         Visibility="{Binding GeneratedCommand, Converter={StaticResource StringToVisibilityConverter}}">
@@ -129,7 +217,7 @@
                 </Border>
 
                 <!-- 출력 영역 -->
-                <Border Grid.Row="2" Padding="12,8">
+                <Border Grid.Row="3" Padding="12,8">
                     <StackPanel>
                         <!-- 성공 출력 -->
                         <ScrollViewer MaxHeight="300"
@@ -189,8 +277,26 @@
                     </StackPanel>
                 </Border>
 
+                <!-- 대체 명령어 영역 -->
+                <Border Grid.Row="4"
+                        Background="{DynamicResource SurfaceBrush}"
+                        Padding="12,8"
+                        Visibility="{Binding HasAlternatives, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="대체 명령어"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding AlternativesText}"
+                                   FontFamily="Consolas, Cascadia Code, monospace"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource PrimaryBrush}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- 푸터: 시간, 실행시간, 캐시 방식 -->
-                <Border Grid.Row="3"
+                <Border Grid.Row="5"
                         Background="{DynamicResource SurfaceBrush}"
                         Padding="12,6"
                         CornerRadius="0,0,8,8">
@@ -209,6 +315,14 @@
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="12,0,0,0"
                                    Visibility="{Binding DurationText, Converter={StaticResource StringToVisibilityConverter}}"/>
+
+                        <!-- 예상 실행 시간 -->
+                        <TextBlock Text="{Binding EstimatedDurationText}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="12,0,0,0"
+                                   ToolTip="예상 실행 시간"
+                                   Visibility="{Binding EstimatedDurationText, Converter={StaticResource StringToVisibilityConverter}}"/>
 
                         <TextBlock FontSize="11"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
@@ -279,7 +393,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 메타 정보 -->
+                    <!-- 메타 정보 + 배지 -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,6,0,0">
                         <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm'}"
                                    FontSize="10"
@@ -290,6 +404,37 @@
                                    Foreground="White"
                                    Opacity="0.7"
                                    Margin="8,0,0,0"/>
+
+                        <!-- 신뢰도 배지 -->
+                        <Border Background="White"
+                                CornerRadius="6"
+                                Padding="4,2"
+                                Margin="8,0,0,0"
+                                Opacity="0.9">
+                            <TextBlock Text="{Binding ConfidencePercent}"
+                                       FontSize="9"
+                                       FontWeight="SemiBold"
+                                       Foreground="#1565C0"/>
+                        </Border>
+
+                        <!-- 위험 아이콘 -->
+                        <materialDesign:PackIcon Kind="AlertCircle"
+                                                 Width="12" Height="12"
+                                                 Foreground="#FF5252"
+                                                 VerticalAlignment="Center"
+                                                 Margin="6,0,0,0"
+                                                 ToolTip="위험한 명령어"
+                                                 Visibility="{Binding IsDangerous, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                        <!-- sudo 아이콘 -->
+                        <materialDesign:PackIcon Kind="ShieldAccount"
+                                                 Width="12" Height="12"
+                                                 Foreground="White"
+                                                 Opacity="0.8"
+                                                 VerticalAlignment="Center"
+                                                 Margin="6,0,0,0"
+                                                 ToolTip="sudo 권한 필요"
+                                                 Visibility="{Binding RequiresSudo, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     </StackPanel>
                 </Grid>
                 </Border>
@@ -310,13 +455,15 @@
                         Padding="12,10">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/> <!-- 헤더 -->
+                        <RowDefinition Height="Auto"/> <!-- 경고 -->
+                        <RowDefinition Height="Auto"/> <!-- 설명 -->
+                        <RowDefinition Height="Auto"/> <!-- 출력 -->
+                        <RowDefinition Height="Auto"/> <!-- 대체 명령어 -->
+                        <RowDefinition Height="Auto"/> <!-- 푸터 -->
                     </Grid.RowDefinitions>
 
-                    <!-- 응답 아이콘 + 레이블 (로컬/서버에 따라 다름) -->
+                    <!-- 응답 아이콘 + 레이블 + 배지들 -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
                         <materialDesign:PackIcon Kind="{Binding ResponseIconKind}"
                                                  Width="14" Height="14"
@@ -327,11 +474,29 @@
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="6,0,0,0"/>
 
+                        <!-- 카테고리 배지 -->
+                        <Border Background="#2D3748"
+                                CornerRadius="6"
+                                Padding="4,2"
+                                Margin="6,0,0,0"
+                                Visibility="{Binding HasCategory, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="{Binding CategoryIcon}"
+                                                         Width="10" Height="10"
+                                                         Foreground="{DynamicResource TextSecondaryBrush}"
+                                                         VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Category}"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="3,0,0,0"/>
+                            </StackPanel>
+                        </Border>
+
                         <!-- 캐시 배지 -->
                         <Border Background="{DynamicResource CacheBadgeBrush}"
                                 CornerRadius="8"
                                 Padding="6,2"
-                                Margin="8,0,0,0"
+                                Margin="6,0,0,0"
                                 Visibility="{Binding IsFromCache, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="DatabaseCheck"
@@ -346,8 +511,28 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- 설명 -->
+                    <!-- 경고 메시지 -->
                     <Border Grid.Row="1"
+                            Background="#5C1A1A"
+                            CornerRadius="6"
+                            Padding="8,6"
+                            Margin="0,0,0,6"
+                            Visibility="{Binding HasWarning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="AlertCircle"
+                                                     Width="14" Height="14"
+                                                     Foreground="#FF5252"
+                                                     VerticalAlignment="Top"
+                                                     Margin="0,2,6,0"/>
+                            <TextBlock Text="{Binding Warning}"
+                                       FontSize="11"
+                                       Foreground="#FF5252"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 설명 -->
+                    <Border Grid.Row="2"
                             Background="{DynamicResource BlockExplanationBrush}"
                             CornerRadius="6"
                             Padding="8,6"
@@ -367,7 +552,7 @@
                     </Border>
 
                     <!-- 출력 내용 -->
-                    <Border Grid.Row="2"
+                    <Border Grid.Row="3"
                             Background="{DynamicResource TerminalBackgroundBrush}"
                             CornerRadius="6"
                             Padding="10,8"
@@ -428,12 +613,41 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- 대체 명령어 -->
+                    <Border Grid.Row="4"
+                            Background="{DynamicResource SurfaceBrush}"
+                            CornerRadius="6"
+                            Padding="8,6"
+                            Margin="0,6,0,0"
+                            Visibility="{Binding HasAlternatives, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock Text="대체 명령어"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Margin="0,0,0,3"/>
+                            <TextBlock Text="{Binding AlternativesText}"
+                                       FontFamily="Consolas, Cascadia Code, monospace"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource PrimaryBrush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- 푸터 -->
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,6,0,0">
+                    <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,6,0,0">
                         <TextBlock Text="{Binding DurationText}"
                                    FontSize="10"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Visibility="{Binding DurationText, Converter={StaticResource StringToVisibilityConverter}}"/>
+
+                        <!-- 예상 실행 시간 -->
+                        <TextBlock Text="{Binding EstimatedDurationText}"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="8,0,0,0"
+                                   ToolTip="예상 실행 시간"
+                                   Visibility="{Binding EstimatedDurationText, Converter={StaticResource StringToVisibilityConverter}}"/>
+
                         <TextBlock FontSize="10"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="8,0,0,0"

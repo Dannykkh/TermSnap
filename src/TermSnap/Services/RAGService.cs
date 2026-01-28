@@ -18,6 +18,31 @@ public class RAGSearchResult
     public string SearchMethod { get; set; } = "none"; // "fts5", "embedding", "none"
     public string? CachedCommand { get; set; }
     public string? CachedExplanation { get; set; }
+
+    // AI JSON 응답 메타데이터
+    public double Confidence { get; set; } = 1.0;
+    public string? Warning { get; set; }
+    public List<string>? Alternatives { get; set; }
+    public bool RequiresSudo { get; set; }
+    public bool IsDangerous { get; set; }
+    public string? Category { get; set; }
+    public int? EstimatedDuration { get; set; }
+
+    /// <summary>
+    /// CachedHistory에서 AI 메타데이터를 복사
+    /// </summary>
+    public void CopyMetadataFromHistory()
+    {
+        if (CachedHistory == null) return;
+
+        Confidence = CachedHistory.Confidence;
+        Warning = CachedHistory.Warning;
+        Alternatives = CachedHistory.Alternatives;
+        RequiresSudo = CachedHistory.RequiresSudo;
+        IsDangerous = CachedHistory.IsDangerous;
+        Category = CachedHistory.Category;
+        EstimatedDuration = CachedHistory.EstimatedDuration;
+    }
 }
 
 /// <summary>
@@ -33,6 +58,7 @@ public class RAGService
     public static RAGService Instance => _instance.Value;
 
     private readonly HistoryDatabaseService _historyDb;
+    private readonly UsageStatisticsService _statisticsService;
 
     // 유사도 임계값
     private const double FTS5_MIN_SCORE = 0.5;  // FTS5 검색 최소 점수 (BM25 기반)
@@ -44,6 +70,7 @@ public class RAGService
     private RAGService()
     {
         _historyDb = HistoryDatabaseService.Instance;
+        _statisticsService = UsageStatisticsService.Instance;
     }
 
     /// <summary>
@@ -76,7 +103,7 @@ public class RAGService
         {
             // FTS5에서 결과 찾음 - 유사도 체크
             var similarity = CalculateTextSimilarity(userInput, relevantFtsResult.UserInput);
-            
+
             if (similarity >= CACHE_HIT_THRESHOLD)
             {
                 result.IsFromCache = true;
@@ -86,8 +113,14 @@ public class RAGService
                 result.Similarity = similarity;
                 result.SearchMethod = "fts5";
 
+                // AI 메타데이터 복사
+                result.CopyMetadataFromHistory();
+
                 // 사용 횟수 증가
                 _historyDb.IncrementUseCount(relevantFtsResult.Id);
+
+                // 캐시 히트 통계 기록
+                _statisticsService.RecordCacheHit();
 
                 return result;
             }
@@ -116,8 +149,14 @@ public class RAGService
                     result.Similarity = bestMatch.Similarity;
                     result.SearchMethod = "embedding";
 
+                    // AI 메타데이터 복사
+                    result.CopyMetadataFromHistory();
+
                     // 사용 횟수 증가
                     _historyDb.IncrementUseCount(bestMatch.History.Id);
+
+                    // 캐시 히트 통계 기록
+                    _statisticsService.RecordCacheHit();
 
                     return result;
                 }
@@ -134,14 +173,17 @@ public class RAGService
         result.SearchMethod = "none";
         result.Similarity = 0;
 
+        // 캐시 미스 통계 기록
+        _statisticsService.RecordCacheMiss();
+
         return result;
     }
 
     /// <summary>
-    /// AI로 명령어 생성 후 DB에 저장
+    /// AI로 명령어 생성 후 DB에 저장 (JSON 구조화 응답 사용)
     /// </summary>
     public async Task<CommandHistory> GenerateAndSaveCommand(
-        string userInput, 
+        string userInput,
         string serverProfile)
     {
         var aiProvider = AIProvider;
@@ -150,21 +192,23 @@ public class RAGService
             throw new InvalidOperationException("AI Provider가 초기화되지 않았습니다.");
         }
 
-        // AI로 명령어 생성
-        var command = await aiProvider.ConvertToLinuxCommand(userInput);
-        
-        // 설명 생성
-        string? explanation = null;
-        try
-        {
-            explanation = await aiProvider.ExplainCommand(command);
-        }
-        catch { /* 설명 생성 실패해도 진행 */ }
+        // AI로 명령어 생성 (JSON 구조화)
+        var aiResponse = await aiProvider.ConvertToLinuxCommandAsync(userInput);
 
-        // 히스토리 생성
-        var history = new CommandHistory(userInput, command, serverProfile)
+        // API 호출 통계 기록
+        _statisticsService.RecordApiCall();
+
+        // 히스토리 생성 (AI JSON 응답의 모든 필드 포함)
+        var history = new CommandHistory(userInput, aiResponse.Command, serverProfile)
         {
-            Explanation = explanation,
+            Explanation = aiResponse.Explanation,
+            Confidence = aiResponse.Confidence,
+            Warning = aiResponse.Warning,
+            Alternatives = aiResponse.Alternatives,
+            RequiresSudo = aiResponse.RequiresSudo,
+            IsDangerous = aiResponse.IsDangerous,
+            Category = aiResponse.Category,
+            EstimatedDuration = aiResponse.EstimatedDuration,
             ExecutedAt = DateTime.Now
         };
 
@@ -188,6 +232,20 @@ public class RAGService
         history.Id = _historyDb.AddHistory(history, embeddingVector);
 
         return history;
+    }
+
+    /// <summary>
+    /// AI로 명령어 생성 (저장 없이 AICommandResponse 직접 반환)
+    /// </summary>
+    public async Task<AICommandResponse> GenerateCommandOnly(string userInput)
+    {
+        var aiProvider = AIProvider;
+        if (aiProvider == null)
+        {
+            throw new InvalidOperationException("AI Provider가 초기화되지 않았습니다.");
+        }
+
+        return await aiProvider.ConvertToLinuxCommandAsync(userInput);
     }
 
     /// <summary>

@@ -24,6 +24,8 @@ public partial class ServerSessionView : UserControl
     private readonly AppConfig _config;
     private SftpService? _sftpService;
     private bool _isFileTreeInitialized = false;
+    private bool _isMemoryPanelInitialized = false;
+    private bool _isMemoryPanelVisible = false;
 
     // 추천 기능용 필드
     private DispatcherTimer? _suggestionDebounceTimer;
@@ -428,11 +430,54 @@ public partial class ServerSessionView : UserControl
     }
 
     /// <summary>
-    /// 입력창 키 입력 처리 - 클립보드 이미지 붙여넣기 지원 + 히스토리 네비게이션
+    /// 입력창 키 입력 처리 - 클립보드 이미지 붙여넣기 지원 + 히스토리 네비게이션 + 자동완성
     /// </summary>
     private void InputTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        // Up 키: 이전 명령어
+        // 자동완성 팝업이 열려있을 때 키 처리
+        if (AutoCompletePopup.IsOpen && AutoCompleteControl.HasSuggestions)
+        {
+            switch (e.Key)
+            {
+                case Key.Up:
+                    AutoCompleteControl.MoveSelectionUp();
+                    e.Handled = true;
+                    return;
+
+                case Key.Down:
+                    AutoCompleteControl.MoveSelectionDown();
+                    e.Handled = true;
+                    return;
+
+                case Key.Tab:
+                    AutoCompleteControl.ConfirmSelection();
+                    e.Handled = true;
+                    return;
+
+                case Key.Escape:
+                    HideAutoComplete();
+                    e.Handled = true;
+                    return;
+
+                case Key.Enter:
+                    // Enter는 자동완성 확정이 아닌 명령어 전송으로 처리
+                    HideAutoComplete();
+                    return;
+            }
+        }
+
+        // Escape: 자동완성 팝업 닫기
+        if (e.Key == Key.Escape)
+        {
+            if (AutoCompletePopup.IsOpen)
+            {
+                HideAutoComplete();
+                e.Handled = true;
+                return;
+            }
+        }
+
+        // Up 키: 이전 명령어 (자동완성 팝업이 닫혀있을 때)
         if (e.Key == Key.Up && Keyboard.Modifiers == ModifierKeys.None)
         {
             if (DataContext is ServerSessionViewModel vm)
@@ -477,13 +522,14 @@ public partial class ServerSessionView : UserControl
         // Ctrl+V 감지
         else if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            // 클립보드에 이미지가 있는 경우 처리
-            if (ClipboardService.HasImage())
+            // 텍스트가 있으면 텍스트 우선 (기본 동작)
+            // 이미지만 있을 때만 이미지 처리
+            if (!Clipboard.ContainsText() && ClipboardService.HasImage())
             {
                 e.Handled = true;
                 HandleClipboardImage();
             }
-            // 텍스트만 있는 경우는 기본 동작 (e.Handled = false)
+            // 텍스트가 있는 경우는 기본 동작 (e.Handled = false)
         }
     }
 
@@ -621,16 +667,30 @@ public partial class ServerSessionView : UserControl
     /// </summary>
     private void InputTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        // 추천 토글이 꺼져 있으면 무시
-        if (SuggestionToggle.IsChecked != true)
+        var input = InputTextBox.Text?.Trim();
+
+        // 입력이 비어있으면 모든 추천 숨김
+        if (string.IsNullOrEmpty(input) || input.Length < 2)
         {
             HideSuggestion();
+            HideAutoComplete();
             return;
         }
 
-        // 디바운스 타이머 재시작
-        _suggestionDebounceTimer?.Stop();
-        _suggestionDebounceTimer?.Start();
+        // 추천 토글이 꺼져 있으면 기존 추천만 숨김
+        if (SuggestionToggle.IsChecked != true)
+        {
+            HideSuggestion();
+        }
+        else
+        {
+            // 디바운스 타이머 재시작 (기존 추천 기능)
+            _suggestionDebounceTimer?.Stop();
+            _suggestionDebounceTimer?.Start();
+        }
+
+        // 자동완성 팝업 표시 (항상 활성화)
+        ShowAutoComplete(input);
     }
 
     /// <summary>
@@ -1061,6 +1121,144 @@ public partial class ServerSessionView : UserControl
         {
             System.Diagnostics.Debug.WriteLine($"[InputTextBox_Drop] 오류: {ex.Message}");
         }
+    }
+
+    #endregion
+
+    #region 자동완성 팝업
+
+    private bool _isAutoCompleteEnabled = true;
+
+    /// <summary>
+    /// 자동완성 제안 확정 (Tab 또는 더블클릭)
+    /// </summary>
+    private void AutoComplete_SuggestionConfirmed(object? sender, AutoCompleteSuggestion suggestion)
+    {
+        if (DataContext is ServerSessionViewModel vm)
+        {
+            // 사용자 입력을 선택한 제안으로 대체
+            vm.UserInput = suggestion.UserInput;
+            AutoCompletePopup.IsOpen = false;
+            InputTextBox.Focus();
+            InputTextBox.CaretIndex = InputTextBox.Text?.Length ?? 0;
+        }
+    }
+
+    /// <summary>
+    /// 자동완성 닫기 요청
+    /// </summary>
+    private void AutoComplete_CloseRequested(object? sender, EventArgs e)
+    {
+        AutoCompletePopup.IsOpen = false;
+        InputTextBox.Focus();
+    }
+
+    /// <summary>
+    /// 자동완성 팝업 표시
+    /// </summary>
+    private async void ShowAutoComplete(string query)
+    {
+        if (!_isAutoCompleteEnabled) return;
+        if (AutoCompletePopup == null || AutoCompleteControl == null) return;
+
+        try
+        {
+            AutoCompletePopup.IsOpen = true;
+            await AutoCompleteControl.SearchAsync(query);
+
+            // 결과가 없으면 팝업 닫기
+            if (!AutoCompleteControl.HasSuggestions)
+            {
+                AutoCompletePopup.IsOpen = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AutoComplete] 검색 오류: {ex.Message}");
+            AutoCompletePopup.IsOpen = false;
+        }
+    }
+
+    /// <summary>
+    /// 자동완성 팝업 숨기기
+    /// </summary>
+    private void HideAutoComplete()
+    {
+        if (AutoCompletePopup != null)
+            AutoCompletePopup.IsOpen = false;
+        AutoCompleteControl?.ClearSuggestions();
+    }
+
+    #endregion
+
+    #region AI 장기기억 패널 관리
+
+    /// <summary>
+    /// 메모리 토글 버튼 클릭
+    /// </summary>
+    private void MemoryToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isMemoryPanelVisible)
+        {
+            HideMemoryPanel();
+        }
+        else
+        {
+            ShowMemoryPanel();
+        }
+    }
+
+    /// <summary>
+    /// 메모리 패널 초기화
+    /// </summary>
+    private void InitializeMemoryPanel()
+    {
+        if (_isMemoryPanelInitialized) return;
+
+        // 작업 디렉토리 설정 (로컬 경로 사용 - 서버별로 관리)
+        if (DataContext is ServerSessionViewModel vm && !string.IsNullOrEmpty(vm.ServerProfile?.Host))
+        {
+            // 서버별 메모리 파일 경로 설정
+            var serverMemoryPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "TermSnap",
+                "ServerMemory",
+                vm.ServerProfile.Host);
+
+            if (!System.IO.Directory.Exists(serverMemoryPath))
+            {
+                System.IO.Directory.CreateDirectory(serverMemoryPath);
+            }
+
+            MemoryPanelControl.SetWorkingDirectory(serverMemoryPath);
+        }
+
+        // 패널 닫기 요청
+        MemoryPanelControl.CloseRequested += (s, e) =>
+        {
+            HideMemoryPanel();
+        };
+
+        _isMemoryPanelInitialized = true;
+    }
+
+    /// <summary>
+    /// 메모리 패널 표시
+    /// </summary>
+    private void ShowMemoryPanel()
+    {
+        InitializeMemoryPanel();
+        MemoryBorder.Visibility = Visibility.Visible;
+        _isMemoryPanelVisible = true;
+    }
+
+    /// <summary>
+    /// 메모리 패널 숨김
+    /// </summary>
+    private void HideMemoryPanel()
+    {
+        MemoryBorder.Visibility = Visibility.Collapsed;
+        _isMemoryPanelVisible = false;
     }
 
     #endregion
