@@ -96,21 +96,40 @@
             <local:WelcomePanel x:Name="WelcomePanelControl"
                                 Visibility="{Binding ShowWelcome, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-            <!-- 인터랙티브 모드: VT100 터미널 컨트롤 -->
+            <!-- 인터랙티브 모드: VT100 터미널 컨트롤 + 스크롤바 -->
             <Border Background="#1E1E1E"
                     BorderBrush="#3E3E3E"
                     BorderThickness="1"
                     Margin="4"
                     CornerRadius="4"
                     Visibility="{Binding IsInteractiveMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <terminal:TerminalControl x:Name="TerminalCtrl"
-                                          FontFamily="Consolas"
-                                          FontSize="14"
-                                          Margin="2"
-                                          AllowDrop="True"
-                                          DragEnter="TerminalCtrl_DragEnter"
-                                          DragOver="TerminalCtrl_DragOver"
-                                          Drop="TerminalCtrl_Drop"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <terminal:TerminalControl x:Name="TerminalCtrl"
+                                              Grid.Column="0"
+                                              FontFamily="Consolas"
+                                              FontSize="14"
+                                              Margin="2"
+                                              AllowDrop="True"
+                                              DragEnter="TerminalCtrl_DragEnter"
+                                              DragOver="TerminalCtrl_DragOver"
+                                              Drop="TerminalCtrl_Drop"/>
+
+                    <!-- 터미널 스크롤바 -->
+                    <ScrollBar x:Name="TerminalScrollBar"
+                               Grid.Column="1"
+                               Orientation="Vertical"
+                               Width="12"
+                               Margin="0,2,2,2"
+                               Minimum="0"
+                               SmallChange="1"
+                               LargeChange="10"
+                               ValueChanged="TerminalScrollBar_ValueChanged"/>
+                </Grid>
             </Border>
 
 
@@ -218,6 +237,67 @@
                                    MaxWidth="800"/>
         </Border>
 
+        <!-- 서브 프로세스 패널 (오버레이, 하단) -->
+        <Border x:Name="SubProcessBorder"
+                Grid.Row="0"
+                Panel.ZIndex="100"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Bottom"
+                Visibility="Collapsed"
+                Margin="4">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="10" ShadowDepth="0"/>
+            </Border.Effect>
+            <local:SubProcessPanel x:Name="SubProcessPanelControl"
+                                   Height="200"
+                                   MaxHeight="300"/>
+        </Border>
+
+        <!-- Ralph Loop 패널 (오버레이, 우측) -->
+        <Border x:Name="RalphLoopBorder"
+                Grid.Row="0"
+                Panel.ZIndex="100"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Visibility="Collapsed"
+                Margin="4">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="10" ShadowDepth="0"/>
+            </Border.Effect>
+            <local:RalphLoopPanel x:Name="RalphLoopPanelControl"
+                                  Width="380"/>
+        </Border>
+
+        <!-- GSD Workflow 패널 (오버레이, 우측) -->
+        <Border x:Name="GsdWorkflowBorder"
+                Grid.Row="0"
+                Panel.ZIndex="100"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Visibility="Collapsed"
+                Margin="4">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="10" ShadowDepth="0"/>
+            </Border.Effect>
+            <local:GsdWorkflowPanel x:Name="GsdWorkflowPanelControl"
+                                    Width="450"/>
+        </Border>
+
+        <!-- AI 장기기억 패널 (오버레이, 우측) -->
+        <Border x:Name="MemoryBorder"
+                Grid.Row="0"
+                Panel.ZIndex="100"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Visibility="Collapsed"
+                Margin="4">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="10" ShadowDepth="0"/>
+            </Border.Effect>
+            <local:MemoryPanel x:Name="MemoryPanelControl"
+                               Width="400"/>
+        </Border>
+
 
         <!-- 입력 영역 -->
         <Border Grid.Row="2" Grid.Column="0"
@@ -253,6 +333,41 @@
 
                     <!-- 현재 경로 및 Git 브랜치 -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <!-- AI 모델 아이콘 (인터랙티브 모드에서만 표시) -->
+                        <Grid x:Name="AIModelIconGrid" Width="24" Height="24" Margin="0,0,8,0">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsInteractiveMode}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+                            <!-- Claude 로고 (실제 이미지) -->
+                            <Image x:Name="ClaudeIcon" Width="24" Height="24" Visibility="Collapsed"
+                                   Source="/Resources/AILogos/claude-logo.png" RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <!-- Gemini 로고 (실제 이미지) -->
+                            <Image x:Name="GeminiIcon" Width="24" Height="24" Visibility="Collapsed"
+                                   Source="/Resources/AILogos/gemini-logo.png" RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <!-- OpenAI 로고 (실제 이미지) -->
+                            <Image x:Name="OpenAIIcon" Width="24" Height="24" Visibility="Collapsed"
+                                   Source="/Resources/AILogos/openai-logo.png" RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <!-- Aider 아이콘 (Path 기반) -->
+                            <Viewbox x:Name="AiderIcon" Width="24" Height="24" Visibility="Collapsed">
+                                <Canvas Width="24" Height="24">
+                                    <Ellipse Canvas.Left="2" Canvas.Top="2" Width="20" Height="20" Fill="#14B8A6"/>
+                                    <Path Fill="White" Data="M8,8 L11,8 L11,12 L8,12 Z"/>
+                                    <Path Fill="White" Data="M13,8 L16,8 L16,16 L13,16 Z"/>
+                                    <Path Fill="White" Data="M8,14 L11,14 L11,16 L8,16 Z"/>
+                                </Canvas>
+                            </Viewbox>
+                            <!-- 기본 터미널 아이콘 -->
+                            <materialDesign:PackIcon x:Name="DefaultTerminalIcon" Kind="Console"
+                                                     Width="24" Height="24" Foreground="#64B5F6" Visibility="Visible"/>
+                        </Grid>
+
                         <!-- 현재 경로 -->
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="Folder"
@@ -266,7 +381,7 @@
                                        VerticalAlignment="Center"
                                        Margin="6,0,0,0"
                                        TextTrimming="CharacterEllipsis"
-                                       MaxWidth="400"/>
+                                       MaxWidth="300"/>
                         </StackPanel>
 
                         <!-- Git 브랜치 -->
@@ -298,6 +413,73 @@
                                            Margin="4,0,0,0"/>
                             </StackPanel>
                         </Border>
+
+                        <!-- GSD 상태 표시 (비인터랙티브 모드) -->
+                        <Border x:Name="GsdStatusBorder" Margin="12,0,0,0" Padding="6,2" Background="#33673AB7" CornerRadius="3" Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FormatListChecks"
+                                                         Width="14" Height="14"
+                                                         Foreground="#9C27B0"
+                                                         VerticalAlignment="Center"/>
+                                <TextBlock x:Name="GsdStatusText"
+                                           Text="GSD"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="#9C27B0"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- GSD 버튼들 (비인터랙티브 모드, 세션 연결 시) -->
+                        <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsInteractiveMode}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ShowWelcome}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+
+                            <!-- GSD 초기화 버튼 -->
+                            <Button x:Name="GsdInitButton"
+                                    Click="GsdInit_Click"
+                                    ToolTip="{DynamicResource Gsd.InitTooltip}"
+                                    Style="{StaticResource MaterialDesignIconButton}"
+                                    Width="26" Height="24"
+                                    Margin="0,0,4,0">
+                                <materialDesign:PackIcon Kind="FolderPlusOutline" Width="14" Height="14" Foreground="#9C27B0"/>
+                            </Button>
+
+                            <!-- Claude + GSD 실행 버튼 -->
+                            <Button x:Name="RunClaudeGsdButton"
+                                    Click="RunClaudeGsd_Click"
+                                    ToolTip="{DynamicResource Gsd.RunClaudeWithGsd}"
+                                    Style="{StaticResource MaterialDesignIconButton}"
+                                    Width="26" Height="24"
+                                    Margin="0,0,4,0">
+                                <materialDesign:PackIcon Kind="RocketLaunchOutline" Width="14" Height="14" Foreground="#673AB7"/>
+                            </Button>
+
+                            <!-- .planning 폴더 열기 -->
+                            <Button x:Name="OpenPlanningButton"
+                                    Click="OpenPlanning_Click"
+                                    ToolTip="{DynamicResource Gsd.OpenPlanning}"
+                                    Style="{StaticResource MaterialDesignIconButton}"
+                                    Width="26" Height="24"
+                                    Visibility="Collapsed">
+                                <materialDesign:PackIcon Kind="FolderOpenOutline" Width="14" Height="14" Foreground="#673AB7"/>
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- 인터랙티브 모드 정보 및 액션 버튼 (우측) -->
@@ -397,6 +579,54 @@
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
+
+                        <!-- AI 장기기억 토글 버튼 -->
+                        <Button x:Name="MemoryToggleButton"
+                                Click="MemoryToggle_Click"
+                                ToolTip="AI 장기기억"
+                                Style="{StaticResource MaterialDesignIconButton}"
+                                Background="#7B1FA2"
+                                Foreground="White"
+                                Width="28" Height="26"
+                                Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="Brain" Width="16" Height="16"/>
+                        </Button>
+
+                        <!-- Ralph Loop 토글 버튼 -->
+                        <Button x:Name="RalphLoopToggleButton"
+                                Click="RalphLoopToggle_Click"
+                                ToolTip="Ralph Loop (자동 반복)"
+                                Style="{StaticResource MaterialDesignIconButton}"
+                                Background="#FF6F00"
+                                Foreground="White"
+                                Width="28" Height="26"
+                                Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="Repeat" Width="16" Height="16"/>
+                        </Button>
+
+                        <!-- GSD Workflow 토글 버튼 -->
+                        <Button x:Name="GsdWorkflowToggleButton"
+                                Click="GsdWorkflowToggle_Click"
+                                ToolTip="{DynamicResource GsdWorkflow.Title}"
+                                Style="{StaticResource MaterialDesignIconButton}"
+                                Background="#673AB7"
+                                Foreground="White"
+                                Width="28" Height="26"
+                                Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="FormatListChecks" Width="16" Height="16"/>
+                        </Button>
+
+                        <!-- 서브 프로세스 토글 버튼 -->
+                        <Button x:Name="SubProcessToggleButton"
+                                Click="SubProcessToggle_Click"
+                                ToolTip="{DynamicResource SubProcess.PanelTooltip}"
+                                Style="{StaticResource MaterialDesignIconButton}"
+                                Background="#1B5E20"
+                                Foreground="White"
+                                Width="28" Height="26"
+                                Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="ApplicationCog" Width="16" Height="16"/>
+                        </Button>
 
                         <Button Content="{DynamicResource LocalTerminal.Exit}"
                                 Click="ExitInteractiveMode_Click"

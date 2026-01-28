@@ -1,0 +1,244 @@
+<UserControl x:Class="TermSnap.Views.RalphLoopPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             Background="{DynamicResource SurfaceBrush}"
+             MinWidth="350">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <Border CornerRadius="8"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            Background="{DynamicResource SurfaceBrush}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 헤더 -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource PrimaryBrush}"
+                    CornerRadius="8,8,0,0"
+                    Padding="12,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Repeat"
+                                                 Width="20" Height="20"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="White"/>
+                        <TextBlock Text="Ralph Loop"
+                                   FontWeight="Bold"
+                                   FontSize="14"
+                                   Foreground="White"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- 상태 표시 -->
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource SuccessBrush}"
+                            CornerRadius="4"
+                            Padding="8,2"
+                            Margin="12,0"
+                            HorizontalAlignment="Center"
+                            Visibility="{Binding IsRunning, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Loading"
+                                                     Width="14" Height="14"
+                                                     Foreground="White">
+                                <materialDesign:PackIcon.RenderTransform>
+                                    <RotateTransform x:Name="SpinnerRotation"/>
+                                </materialDesign:PackIcon.RenderTransform>
+                                <materialDesign:PackIcon.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetName="SpinnerRotation"
+                                                                 Storyboard.TargetProperty="Angle"
+                                                                 From="0" To="360"
+                                                                 Duration="0:0:1"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </materialDesign:PackIcon.Triggers>
+                            </materialDesign:PackIcon>
+                            <TextBlock x:Name="StatusText"
+                                       Text="실행 중"
+                                       FontSize="11"
+                                       Foreground="White"
+                                       Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 닫기 버튼 -->
+                    <Button Grid.Column="2"
+                            Style="{StaticResource MaterialDesignIconButton}"
+                            Width="24" Height="24"
+                            Click="CloseButton_Click"
+                            ToolTip="닫기">
+                        <materialDesign:PackIcon Kind="Close" Width="16" Height="16" Foreground="White"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- PRD 입력 영역 -->
+            <Grid Grid.Row="1" Margin="12,12,12,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="PRD (Product Requirements Document)"
+                           FontWeight="SemiBold"
+                           FontSize="12"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           Margin="0,0,0,6"/>
+
+                <TextBox x:Name="PrdTextBox"
+                         Grid.Row="1"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         MinHeight="150"
+                         MaxHeight="300"
+                         FontFamily="Consolas"
+                         FontSize="12"
+                         Background="{DynamicResource BackgroundBrush}"
+                         Foreground="{DynamicResource TextPrimaryBrush}"
+                         BorderBrush="{DynamicResource BorderBrush}"
+                         Padding="8"
+                         Text="{Binding PRD, UpdateSourceTrigger=PropertyChanged}">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox">
+                            <Setter Property="IsEnabled" Value="True"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
+            </Grid>
+
+            <!-- 진행 상황 -->
+            <Grid Grid.Row="2" Margin="12,0,12,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 진행률 바 -->
+                <ProgressBar Grid.Row="0"
+                             Value="{Binding Progress, Mode=OneWay}"
+                             Maximum="100"
+                             Height="6"
+                             Foreground="{DynamicResource PrimaryBrush}"
+                             Background="{DynamicResource BorderBrush}"/>
+
+                <!-- 상태 정보 -->
+                <Grid Grid.Row="1" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               x:Name="CurrentTaskText"
+                               Text="{Binding CurrentTask}"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis"/>
+
+                    <TextBlock Grid.Column="1"
+                               x:Name="IterationText"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextSecondaryBrush}">
+                        <Run Text="반복: "/>
+                        <Run Text="{Binding CurrentIteration}"/>
+                        <Run Text="/"/>
+                        <Run Text="{Binding MaxIterations}"/>
+                    </TextBlock>
+                </Grid>
+
+                <!-- 경과 시간 -->
+                <TextBlock Grid.Row="2"
+                           x:Name="ElapsedTimeText"
+                           FontSize="11"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           Margin="0,4,0,0"
+                           Visibility="{Binding IsRunning, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            </Grid>
+
+            <!-- 버튼 영역 -->
+            <Grid Grid.Row="3" Margin="12,0,12,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- AI CLI 선택 -->
+                <ComboBox x:Name="AiCommandCombo"
+                          Grid.Column="0"
+                          Width="120"
+                          HorizontalAlignment="Left"
+                          SelectedIndex="0"
+                          IsEnabled="{Binding IsRunning, Mode=OneWay, Converter={StaticResource InverseBooleanConverter}}"
+                          SelectionChanged="AiCommandCombo_SelectionChanged"
+                          Foreground="{DynamicResource TextPrimaryBrush}"
+                          Background="{DynamicResource CardBrush}">
+                    <ComboBoxItem Content="Claude Code" Tag="claude" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    <ComboBoxItem Content="Aider" Tag="aider" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    <ComboBoxItem Content="Codex" Tag="codex" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    <ComboBoxItem Content="Gemini CLI" Tag="gemini" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                </ComboBox>
+
+                <!-- 시작/중지 버튼 -->
+                <Button x:Name="StartButton"
+                        Grid.Column="1"
+                        Click="StartButton_Click"
+                        Background="{DynamicResource SuccessBrush}"
+                        Foreground="{DynamicResource TextOnPrimaryBrush}"
+                        Padding="16,8"
+                        Margin="8,0,0,0">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                            <Setter Property="Content" Value="시작"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                    <Setter Property="Content" Value="중지"/>
+                                    <Setter Property="Background" Value="{DynamicResource ErrorBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!-- 리셋 버튼 -->
+                <Button x:Name="ResetButton"
+                        Grid.Column="2"
+                        Content="리셋"
+                        Click="ResetButton_Click"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Padding="12,8"
+                        Margin="8,0,0,0"
+                        IsEnabled="{Binding IsRunning, Mode=OneWay, Converter={StaticResource InverseBooleanConverter}}"/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

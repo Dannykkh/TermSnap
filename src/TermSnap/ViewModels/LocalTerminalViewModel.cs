@@ -315,6 +315,11 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     public LocalSession.LocalShellType ShellType => _shellType;
 
     /// <summary>
+    /// 셸 프로세스 ID (서브 프로세스 추적용)
+    /// </summary>
+    public int ProcessId => _session?.ProcessId ?? 0;
+
+    /// <summary>
     /// 세션 타입 (ISessionViewModel 구현)
     /// </summary>
     public SessionType Type => _shellType == LocalSession.LocalShellType.WSL ? SessionType.WSL : SessionType.Local;
@@ -933,6 +938,24 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
             _currentBlock.Status = BlockStatus.Success;
             _currentBlock = null;
         }
+    }
+
+    /// <summary>
+    /// 터미널에 원시 입력 전송 (Ralph Loop용)
+    /// </summary>
+    public async Task SendRawInputAsync(string input)
+    {
+        if (_session == null) return;
+        await _session.SendRawInputAsync(input);
+    }
+
+    /// <summary>
+    /// Ctrl+C 전송 (Ralph Loop용)
+    /// </summary>
+    public async Task SendCtrlCAsync()
+    {
+        if (_session == null) return;
+        await _session.SendCtrlCAsync();
     }
 
     /// <summary>

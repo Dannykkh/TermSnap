@@ -3,24 +3,131 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="{DynamicResource CommandConfirm.Title}"
-        MinHeight="450"
-        MinWidth="550"
-        Height="500"
-        Width="650"
+        MinHeight="500"
+        MinWidth="600"
+        Height="600"
+        Width="700"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResizeWithGrip"
         Background="{DynamicResource SurfaceBrush}">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="*" MinHeight="120"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*" MinHeight="80"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- 상단 배지 (카테고리, 신뢰도, 위험도) -->
+        <WrapPanel Grid.Row="0" Margin="0,0,0,10">
+            <!-- 카테고리 배지 -->
+            <Border x:Name="CategoryBadge"
+                    Background="{DynamicResource PrimaryBrush}"
+                    CornerRadius="12"
+                    Padding="10,4"
+                    Margin="0,0,8,4"
+                    Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon x:Name="CategoryIcon"
+                                             Kind="Console"
+                                             Width="14" Height="14"
+                                             Foreground="White"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,4,0"/>
+                    <TextBlock x:Name="CategoryText"
+                               FontSize="12"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 신뢰도 배지 -->
+            <Border x:Name="ConfidenceBadge"
+                    CornerRadius="12"
+                    Padding="10,4"
+                    Margin="0,0,8,4">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="CheckboxMarkedCircleOutline"
+                                             Width="14" Height="14"
+                                             Foreground="White"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,4,0"/>
+                    <TextBlock x:Name="ConfidenceText"
+                               FontSize="12"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- sudo 필요 배지 -->
+            <Border x:Name="SudoBadge"
+                    Background="#FF9800"
+                    CornerRadius="12"
+                    Padding="10,4"
+                    Margin="0,0,8,4"
+                    Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="ShieldAccountOutline"
+                                             Width="14" Height="14"
+                                             Foreground="White"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,4,0"/>
+                    <TextBlock Text="sudo 필요"
+                               FontSize="12"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 위험 명령어 배지 -->
+            <Border x:Name="DangerBadge"
+                    Background="#F44336"
+                    CornerRadius="12"
+                    Padding="10,4"
+                    Margin="0,0,8,4"
+                    Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="AlertOutline"
+                                             Width="14" Height="14"
+                                             Foreground="White"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,4,0"/>
+                    <TextBlock Text="위험한 명령어"
+                               FontSize="12"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </WrapPanel>
+
+        <!-- 경고 메시지 -->
+        <Border x:Name="WarningPanel"
+                Grid.Row="1"
+                Background="#FFF3E0"
+                Padding="12"
+                Margin="0,0,0,10"
+                CornerRadius="6"
+                Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Kind="AlertCircleOutline"
+                                         Width="20" Height="20"
+                                         Foreground="#E65100"
+                                         VerticalAlignment="Top"
+                                         Margin="0,0,10,0"/>
+                <TextBlock x:Name="WarningText"
+                           TextWrapping="Wrap"
+                           FontSize="13"
+                           Foreground="#E65100"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
         <!-- 설명 (스크롤 가능) -->
-        <Border Grid.Row="0"
+        <Border Grid.Row="2"
                 Background="{DynamicResource CardBrush}"
                 Padding="15"
                 Margin="0,0,0,15"
@@ -57,7 +164,7 @@
         </Border>
 
         <!-- 명령어 편집 -->
-        <StackPanel Grid.Row="1">
+        <StackPanel Grid.Row="3">
             <TextBlock Text="{DynamicResource CommandConfirm.GeneratedCommand}"
                        FontWeight="Bold"
                        FontSize="13"
@@ -75,8 +182,48 @@
                      Padding="10"/>
         </StackPanel>
 
+        <!-- 대체 명령어 -->
+        <Border x:Name="AlternativesPanel"
+                Grid.Row="4"
+                Background="{DynamicResource CardBrush}"
+                Padding="12"
+                Margin="0,15,0,0"
+                CornerRadius="6"
+                Visibility="Collapsed">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <materialDesign:PackIcon Kind="SwapHorizontal"
+                                             Width="16" Height="16"
+                                             Foreground="{DynamicResource PrimaryBrush}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0"/>
+                    <TextBlock Text="대체 명령어"
+                               FontWeight="SemiBold"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <ItemsControl x:Name="AlternativesList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding}"
+                                    FontFamily="Consolas"
+                                    FontSize="12"
+                                    HorizontalContentAlignment="Left"
+                                    Margin="0,2"
+                                    Padding="8,6"
+                                    Click="AlternativeCommand_Click"
+                                    Style="{StaticResource MaterialDesignFlatButton}">
+                                <Button.ToolTip>클릭하면 이 명령어로 교체</Button.ToolTip>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <!-- 안내 메시지 -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,15,0,0">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,15,0,0">
             <materialDesign:PackIcon Kind="CheckCircleOutline"
                                      Width="16" Height="16"
                                      Foreground="{DynamicResource SuccessBrush}"
@@ -89,7 +236,7 @@
         </StackPanel>
 
         <!-- 버튼 -->
-        <StackPanel Grid.Row="3"
+        <StackPanel Grid.Row="6"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,20,0,0">

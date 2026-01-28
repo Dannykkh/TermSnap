@@ -21,6 +21,8 @@ public partial class SettingsWindow : Window
     private readonly Dictionary<AIProviderType, string> _apiKeys = new();
     private readonly ObservableCollection<ServerConfig> _profiles = new();
     private bool _isLoading = false; // 초기 로드 중 플래그
+    private string _ollamaBaseUrl = "http://localhost:11434";
+    private List<OllamaModel> _ollamaModels = new();
 
     // 각 제공자별 API 키 발급 URL
     private readonly Dictionary<AIProviderType, string> _apiKeyUrls = new()
@@ -107,6 +109,14 @@ public partial class SettingsWindow : Window
         // 선택된 제공자 로드
         _selectedProvider = _config.SelectedProvider;
 
+        // Ollama 설정 로드
+        var ollamaModel = _config.AIModels.FirstOrDefault(m => m.Provider == AIProviderType.Ollama);
+        if (ollamaModel != null && !string.IsNullOrWhiteSpace(ollamaModel.BaseUrl))
+        {
+            _ollamaBaseUrl = ollamaModel.BaseUrl;
+        }
+        OllamaBaseUrlBox.Text = _ollamaBaseUrl;
+
         // 제공자 라디오 버튼 선택
         switch (_selectedProvider)
         {
@@ -124,6 +134,9 @@ public partial class SettingsWindow : Window
                 break;
             case AIProviderType.Grok:
                 GrokRadio.IsChecked = true;
+                break;
+            case AIProviderType.Ollama:
+                OllamaRadio.IsChecked = true;
                 break;
         }
 
@@ -310,14 +323,25 @@ public partial class SettingsWindow : Window
     /// </summary>
     private void UpdateProviderUI()
     {
-        // None일 경우 API 키/모델 영역 비활성화
+        // None일 경우 모든 설정 영역 비활성화
         if (_selectedProvider == AIProviderType.None)
         {
             ApiKeySection.Visibility = Visibility.Collapsed;
+            OllamaSection.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        // Ollama인 경우 Ollama 설정 표시, 아니면 API 키 설정 표시
+        if (_selectedProvider == AIProviderType.Ollama)
+        {
+            ApiKeySection.Visibility = Visibility.Collapsed;
+            OllamaSection.Visibility = Visibility.Visible;
+            _ = LoadOllamaModelsAsync();
             return;
         }
 
         ApiKeySection.Visibility = Visibility.Visible;
+        OllamaSection.Visibility = Visibility.Collapsed;
 
         // API 키 라벨 업데이트
         var providerName = _selectedProvider switch
@@ -390,6 +414,129 @@ public partial class SettingsWindow : Window
         }
     }
 
+    #region Ollama 설정
+
+    /// <summary>
+    /// Ollama 연결 테스트
+    /// </summary>
+    private async void OllamaTest_Click(object sender, RoutedEventArgs e)
+    {
+        _ollamaBaseUrl = OllamaBaseUrlBox.Text.Trim();
+        OllamaTestButton.IsEnabled = false;
+
+        try
+        {
+            var isRunning = await OllamaProvider.IsServerRunningAsync(_ollamaBaseUrl);
+
+            if (isRunning)
+            {
+                OllamaStatusIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.CheckCircle;
+                OllamaStatusIcon.Foreground = FindResource("SuccessBrush") as System.Windows.Media.Brush
+                    ?? System.Windows.Media.Brushes.Green;
+                OllamaStatusText.Text = LocalizationService.Instance.GetString("Settings.Ollama.Status.Connected");
+                OllamaStatusText.Foreground = OllamaStatusIcon.Foreground;
+
+                // 연결 성공 시 모델 목록 로드
+                await LoadOllamaModelsAsync();
+            }
+            else
+            {
+                OllamaStatusIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.AlertCircle;
+                OllamaStatusIcon.Foreground = FindResource("ErrorBrush") as System.Windows.Media.Brush
+                    ?? System.Windows.Media.Brushes.Red;
+                OllamaStatusText.Text = LocalizationService.Instance.GetString("Settings.Ollama.Status.Failed");
+                OllamaStatusText.Foreground = OllamaStatusIcon.Foreground;
+            }
+        }
+        catch (Exception ex)
+        {
+            OllamaStatusIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.AlertCircle;
+            OllamaStatusIcon.Foreground = FindResource("ErrorBrush") as System.Windows.Media.Brush
+                ?? System.Windows.Media.Brushes.Red;
+            OllamaStatusText.Text = $"오류: {ex.Message}";
+            OllamaStatusText.Foreground = OllamaStatusIcon.Foreground;
+        }
+        finally
+        {
+            OllamaTestButton.IsEnabled = true;
+        }
+    }
+
+    /// <summary>
+    /// Ollama 모델 목록 새로고침
+    /// </summary>
+    private async void OllamaRefresh_Click(object sender, RoutedEventArgs e)
+    {
+        await LoadOllamaModelsAsync();
+    }
+
+    /// <summary>
+    /// Ollama 설치된 모델 목록 로드
+    /// </summary>
+    private async System.Threading.Tasks.Task LoadOllamaModelsAsync()
+    {
+        try
+        {
+            _ollamaBaseUrl = OllamaBaseUrlBox.Text.Trim();
+            var provider = new OllamaProvider("temp", _ollamaBaseUrl);
+            _ollamaModels = await provider.GetAvailableModelsAsync();
+
+            if (_ollamaModels.Count > 0)
+            {
+                OllamaModelComboBox.ItemsSource = _ollamaModels;
+                OllamaNoModelsText.Visibility = Visibility.Collapsed;
+
+                // 이전에 선택된 모델이 있으면 선택
+                var savedModel = _config.AIModels.FirstOrDefault(m => m.Provider == AIProviderType.Ollama);
+                if (savedModel != null && !string.IsNullOrWhiteSpace(savedModel.ModelId))
+                {
+                    var matchingModel = _ollamaModels.FirstOrDefault(m => m.Name == savedModel.ModelId);
+                    if (matchingModel != null)
+                    {
+                        OllamaModelComboBox.SelectedItem = matchingModel;
+                    }
+                    else
+                    {
+                        OllamaModelComboBox.SelectedIndex = 0;
+                    }
+                }
+                else
+                {
+                    OllamaModelComboBox.SelectedIndex = 0;
+                }
+
+                // 연결 상태 업데이트
+                OllamaStatusIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.CheckCircle;
+                OllamaStatusIcon.Foreground = FindResource("SuccessBrush") as System.Windows.Media.Brush
+                    ?? System.Windows.Media.Brushes.Green;
+                OllamaStatusText.Text = $"{LocalizationService.Instance.GetString("Settings.Ollama.Status.Connected")} ({_ollamaModels.Count} 모델)";
+                OllamaStatusText.Foreground = OllamaStatusIcon.Foreground;
+            }
+            else
+            {
+                OllamaModelComboBox.ItemsSource = null;
+                OllamaNoModelsText.Visibility = Visibility.Visible;
+                OllamaStatusIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.AlertCircle;
+                OllamaStatusIcon.Foreground = FindResource("WarningBrush") as System.Windows.Media.Brush
+                    ?? System.Windows.Media.Brushes.Orange;
+                OllamaStatusText.Text = LocalizationService.Instance.GetString("Settings.Ollama.Status.NoModels");
+                OllamaStatusText.Foreground = OllamaStatusIcon.Foreground;
+            }
+        }
+        catch
+        {
+            OllamaModelComboBox.ItemsSource = null;
+            OllamaNoModelsText.Visibility = Visibility.Visible;
+            OllamaStatusIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.CircleOutline;
+            OllamaStatusIcon.Foreground = FindResource("TextSecondaryBrush") as System.Windows.Media.Brush
+                ?? System.Windows.Media.Brushes.Gray;
+            OllamaStatusText.Text = LocalizationService.Instance.GetString("Settings.Ollama.Status.NotConnected");
+            OllamaStatusText.Foreground = OllamaStatusIcon.Foreground;
+        }
+    }
+
+    #endregion
+
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -424,8 +571,30 @@ public partial class SettingsWindow : Window
 
             // 선택된 제공자 및 모델 저장
             _config.SelectedProvider = _selectedProvider;
-            
-            if (ModelComboBox.SelectedItem is AIModelConfig selectedModel)
+
+            if (_selectedProvider == AIProviderType.Ollama)
+            {
+                // Ollama 설정 저장
+                var ollamaModel = _config.AIModels.FirstOrDefault(m => m.Provider == AIProviderType.Ollama);
+                if (ollamaModel == null)
+                {
+                    ollamaModel = new AIModelConfig
+                    {
+                        Provider = AIProviderType.Ollama,
+                        ModelDisplayName = "Ollama (Local)"
+                    };
+                    _config.AIModels.Add(ollamaModel);
+                }
+
+                ollamaModel.BaseUrl = OllamaBaseUrlBox.Text.Trim();
+                if (OllamaModelComboBox.SelectedItem is OllamaModel selectedOllamaModel)
+                {
+                    ollamaModel.ModelId = selectedOllamaModel.Name;
+                    ollamaModel.ModelDisplayName = $"Ollama - {selectedOllamaModel.Name}";
+                    _config.SelectedModelId = selectedOllamaModel.Name;
+                }
+            }
+            else if (ModelComboBox.SelectedItem is AIModelConfig selectedModel)
             {
                 _config.SelectedModelId = selectedModel.ModelId;
             }

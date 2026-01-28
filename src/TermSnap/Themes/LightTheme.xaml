@@ -49,6 +49,9 @@
     <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
     <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}"/>
     <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}"/>
+
+    <!-- Text on colored backgrounds (buttons with Primary/Success/Warning/Error background) -->
+    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#FFFFFF"/>
     
     <SolidColorBrush x:Key="TerminalBackgroundBrush" Color="{StaticResource TerminalBackgroundColor}"/>
     <SolidColorBrush x:Key="TerminalTextBrush" Color="{StaticResource TerminalTextColor}"/>

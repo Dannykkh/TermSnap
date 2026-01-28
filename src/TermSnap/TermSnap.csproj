@@ -9,9 +9,9 @@
     <AssemblyName>TermSnap</AssemblyName>
     <RootNamespace>TermSnap</RootNamespace>
     <!-- Version Information -->
-    <Version>1.5.0</Version>
-    <AssemblyVersion>1.5.0.0</AssemblyVersion>
-    <FileVersion>1.5.0.0</FileVersion>
+    <Version>1.6.0</Version>
+    <AssemblyVersion>1.6.0.0</AssemblyVersion>
+    <FileVersion>1.6.0.0</FileVersion>
     <Product>TermSnap</Product>
     <Company>Dannykkh</Company>
     <Copyright>Copyright © 2026 Dannykkh</Copyright>
@@ -25,7 +25,7 @@
     <StartupObject>TermSnap.Program</StartupObject>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
     <!-- Application Icon -->
-    <ApplicationIcon>Resources\termsnap_icon2.ico</ApplicationIcon>
+    <ApplicationIcon>Resources\termsnap_logo2.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -43,6 +43,8 @@
     <!-- MCP 서버용 패키지 -->
     <PackageReference Include="ModelContextProtocol" Version="*-*" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <!-- 서브 프로세스 추적용 WMI 패키지 -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -59,7 +61,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <!-- 아이콘 파일 포함 -->
-    <Resource Include="Resources\termsnap_icon2.ico" />
+    <Resource Include="Resources\termsnap_logo2.ico" />
+    <!-- AI 모델 로고 -->
+    <Resource Include="Resources\AILogos\claude-logo.png" />
+    <Resource Include="Resources\AILogos\openai-logo.png" />
+    <Resource Include="Resources\AILogos\gemini-logo.png" />
   </ItemGroup>
 
 </Project>

@@ -109,6 +109,20 @@
     <system:String x:Key="Settings.Embedding.Local.Size">Size:</system:String>
     <system:String x:Key="Settings.Embedding.Local.Dimension">Dimension:</system:String>
     <system:String x:Key="Settings.Embedding.Local.KoreanSupport">Korean Support</system:String>
+
+    <!-- Ollama Settings -->
+    <system:String x:Key="Settings.AIProvider.Ollama.Description">Open-source LLM running locally (requires Ollama)</system:String>
+    <system:String x:Key="Settings.Ollama.Title">Ollama Settings</system:String>
+    <system:String x:Key="Settings.Ollama.BaseUrl">Server Address</system:String>
+    <system:String x:Key="Settings.Ollama.TestConnection">Test Connection</system:String>
+    <system:String x:Key="Settings.Ollama.Model">Select Model</system:String>
+    <system:String x:Key="Settings.Ollama.RefreshModels">Refresh Model List</system:String>
+    <system:String x:Key="Settings.Ollama.NoModels">No models installed. Download a model with 'ollama pull qwen2.5' in terminal.</system:String>
+    <system:String x:Key="Settings.Ollama.Status.NotConnected">Not Connected</system:String>
+    <system:String x:Key="Settings.Ollama.Status.Connected">Connected</system:String>
+    <system:String x:Key="Settings.Ollama.Status.Failed">Connection Failed - Check if Ollama is running</system:String>
+    <system:String x:Key="Settings.Ollama.Status.NoModels">Connected - No models installed</system:String>
+
     <system:String x:Key="Settings.LanguageChanged.Title">Language Changed</system:String>
     <system:String x:Key="Settings.LanguageChanged.Message">Language has been changed. Some UI will be applied after restarting the app.</system:String>
 
@@ -836,5 +850,95 @@
     <system:String x:Key="PortForwarding.Validation.LocalPortInvalid">Local port must be between 1-65535</system:String>
     <system:String x:Key="PortForwarding.Validation.RemoteHostRequired">Please enter remote host</system:String>
     <system:String x:Key="PortForwarding.Validation.RemotePortInvalid">Remote port must be between 1-65535</system:String>
+
+    <!-- SubProcess Panel -->
+    <system:String x:Key="SubProcess.Title">Sub Processes</system:String>
+    <system:String x:Key="SubProcess.Empty">No running sub processes</system:String>
+    <system:String x:Key="SubProcess.ViewLog">View Log</system:String>
+    <system:String x:Key="SubProcess.Kill">Kill Process</system:String>
+    <system:String x:Key="SubProcess.Remove">Remove from List</system:String>
+    <system:String x:Key="SubProcess.KillConfirm">Kill process '{0}'?</system:String>
+    <system:String x:Key="SubProcess.KillTitle">Kill Process</system:String>
+    <system:String x:Key="SubProcess.LogTitle">Process Log - {0}</system:String>
+    <system:String x:Key="SubProcess.NoLog">No logs available</system:String>
+    <system:String x:Key="SubProcess.Status.Running">Running</system:String>
+    <system:String x:Key="SubProcess.Status.Stopped">Stopped</system:String>
+    <system:String x:Key="SubProcess.Status.Error">Error</system:String>
+    <system:String x:Key="SubProcess.PanelTooltip">Sub Process Management</system:String>
+
+    <!-- AutoComplete -->
+    <system:String x:Key="AutoComplete.Title">Suggestions</system:String>
+    <system:String x:Key="AutoComplete.Searching">Searching...</system:String>
+    <system:String x:Key="AutoComplete.NoResults">No matching results</system:String>
+    <system:String x:Key="AutoComplete.Hint">↑↓ Select, Tab Apply, Esc Close</system:String>
+
+    <!-- Statistics Dashboard -->
+    <system:String x:Key="Statistics.Title">Usage Statistics</system:String>
+    <system:String x:Key="Statistics.TotalApiCalls">AI API Calls</system:String>
+    <system:String x:Key="Statistics.CacheHitRate">Cache Hit Rate</system:String>
+    <system:String x:Key="Statistics.TotalCommands">Commands Executed</system:String>
+    <system:String x:Key="Statistics.SuccessRate">Success Rate</system:String>
+    <system:String x:Key="Statistics.DailyStats">Daily Statistics</system:String>
+    <system:String x:Key="Statistics.Date">Date</system:String>
+    <system:String x:Key="Statistics.ApiCalls">API</system:String>
+    <system:String x:Key="Statistics.CacheHit">Cache</system:String>
+    <system:String x:Key="Statistics.Commands">Commands</system:String>
+    <system:String x:Key="Statistics.FrequentCommands">Frequently Used Commands</system:String>
+    <system:String x:Key="Statistics.CategoryStats">Category Statistics</system:String>
+    <system:String x:Key="Statistics.SessionStart">Session Start:</system:String>
+    <system:String x:Key="Statistics.SavedApiCalls">API Calls Saved by Cache:</system:String>
+    <system:String x:Key="Menu.Statistics">Statistics Dashboard</system:String>
+
+    <!-- GSD Workflow -->
+    <system:String x:Key="Gsd.Title">GSD Workflow</system:String>
+    <system:String x:Key="Gsd.Init">Initialize Workflow</system:String>
+    <system:String x:Key="Gsd.InitTooltip">Initialize GSD Workflow (.planning/ folder)</system:String>
+    <system:String x:Key="Gsd.Progress">Progress</system:String>
+    <system:String x:Key="Gsd.Discuss">Discuss</system:String>
+    <system:String x:Key="Gsd.Plan">Plan</system:String>
+    <system:String x:Key="Gsd.Execute">Execute</system:String>
+    <system:String x:Key="Gsd.Verify">Verify</system:String>
+    <system:String x:Key="Gsd.Phase">Phase</system:String>
+    <system:String x:Key="Gsd.CurrentStep">Current Step</system:String>
+    <system:String x:Key="Gsd.NotInitialized">Workflow not initialized</system:String>
+    <system:String x:Key="Gsd.InitDialog.Title">Initialize GSD Workflow</system:String>
+    <system:String x:Key="Gsd.InitDialog.ProjectName">Project Name</system:String>
+    <system:String x:Key="Gsd.InitDialog.ProjectDescription">Project Description (optional)</system:String>
+    <system:String x:Key="Gsd.InitDialog.Success">.planning/ folder created. Start with /gsd:progress in Claude Code.</system:String>
+    <system:String x:Key="Gsd.InitDialog.AlreadyExists">.planning/ folder already exists.</system:String>
+    <system:String x:Key="Gsd.RunClaude">Run Claude</system:String>
+    <system:String x:Key="Gsd.RunClaudeWithGsd">Run Claude + GSD</system:String>
+    <system:String x:Key="Gsd.OpenPlanning">Open .planning folder</system:String>
+
+    <!-- GSD Workflow Panel -->
+    <system:String x:Key="GsdWorkflow.Title">GSD Workflow</system:String>
+    <system:String x:Key="GsdWorkflow.Phase">Phase</system:String>
+    <system:String x:Key="GsdWorkflow.DiscussDescription">Discuss requirements and document in CONTEXT.md.</system:String>
+    <system:String x:Key="GsdWorkflow.PlanDescription">Create execution plan and define tasks.</system:String>
+    <system:String x:Key="GsdWorkflow.ExecuteDescription">Convert Plan to PRD and execute automatically (Ralph Loop).</system:String>
+    <system:String x:Key="GsdWorkflow.VerifyDescription">Verify results with UAT checklist.</system:String>
+    <system:String x:Key="GsdWorkflow.ToPlan">To Plan</system:String>
+    <system:String x:Key="GsdWorkflow.StartExecute">Start Execute</system:String>
+    <system:String x:Key="GsdWorkflow.ToVerify">To Verify</system:String>
+    <system:String x:Key="GsdWorkflow.TaskChecklist">Task Checklist</system:String>
+    <system:String x:Key="GsdWorkflow.Iteration">Iteration</system:String>
+    <system:String x:Key="GsdWorkflow.Start">Start</system:String>
+    <system:String x:Key="GsdWorkflow.Stop">Stop</system:String>
+    <system:String x:Key="GsdWorkflow.ResetContext">Reset Context</system:String>
+    <system:String x:Key="GsdWorkflow.Executing">Executing</system:String>
+    <system:String x:Key="GsdWorkflow.WaitingResponse">Waiting for Response</system:String>
+    <system:String x:Key="GsdWorkflow.Completed">Completed</system:String>
+    <system:String x:Key="GsdWorkflow.Error">Error</system:String>
+    <system:String x:Key="GsdWorkflow.GapsFound">Gaps Found</system:String>
+    <system:String x:Key="GsdWorkflow.Passed">Passed</system:String>
+    <system:String x:Key="GsdWorkflow.NextPhase">Next Phase</system:String>
+    <system:String x:Key="GsdWorkflow.NoPrd">No PRD content. Please write content in the Plan step.</system:String>
+    <system:String x:Key="GsdWorkflow.ExecuteCompleted">Execute completed! Move to Verify step.</system:String>
+    <system:String x:Key="GsdWorkflow.ExecuteError">Execute failed</system:String>
+    <system:String x:Key="GsdWorkflow.ExecuteStopped">Execute stopped.</system:String>
+    <system:String x:Key="GsdWorkflow.ContextReset">Context has been reset.</system:String>
+    <system:String x:Key="GsdWorkflow.BackToExecute">Gaps found - returning to Execute.</system:String>
+    <system:String x:Key="GsdWorkflow.AllPhasesCompleted">All Phases completed!</system:String>
+    <system:String x:Key="GsdWorkflow.ConfirmClose">Execute is running. Close the panel anyway?</system:String>
 
 </ResourceDictionary>

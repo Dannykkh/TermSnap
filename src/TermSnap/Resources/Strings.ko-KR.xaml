@@ -109,6 +109,20 @@
     <system:String x:Key="Settings.Embedding.Local.Size">크기:</system:String>
     <system:String x:Key="Settings.Embedding.Local.Dimension">차원:</system:String>
     <system:String x:Key="Settings.Embedding.Local.KoreanSupport">한글 지원</system:String>
+
+    <!-- Ollama 설정 -->
+    <system:String x:Key="Settings.AIProvider.Ollama.Description">로컬에서 실행되는 오픈소스 LLM (Ollama 필요)</system:String>
+    <system:String x:Key="Settings.Ollama.Title">Ollama 설정</system:String>
+    <system:String x:Key="Settings.Ollama.BaseUrl">서버 주소</system:String>
+    <system:String x:Key="Settings.Ollama.TestConnection">연결 테스트</system:String>
+    <system:String x:Key="Settings.Ollama.Model">모델 선택</system:String>
+    <system:String x:Key="Settings.Ollama.RefreshModels">모델 목록 새로고침</system:String>
+    <system:String x:Key="Settings.Ollama.NoModels">설치된 모델이 없습니다. 터미널에서 'ollama pull qwen2.5' 등으로 모델을 다운로드하세요.</system:String>
+    <system:String x:Key="Settings.Ollama.Status.NotConnected">연결되지 않음</system:String>
+    <system:String x:Key="Settings.Ollama.Status.Connected">연결됨</system:String>
+    <system:String x:Key="Settings.Ollama.Status.Failed">연결 실패 - Ollama가 실행 중인지 확인하세요</system:String>
+    <system:String x:Key="Settings.Ollama.Status.NoModels">연결됨 - 설치된 모델 없음</system:String>
+
     <system:String x:Key="Settings.LanguageChanged.Title">언어 변경</system:String>
     <system:String x:Key="Settings.LanguageChanged.Message">언어가 변경되었습니다. 일부 UI는 앱을 재시작하면 적용됩니다.</system:String>
 
@@ -836,5 +850,95 @@
     <system:String x:Key="PortForwarding.Validation.LocalPortInvalid">로컬 포트는 1-65535 범위여야 합니다</system:String>
     <system:String x:Key="PortForwarding.Validation.RemoteHostRequired">원격 호스트를 입력하세요</system:String>
     <system:String x:Key="PortForwarding.Validation.RemotePortInvalid">원격 포트는 1-65535 범위여야 합니다</system:String>
+
+    <!-- SubProcess Panel -->
+    <system:String x:Key="SubProcess.Title">서브 프로세스</system:String>
+    <system:String x:Key="SubProcess.Empty">실행 중인 서브 프로세스가 없습니다</system:String>
+    <system:String x:Key="SubProcess.ViewLog">로그 보기</system:String>
+    <system:String x:Key="SubProcess.Kill">프로세스 종료</system:String>
+    <system:String x:Key="SubProcess.Remove">목록에서 제거</system:String>
+    <system:String x:Key="SubProcess.KillConfirm">'{0}' 프로세스를 종료하시겠습니까?</system:String>
+    <system:String x:Key="SubProcess.KillTitle">프로세스 종료</system:String>
+    <system:String x:Key="SubProcess.LogTitle">프로세스 로그 - {0}</system:String>
+    <system:String x:Key="SubProcess.NoLog">로그가 없습니다</system:String>
+    <system:String x:Key="SubProcess.Status.Running">실행 중</system:String>
+    <system:String x:Key="SubProcess.Status.Stopped">종료됨</system:String>
+    <system:String x:Key="SubProcess.Status.Error">오류</system:String>
+    <system:String x:Key="SubProcess.PanelTooltip">서브 프로세스 관리</system:String>
+
+    <!-- AutoComplete -->
+    <system:String x:Key="AutoComplete.Title">추천 명령어</system:String>
+    <system:String x:Key="AutoComplete.Searching">검색 중...</system:String>
+    <system:String x:Key="AutoComplete.NoResults">일치하는 결과가 없습니다</system:String>
+    <system:String x:Key="AutoComplete.Hint">↑↓ 선택, Tab 적용, Esc 닫기</system:String>
+
+    <!-- Statistics Dashboard -->
+    <system:String x:Key="Statistics.Title">사용량 통계</system:String>
+    <system:String x:Key="Statistics.TotalApiCalls">AI API 호출</system:String>
+    <system:String x:Key="Statistics.CacheHitRate">캐시 히트율</system:String>
+    <system:String x:Key="Statistics.TotalCommands">명령어 실행</system:String>
+    <system:String x:Key="Statistics.SuccessRate">성공률</system:String>
+    <system:String x:Key="Statistics.DailyStats">일별 통계</system:String>
+    <system:String x:Key="Statistics.Date">날짜</system:String>
+    <system:String x:Key="Statistics.ApiCalls">API</system:String>
+    <system:String x:Key="Statistics.CacheHit">캐시</system:String>
+    <system:String x:Key="Statistics.Commands">명령어</system:String>
+    <system:String x:Key="Statistics.FrequentCommands">자주 사용하는 명령어</system:String>
+    <system:String x:Key="Statistics.CategoryStats">카테고리별 통계</system:String>
+    <system:String x:Key="Statistics.SessionStart">세션 시작:</system:String>
+    <system:String x:Key="Statistics.SavedApiCalls">캐시로 절약한 API 호출:</system:String>
+    <system:String x:Key="Menu.Statistics">통계 대시보드</system:String>
+
+    <!-- GSD Workflow -->
+    <system:String x:Key="Gsd.Title">GSD 워크플로우</system:String>
+    <system:String x:Key="Gsd.Init">워크플로우 초기화</system:String>
+    <system:String x:Key="Gsd.InitTooltip">GSD 워크플로우 초기화 (.planning/ 폴더 생성)</system:String>
+    <system:String x:Key="Gsd.Progress">진행 상황</system:String>
+    <system:String x:Key="Gsd.Discuss">Discuss</system:String>
+    <system:String x:Key="Gsd.Plan">Plan</system:String>
+    <system:String x:Key="Gsd.Execute">Execute</system:String>
+    <system:String x:Key="Gsd.Verify">Verify</system:String>
+    <system:String x:Key="Gsd.Phase">Phase</system:String>
+    <system:String x:Key="Gsd.CurrentStep">현재 단계</system:String>
+    <system:String x:Key="Gsd.NotInitialized">워크플로우가 초기화되지 않았습니다</system:String>
+    <system:String x:Key="Gsd.InitDialog.Title">GSD 워크플로우 초기화</system:String>
+    <system:String x:Key="Gsd.InitDialog.ProjectName">프로젝트 이름</system:String>
+    <system:String x:Key="Gsd.InitDialog.ProjectDescription">프로젝트 설명 (선택)</system:String>
+    <system:String x:Key="Gsd.InitDialog.Success">.planning/ 폴더가 생성되었습니다. Claude Code에서 /gsd:progress로 시작하세요.</system:String>
+    <system:String x:Key="Gsd.InitDialog.AlreadyExists">.planning/ 폴더가 이미 존재합니다.</system:String>
+    <system:String x:Key="Gsd.RunClaude">Claude 실행</system:String>
+    <system:String x:Key="Gsd.RunClaudeWithGsd">Claude + GSD 실행</system:String>
+    <system:String x:Key="Gsd.OpenPlanning">.planning 폴더 열기</system:String>
+
+    <!-- GSD Workflow Panel -->
+    <system:String x:Key="GsdWorkflow.Title">GSD 워크플로우</system:String>
+    <system:String x:Key="GsdWorkflow.Phase">Phase</system:String>
+    <system:String x:Key="GsdWorkflow.DiscussDescription">요구사항을 논의하고 CONTEXT.md에 정리합니다.</system:String>
+    <system:String x:Key="GsdWorkflow.PlanDescription">실행 계획을 작성하고 태스크를 정의합니다.</system:String>
+    <system:String x:Key="GsdWorkflow.ExecuteDescription">Plan을 PRD로 변환하여 자동 실행합니다 (Ralph Loop).</system:String>
+    <system:String x:Key="GsdWorkflow.VerifyDescription">UAT 체크리스트로 결과를 검증합니다.</system:String>
+    <system:String x:Key="GsdWorkflow.ToPlan">Plan으로</system:String>
+    <system:String x:Key="GsdWorkflow.StartExecute">Execute 시작</system:String>
+    <system:String x:Key="GsdWorkflow.ToVerify">Verify로</system:String>
+    <system:String x:Key="GsdWorkflow.TaskChecklist">태스크 체크리스트</system:String>
+    <system:String x:Key="GsdWorkflow.Iteration">반복</system:String>
+    <system:String x:Key="GsdWorkflow.Start">시작</system:String>
+    <system:String x:Key="GsdWorkflow.Stop">중지</system:String>
+    <system:String x:Key="GsdWorkflow.ResetContext">컨텍스트 리셋</system:String>
+    <system:String x:Key="GsdWorkflow.Executing">실행 중</system:String>
+    <system:String x:Key="GsdWorkflow.WaitingResponse">응답 대기</system:String>
+    <system:String x:Key="GsdWorkflow.Completed">완료</system:String>
+    <system:String x:Key="GsdWorkflow.Error">오류</system:String>
+    <system:String x:Key="GsdWorkflow.GapsFound">Gaps Found</system:String>
+    <system:String x:Key="GsdWorkflow.Passed">Passed</system:String>
+    <system:String x:Key="GsdWorkflow.NextPhase">다음 Phase</system:String>
+    <system:String x:Key="GsdWorkflow.NoPrd">PRD 내용이 없습니다. Plan 단계에서 내용을 작성해주세요.</system:String>
+    <system:String x:Key="GsdWorkflow.ExecuteCompleted">Execute 완료! Verify 단계로 이동하세요.</system:String>
+    <system:String x:Key="GsdWorkflow.ExecuteError">Execute 실행 실패</system:String>
+    <system:String x:Key="GsdWorkflow.ExecuteStopped">Execute가 중지되었습니다.</system:String>
+    <system:String x:Key="GsdWorkflow.ContextReset">컨텍스트가 리셋되었습니다.</system:String>
+    <system:String x:Key="GsdWorkflow.BackToExecute">Gaps 발견 - Execute로 돌아갑니다.</system:String>
+    <system:String x:Key="GsdWorkflow.AllPhasesCompleted">모든 Phase가 완료되었습니다!</system:String>
+    <system:String x:Key="GsdWorkflow.ConfirmClose">Execute가 실행 중입니다. 패널을 닫으시겠습니까?</system:String>
 
 </ResourceDictionary>

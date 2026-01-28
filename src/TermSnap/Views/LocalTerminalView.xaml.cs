@@ -14,6 +14,7 @@ using TermSnap.Controls.Terminal;
 using TermSnap.Models;
 using TermSnap.Services;
 using TermSnap.ViewModels;
+using MaterialDesignThemes.Wpf;
 
 namespace TermSnap.Views;
 
@@ -26,6 +27,15 @@ public partial class LocalTerminalView : UserControl
     private bool _isFileTreeInitialized = false;
     private bool _isWelcomePanelInitialized = false;
     private bool _isTerminalInitialized = false;
+    private bool _isSubProcessPanelInitialized = false;
+    private SubProcessManager? _subProcessManager;
+    private bool _isSubProcessPanelVisible = false;
+    private bool _isRalphLoopPanelInitialized = false;
+    private bool _isRalphLoopPanelVisible = false;
+    private bool _isMemoryPanelInitialized = false;
+    private bool _isMemoryPanelVisible = false;
+    private bool _isGsdWorkflowPanelInitialized = false;
+    private bool _isGsdWorkflowPanelVisible = false;
 
     public LocalTerminalView()
     {
@@ -82,6 +92,9 @@ public partial class LocalTerminalView : UserControl
         // 한영 버튼 초기 상태 설정 및 모니터링 시작
         UpdateImeButtonText();
         StartImeMonitoring();
+
+        // GSD 상태 체크
+        CheckGsdStatusOnDirectoryChange();
     }
 
     /// <summary>
@@ -107,6 +120,11 @@ public partial class LocalTerminalView : UserControl
 
         // 터미널 컨트롤 정리
         TerminalCtrl?.Dispose();
+
+        // 서브 프로세스 관리자 정리
+        _subProcessManager?.Stop();
+        _subProcessManager?.Dispose();
+        _subProcessManager = null;
     }
 
     /// <summary>
@@ -125,6 +143,9 @@ public partial class LocalTerminalView : UserControl
         // Ctrl+Click 링크 클릭 이벤트 연결
         TerminalCtrl.LinkClicked += OnTerminalLinkClicked;
 
+        // 터미널 버퍼 변경 시 스크롤바 업데이트
+        TerminalCtrl.Buffer.BufferChanged += OnTerminalBufferChanged;
+
         // 터미널이 실제로 렌더링된 후 크기 동기화
         TerminalCtrl.SizeChanged += (s, e) =>
         {
@@ -138,6 +159,68 @@ public partial class LocalTerminalView : UserControl
         };
 
         _isTerminalInitialized = true;
+    }
+
+    /// <summary>
+    /// 터미널 버퍼 변경 시 스크롤바 업데이트
+    /// </summary>
+    private void OnTerminalBufferChanged()
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            UpdateTerminalScrollBar();
+        }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// 스크롤바 상태 업데이트
+    /// </summary>
+    private void UpdateTerminalScrollBar()
+    {
+        if (TerminalCtrl?.Buffer == null) return;
+
+        var buffer = TerminalCtrl.Buffer;
+        int scrollbackCount = buffer.ScrollbackCount;
+        int scrollOffset = buffer.ScrollOffset;
+
+        // 스크롤백이 없으면 스크롤바 숨김
+        if (scrollbackCount <= 0)
+        {
+            TerminalScrollBar.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        TerminalScrollBar.Visibility = Visibility.Visible;
+        TerminalScrollBar.Maximum = scrollbackCount;
+        TerminalScrollBar.ViewportSize = buffer.Rows;
+
+        // 스크롤바 값은 반전 (위로 스크롤 = 큰 값)
+        _isUpdatingScrollBar = true;
+        TerminalScrollBar.Value = scrollbackCount - scrollOffset;
+        _isUpdatingScrollBar = false;
+    }
+
+    private bool _isUpdatingScrollBar = false;
+
+    /// <summary>
+    /// 스크롤바 값 변경 시 터미널 스크롤
+    /// </summary>
+    private void TerminalScrollBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isUpdatingScrollBar || TerminalCtrl?.Buffer == null) return;
+
+        var buffer = TerminalCtrl.Buffer;
+        int scrollbackCount = buffer.ScrollbackCount;
+
+        // 스크롤바 값을 스크롤 오프셋으로 변환 (반전)
+        int newOffset = scrollbackCount - (int)e.NewValue;
+        newOffset = Math.Max(0, Math.Min(newOffset, scrollbackCount));
+
+        if (buffer.ScrollOffset != newOffset)
+        {
+            buffer.ScrollOffset = newOffset;
+            buffer.MarkAllLinesDirty();
+        }
     }
 
     /// <summary>
@@ -156,9 +239,30 @@ public partial class LocalTerminalView : UserControl
     /// </summary>
     private async void OnTerminalInputReceived(string input)
     {
-        if (DataContext is LocalTerminalViewModel vm && vm.IsInteractiveMode)
+        if (DataContext is not LocalTerminalViewModel vm) return;
+
+        if (vm.IsInteractiveMode)
         {
+            // 입력 전에 터미널 스타일 리셋 (배경색 아티팩트 방지)
+            TerminalCtrl.ResetStyleBeforeInput();
+
+            // 인터랙티브 모드: 직접 프로세스에 전달
             await vm.SendSpecialKeyAsync(input);
+        }
+        else
+        {
+            // 일반 모드: InputTextBox에 텍스트 추가 (Ctrl+V 등)
+            Dispatcher.Invoke(() =>
+            {
+                if (InputTextBox != null && InputTextBox.IsVisible)
+                {
+                    var caretIndex = InputTextBox.CaretIndex;
+                    var currentText = InputTextBox.Text ?? "";
+                    InputTextBox.Text = currentText.Insert(caretIndex, input);
+                    InputTextBox.CaretIndex = caretIndex + input.Length;
+                    InputTextBox.Focus();
+                }
+            });
         }
     }
 
@@ -310,6 +414,9 @@ public partial class LocalTerminalView : UserControl
                 // 파일 트리 자동 표시 (ViewModel만 업데이트하면 토글 버튼도 자동 업데이트됨)
                 vm.IsFileTreeVisible = true;
                 await ShowFileTreeAsync(path);
+
+                // GSD 상태 체크
+                UpdateGsdStatus(path);
 
                 // AI CLI 옵션이 있으면 실행
                 var aiOptions = WelcomePanelControl.GetAICLIOptions();
@@ -538,6 +645,9 @@ public partial class LocalTerminalView : UserControl
             {
                 RestoreInteractiveBuffer(newVm);
             }
+
+            // GSD 상태 체크
+            CheckGsdStatusOnDirectoryChange();
         }
 
         SetupAutoScroll();
@@ -687,6 +797,24 @@ public partial class LocalTerminalView : UserControl
                 _outputBatchTimer.Start();
             }
         }
+
+        // Ralph Loop 패널로 출력 전달
+        if (_isRalphLoopPanelVisible)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                RalphLoopPanelControl?.OnOutputReceived(rawData);
+            });
+        }
+
+        // GSD Workflow 패널로 출력 전달
+        if (_isGsdWorkflowPanelVisible)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                GsdWorkflowPanelControl?.OnOutputReceived(rawData);
+            });
+        }
     }
 
     /// <summary>
@@ -728,6 +856,15 @@ public partial class LocalTerminalView : UserControl
                 {
                     TerminalCtrl?.Focus();
                 }, System.Windows.Threading.DispatcherPriority.Input);
+
+                // 서브 프로세스 관리자 시작
+                StartSubProcessManager(vm.ProcessId);
+            }
+            else
+            {
+                // 인터랙티브 모드 종료 시 서브 프로세스 패널 숨김
+                HideSubProcessPanel();
+                StopSubProcessManager();
             }
         }
         else if (e.PropertyName == nameof(LocalTerminalViewModel.IsConnected))
@@ -740,6 +877,60 @@ public partial class LocalTerminalView : UserControl
                     TerminalCtrl?.ResizeToFitImmediate();
                 }, System.Windows.Threading.DispatcherPriority.Loaded);
             }
+        }
+        else if (e.PropertyName == nameof(LocalTerminalViewModel.CurrentDirectory) ||
+                 e.PropertyName == nameof(LocalTerminalViewModel.WorkingFolder))
+        {
+            // 작업 디렉토리 변경 시 GSD 상태 체크
+            CheckGsdStatusOnDirectoryChange();
+        }
+        else if (e.PropertyName == nameof(LocalTerminalViewModel.AICLIProgramName))
+        {
+            // AI CLI 프로그램 변경 시 아이콘 업데이트
+            UpdateAIModelIcon(vm.AICLIProgramName);
+        }
+    }
+
+    /// <summary>
+    /// AI 모델 아이콘 업데이트 (프로그램 이름에 따라)
+    /// </summary>
+    private void UpdateAIModelIcon(string? programName)
+    {
+        // 모든 아이콘 숨기기
+        ClaudeIcon.Visibility = Visibility.Collapsed;
+        GeminiIcon.Visibility = Visibility.Collapsed;
+        OpenAIIcon.Visibility = Visibility.Collapsed;
+        AiderIcon.Visibility = Visibility.Collapsed;
+        DefaultTerminalIcon.Visibility = Visibility.Collapsed;
+
+        if (string.IsNullOrEmpty(programName))
+        {
+            DefaultTerminalIcon.Visibility = Visibility.Visible;
+            return;
+        }
+
+        var lowerName = programName.ToLowerInvariant();
+
+        // 프로그램 이름에 따라 아이콘 표시
+        if (lowerName.Contains("claude"))
+        {
+            ClaudeIcon.Visibility = Visibility.Visible;
+        }
+        else if (lowerName.Contains("gemini"))
+        {
+            GeminiIcon.Visibility = Visibility.Visible;
+        }
+        else if (lowerName.Contains("codex") || lowerName.Contains("openai") || lowerName.Contains("gpt"))
+        {
+            OpenAIIcon.Visibility = Visibility.Visible;
+        }
+        else if (lowerName.Contains("aider"))
+        {
+            AiderIcon.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            DefaultTerminalIcon.Visibility = Visibility.Visible;
         }
     }
 
@@ -868,13 +1059,14 @@ public partial class LocalTerminalView : UserControl
         // Ctrl+V 감지
         if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            // 클립보드에 이미지가 있는 경우 처리
-            if (ClipboardService.HasImage())
+            // 텍스트가 있으면 텍스트 우선 (기본 동작)
+            // 이미지만 있을 때만 이미지 처리
+            if (!Clipboard.ContainsText() && ClipboardService.HasImage())
             {
                 e.Handled = true;
                 HandleClipboardImage();
             }
-            // 텍스트만 있는 경우는 기본 동작 (e.Handled = false)
+            // 텍스트가 있는 경우는 기본 동작 (e.Handled = false)
         }
     }
 
@@ -1196,16 +1388,16 @@ public partial class LocalTerminalView : UserControl
             return;
         }
 
-        // Ctrl+V: 이미지가 있으면 이미지 처리
+        // Ctrl+V: 텍스트 우선, 이미지만 있으면 이미지 처리
         if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            if (ClipboardService.HasImage())
+            if (!Clipboard.ContainsText() && ClipboardService.HasImage())
             {
                 e.Handled = true;
                 HandleClipboardImage();
                 return;
             }
-            // 텍스트만 있으면 CommandBinding에서 처리됨
+            // 텍스트가 있으면 CommandBinding에서 처리됨
             return;
         }
 
@@ -1294,6 +1486,10 @@ public partial class LocalTerminalView : UserControl
         // 입력창 먼저 비우기 (UX 개선)
         InteractiveInputTextBox.Text = "";
 
+        // 입력 전에 터미널 스타일 리셋 (배경색 아티팩트 방지)
+        // 프로그램이 종료될 때 스타일 리셋을 안 보내는 경우 대비
+        TerminalCtrl.ResetStyleBeforeInput();
+
         // 빈 입력이면 엔터만 전송
         if (string.IsNullOrEmpty(text))
         {
@@ -1307,9 +1503,44 @@ public partial class LocalTerminalView : UserControl
 
             // 텍스트와 CR(\r)를 합쳐서 한 번에 전송
             await vm.SendSpecialKeyAsync(text + "\r");
+
+            // 백그라운드에서 메모리 자동 추출 (UI 블로킹 없이)
+            _ = ExtractMemoryFromUserInputAsync(text);
         }
 
         InteractiveInputTextBox.Focus();
+    }
+
+    /// <summary>
+    /// 사용자 입력에서 메모리 자동 추출 (백그라운드)
+    /// </summary>
+    private async Task ExtractMemoryFromUserInputAsync(string userInput)
+    {
+        try
+        {
+            // 너무 짧은 입력은 무시
+            if (string.IsNullOrWhiteSpace(userInput) || userInput.Length < 5)
+                return;
+
+            // 명령어 같은 입력은 무시 (한 단어, 특수문자로 시작)
+            if (!userInput.Contains(' ') || userInput.StartsWith("/") || userInput.StartsWith("!"))
+                return;
+
+            var memories = await MemoryService.Instance.ExtractMemoriesFromConversation(userInput);
+
+            if (memories.Count > 0)
+            {
+                Debug.WriteLine($"[Memory] 자동 추출됨: {memories.Count}개");
+                foreach (var m in memories)
+                {
+                    Debug.WriteLine($"  - [{m.Type}] {m.Content}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Memory] 자동 추출 실패: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -1630,6 +1861,51 @@ public partial class LocalTerminalView : UserControl
     private const uint KEYEVENTF_KEYUP = 0x0002;
 
     /// <summary>
+    /// 클립보드에 텍스트 설정 (재시도 로직 포함)
+    /// </summary>
+    private static bool TrySetClipboardText(string text, int maxRetries = 3)
+    {
+        for (int i = 0; i < maxRetries; i++)
+        {
+            try
+            {
+                Clipboard.SetText(text);
+                return true;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // 클립보드가 다른 프로세스에 의해 잠겨있음, 잠시 대기 후 재시도
+                System.Threading.Thread.Sleep(50);
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 클립보드에서 텍스트 가져오기 (재시도 로직 포함)
+    /// </summary>
+    private static string? TryGetClipboardText(int maxRetries = 3)
+    {
+        for (int i = 0; i < maxRetries; i++)
+        {
+            try
+            {
+                if (Clipboard.ContainsText())
+                {
+                    return Clipboard.GetText();
+                }
+                return null;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // 클립보드가 다른 프로세스에 의해 잠겨있음, 잠시 대기 후 재시도
+                System.Threading.Thread.Sleep(50);
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// 인터랙티브 입력창 Loaded 시 CommandBindings 설정
     /// </summary>
     private void InteractiveInputTextBox_Loaded(object sender, RoutedEventArgs e)
@@ -1645,7 +1921,7 @@ public partial class LocalTerminalView : UserControl
             {
                 if (textBox.SelectedText.Length > 0)
                 {
-                    Clipboard.SetText(textBox.SelectedText);
+                    TrySetClipboardText(textBox.SelectedText);
                     args.Handled = true;
                 }
             }));
@@ -1654,19 +1930,16 @@ public partial class LocalTerminalView : UserControl
         textBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Paste,
             (s, args) =>
             {
-                if (Clipboard.ContainsText())
+                var clipboardText = TryGetClipboardText();
+                if (!string.IsNullOrEmpty(clipboardText))
                 {
-                    var clipboardText = Clipboard.GetText();
-                    if (!string.IsNullOrEmpty(clipboardText))
-                    {
-                        var caretIndex = textBox.CaretIndex;
-                        var currentText = textBox.Text ?? "";
-                        var newText = currentText.Insert(caretIndex, clipboardText);
-                        textBox.Text = newText;
-                        textBox.CaretIndex = caretIndex + clipboardText.Length;
-                    }
-                    args.Handled = true;
+                    var caretIndex = textBox.CaretIndex;
+                    var currentText = textBox.Text ?? "";
+                    var newText = currentText.Insert(caretIndex, clipboardText);
+                    textBox.Text = newText;
+                    textBox.CaretIndex = caretIndex + clipboardText.Length;
                 }
+                args.Handled = true;
             }));
 
         // Cut 커맨드: 선택된 텍스트 잘라내기
@@ -1675,13 +1948,15 @@ public partial class LocalTerminalView : UserControl
             {
                 if (textBox.SelectedText.Length > 0)
                 {
-                    Clipboard.SetText(textBox.SelectedText);
-                    var selectionStart = textBox.SelectionStart;
-                    var selectionLength = textBox.SelectionLength;
-                    var currentText = textBox.Text ?? "";
-                    var newText = currentText.Remove(selectionStart, selectionLength);
-                    textBox.Text = newText;
-                    textBox.CaretIndex = selectionStart;
+                    if (TrySetClipboardText(textBox.SelectedText))
+                    {
+                        var selectionStart = textBox.SelectionStart;
+                        var selectionLength = textBox.SelectionLength;
+                        var currentText = textBox.Text ?? "";
+                        var newText = currentText.Remove(selectionStart, selectionLength);
+                        textBox.Text = newText;
+                        textBox.CaretIndex = selectionStart;
+                    }
                     args.Handled = true;
                 }
             }));
@@ -2083,6 +2358,687 @@ public partial class LocalTerminalView : UserControl
         {
             Debug.WriteLine($"[TerminalCtrl_Drop] 오류: {ex.Message}");
         }
+    }
+
+    #endregion
+
+    #region AI 장기기억 관리
+
+    /// <summary>
+    /// 메모리 패널 토글 버튼 클릭
+    /// </summary>
+    private void MemoryToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isMemoryPanelVisible)
+        {
+            HideMemoryPanel();
+        }
+        else
+        {
+            ShowMemoryPanel();
+        }
+    }
+
+    /// <summary>
+    /// 메모리 패널 초기화
+    /// </summary>
+    private void InitializeMemoryPanel()
+    {
+        if (_isMemoryPanelInitialized) return;
+
+        // 작업 디렉토리 설정
+        if (DataContext is LocalTerminalViewModel vm && !string.IsNullOrEmpty(vm.CurrentDirectory))
+        {
+            MemoryPanelControl.SetWorkingDirectory(vm.CurrentDirectory);
+        }
+
+        // 패널 닫기 요청
+        MemoryPanelControl.CloseRequested += (s, e) =>
+        {
+            HideMemoryPanel();
+        };
+
+        _isMemoryPanelInitialized = true;
+    }
+
+    /// <summary>
+    /// 메모리 패널 표시
+    /// </summary>
+    private void ShowMemoryPanel()
+    {
+        InitializeMemoryPanel();
+        MemoryBorder.Visibility = Visibility.Visible;
+        _isMemoryPanelVisible = true;
+
+        // 다른 패널 숨김 (Ralph Loop)
+        if (_isRalphLoopPanelVisible)
+        {
+            RalphLoopBorder.Visibility = Visibility.Collapsed;
+            _isRalphLoopPanelVisible = false;
+        }
+    }
+
+    /// <summary>
+    /// 메모리 패널 숨김
+    /// </summary>
+    private void HideMemoryPanel()
+    {
+        MemoryBorder.Visibility = Visibility.Collapsed;
+        _isMemoryPanelVisible = false;
+    }
+
+    #endregion
+
+    #region Ralph Loop 관리
+
+    /// <summary>
+    /// Ralph Loop 토글 버튼 클릭
+    /// </summary>
+    private void RalphLoopToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isRalphLoopPanelVisible)
+        {
+            HideRalphLoopPanel();
+        }
+        else
+        {
+            ShowRalphLoopPanel();
+        }
+    }
+
+    /// <summary>
+    /// Ralph Loop 패널 초기화
+    /// </summary>
+    private void InitializeRalphLoopPanel()
+    {
+        if (_isRalphLoopPanelInitialized) return;
+
+        // 작업 디렉토리 설정
+        if (DataContext is LocalTerminalViewModel vm && !string.IsNullOrEmpty(vm.CurrentDirectory))
+        {
+            RalphLoopPanelControl.SetWorkingDirectory(vm.CurrentDirectory);
+        }
+
+        // 패널 닫기 요청
+        RalphLoopPanelControl.CloseRequested += (s, e) =>
+        {
+            HideRalphLoopPanel();
+        };
+
+        // 프롬프트 전송 요청 - 터미널에 입력
+        RalphLoopPanelControl.SendPromptRequested += async (prompt) =>
+        {
+            await SendPromptToTerminal(prompt);
+        };
+
+        // 컨텍스트 리셋 요청 - AI CLI 재시작
+        RalphLoopPanelControl.ResetContextRequested += async () =>
+        {
+            await ResetAIContext();
+        };
+
+        // 상태 변경 이벤트
+        RalphLoopPanelControl.StateChanged += (state) =>
+        {
+            Debug.WriteLine($"[RalphLoop] 상태 변경: {state}");
+        };
+
+        _isRalphLoopPanelInitialized = true;
+    }
+
+    /// <summary>
+    /// Ralph Loop 패널 표시
+    /// </summary>
+    private void ShowRalphLoopPanel()
+    {
+        InitializeRalphLoopPanel();
+        RalphLoopBorder.Visibility = Visibility.Visible;
+        _isRalphLoopPanelVisible = true;
+
+        // 다른 패널 숨김 (메모리)
+        if (_isMemoryPanelVisible)
+        {
+            MemoryBorder.Visibility = Visibility.Collapsed;
+            _isMemoryPanelVisible = false;
+        }
+    }
+
+    /// <summary>
+    /// Ralph Loop 패널 숨김
+    /// </summary>
+    private void HideRalphLoopPanel()
+    {
+        // 실행 중이면 확인
+        if (RalphLoopPanelControl.IsRunning)
+        {
+            var result = MessageBox.Show(
+                "Ralph Loop가 실행 중입니다. 중지하고 닫으시겠습니까?",
+                "Ralph Loop",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            RalphLoopPanelControl.Stop();
+        }
+
+        RalphLoopBorder.Visibility = Visibility.Collapsed;
+        _isRalphLoopPanelVisible = false;
+    }
+
+    /// <summary>
+    /// 터미널에 프롬프트 전송
+    /// </summary>
+    private async Task SendPromptToTerminal(string prompt)
+    {
+        if (DataContext is not LocalTerminalViewModel vm) return;
+
+        try
+        {
+            // 터미널에 텍스트 입력 후 Enter
+            await vm.SendRawInputAsync(prompt + "\n");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[RalphLoop] 프롬프트 전송 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// AI 컨텍스트 리셋 (AI CLI 재시작)
+    /// </summary>
+    private async Task ResetAIContext()
+    {
+        if (DataContext is not LocalTerminalViewModel vm) return;
+
+        try
+        {
+            // Ctrl+C로 현재 프로세스 종료
+            await vm.SendCtrlCAsync();
+            await Task.Delay(500);
+
+            // AI CLI 다시 시작
+            var config = RalphLoopPanelControl.GetConfig();
+            await vm.SendRawInputAsync(config.AICommand + "\n");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[RalphLoop] 컨텍스트 리셋 실패: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region 서브 프로세스 관리
+
+    /// <summary>
+    /// 서브 프로세스 관리자 시작 (P/Invoke 사용, 백그라운드 실행)
+    /// </summary>
+    private void StartSubProcessManager(int parentProcessId)
+    {
+        if (parentProcessId <= 0) return;
+
+        try
+        {
+            // 기존 관리자 정리
+            StopSubProcessManager();
+
+            _subProcessManager = new SubProcessManager(parentProcessId);
+
+            // 패널 초기화
+            InitializeSubProcessPanel();
+
+            // 관리자 시작 (백그라운드 스레드에서 실행됨)
+            _subProcessManager.Start();
+
+            Debug.WriteLine($"[SubProcessManager] 시작됨, 부모 PID: {parentProcessId}");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[SubProcessManager] 시작 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 서브 프로세스 관리자 중지
+    /// </summary>
+    private void StopSubProcessManager()
+    {
+        if (_subProcessManager != null)
+        {
+            _subProcessManager.Stop();
+            _subProcessManager.Dispose();
+            _subProcessManager = null;
+
+            Debug.WriteLine("[SubProcessManager] 중지됨");
+        }
+    }
+
+    /// <summary>
+    /// 서브 프로세스 패널 초기화
+    /// </summary>
+    private void InitializeSubProcessPanel()
+    {
+        if (_isSubProcessPanelInitialized || _subProcessManager == null) return;
+
+        SubProcessPanelControl.SetManager(_subProcessManager);
+
+        // 패널 닫기 요청
+        SubProcessPanelControl.CloseRequested += (s, e) =>
+        {
+            HideSubProcessPanel();
+        };
+
+        // 로그 보기 요청
+        SubProcessPanelControl.ViewLogRequested += (s, info) =>
+        {
+            ShowSubProcessLog(info);
+        };
+
+        _isSubProcessPanelInitialized = true;
+    }
+
+    /// <summary>
+    /// 서브 프로세스 토글 버튼 클릭
+    /// </summary>
+    private void SubProcessToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isSubProcessPanelVisible)
+        {
+            HideSubProcessPanel();
+        }
+        else
+        {
+            ShowSubProcessPanel();
+        }
+    }
+
+    /// <summary>
+    /// 서브 프로세스 패널 표시
+    /// </summary>
+    private void ShowSubProcessPanel()
+    {
+        if (_subProcessManager == null) return;
+
+        InitializeSubProcessPanel();
+        SubProcessBorder.Visibility = Visibility.Visible;
+        _isSubProcessPanelVisible = true;
+    }
+
+    /// <summary>
+    /// 서브 프로세스 패널 숨김
+    /// </summary>
+    private void HideSubProcessPanel()
+    {
+        SubProcessBorder.Visibility = Visibility.Collapsed;
+        _isSubProcessPanelVisible = false;
+    }
+
+    /// <summary>
+    /// 서브 프로세스 로그 보기
+    /// </summary>
+    private void ShowSubProcessLog(SubProcessInfo info)
+    {
+        try
+        {
+            var log = info.OutputBuffer.ToString();
+
+            if (string.IsNullOrWhiteSpace(log))
+            {
+                log = LocalizationService.Instance.GetString("SubProcess.NoLog");
+            }
+
+            // 간단한 로그 다이얼로그 표시
+            var dialog = new Window
+            {
+                Title = string.Format(LocalizationService.Instance.GetString("SubProcess.LogTitle"), info.ProcessName),
+                Width = 700,
+                Height = 500,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = Window.GetWindow(this),
+                Background = System.Windows.Media.Brushes.Black
+            };
+
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // 로그 텍스트
+            var textBox = new TextBox
+            {
+                Text = log,
+                IsReadOnly = true,
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                FontSize = 12,
+                Background = System.Windows.Media.Brushes.Black,
+                Foreground = System.Windows.Media.Brushes.LightGray,
+                BorderThickness = new Thickness(0),
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Padding = new Thickness(10)
+            };
+            Grid.SetRow(textBox, 0);
+            grid.Children.Add(textBox);
+
+            // 닫기 버튼
+            var closeButton = new Button
+            {
+                Content = LocalizationService.Instance.GetString("Common.Close"),
+                Width = 100,
+                Height = 30,
+                Margin = new Thickness(0, 10, 0, 10),
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            closeButton.Click += (s, e) => dialog.Close();
+            Grid.SetRow(closeButton, 1);
+            grid.Children.Add(closeButton);
+
+            dialog.Content = grid;
+            dialog.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ShowSubProcessLog] 오류: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region GSD 워크플로우
+
+    /// <summary>
+    /// GSD 초기화 버튼 클릭
+    /// </summary>
+    private async void GsdInit_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not LocalTerminalViewModel vm)
+            return;
+
+        var workingDir = vm.WorkingFolder ?? vm.CurrentDirectory;
+        if (string.IsNullOrEmpty(workingDir))
+        {
+            MessageBox.Show(
+                "먼저 작업 폴더를 선택해주세요.",
+                "GSD 초기화",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        // 이미 .planning 폴더가 있는지 확인
+        if (GsdWorkflowService.HasPlanningFolder(workingDir))
+        {
+            MessageBox.Show(
+                LocalizationService.Instance.GetString("Gsd.InitDialog.AlreadyExists"),
+                LocalizationService.Instance.GetString("Gsd.InitDialog.Title"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
+            UpdateGsdStatus(workingDir);
+            return;
+        }
+
+        // 프로젝트 이름 입력 받기
+        var projectName = Path.GetFileName(workingDir);
+        var dialog = new TextInputDialog(
+            LocalizationService.Instance.GetString("Gsd.InitDialog.Title"),
+            LocalizationService.Instance.GetString("Gsd.InitDialog.ProjectName"),
+            projectName);
+
+        if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.InputText))
+        {
+            var success = await GsdWorkflowService.InitializeAsync(workingDir, dialog.InputText);
+
+            if (success)
+            {
+                vm.AddMessage(LocalizationService.Instance.GetString("Gsd.InitDialog.Success"), MessageType.Success);
+                UpdateGsdStatus(workingDir);
+            }
+            else
+            {
+                vm.AddMessage("GSD 초기화 실패", MessageType.Error);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Claude + GSD 실행 버튼 클릭
+    /// </summary>
+    private async void RunClaudeGsd_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not LocalTerminalViewModel vm)
+            return;
+
+        var workingDir = vm.WorkingFolder ?? vm.CurrentDirectory;
+        if (string.IsNullOrEmpty(workingDir))
+        {
+            MessageBox.Show(
+                "먼저 작업 폴더를 선택해주세요.",
+                "Claude 실행",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        // 세션이 연결되어 있는지 확인
+        if (!vm.IsConnected)
+        {
+            MessageBox.Show(
+                "터미널 세션이 연결되어 있지 않습니다.\n먼저 폴더를 선택하여 세션을 시작해주세요.",
+                "Claude 실행",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        // .planning 폴더가 없으면 자동 생성
+        if (!GsdWorkflowService.HasPlanningFolder(workingDir))
+        {
+            var projectName = Path.GetFileName(workingDir);
+            var result = MessageBox.Show(
+                $".planning/ 폴더가 없습니다.\n'{projectName}' 프로젝트로 GSD를 초기화할까요?",
+                "GSD 초기화",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                await GsdWorkflowService.InitializeAsync(workingDir, projectName ?? "project");
+                vm.AddMessage(".planning/ 폴더가 생성되었습니다.", MessageType.Success);
+                UpdateGsdStatus(workingDir);
+            }
+        }
+
+        // Claude 실행
+        vm.UserInput = "claude";
+        await vm.ExecuteCurrentInputAsync();
+    }
+
+    /// <summary>
+    /// .planning 폴더 열기 버튼 클릭
+    /// </summary>
+    private void OpenPlanning_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not LocalTerminalViewModel vm)
+            return;
+
+        var workingDir = vm.WorkingFolder ?? vm.CurrentDirectory;
+        if (string.IsNullOrEmpty(workingDir))
+            return;
+
+        var planningPath = Path.Combine(workingDir, ".planning");
+        if (Directory.Exists(planningPath))
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = planningPath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[OpenPlanning] 오류: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// GSD 상태 업데이트
+    /// </summary>
+    private void UpdateGsdStatus(string workingDir)
+    {
+        if (string.IsNullOrEmpty(workingDir))
+        {
+            GsdStatusBorder.Visibility = Visibility.Collapsed;
+            OpenPlanningButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var hasPlanning = GsdWorkflowService.HasPlanningFolder(workingDir);
+        GsdStatusBorder.Visibility = hasPlanning ? Visibility.Visible : Visibility.Collapsed;
+        OpenPlanningButton.Visibility = hasPlanning ? Visibility.Visible : Visibility.Collapsed;
+
+        if (hasPlanning)
+        {
+            var config = GsdWorkflowService.LoadConfig(workingDir);
+            if (config != null)
+            {
+                GsdStatusText.Text = $"GSD: Phase {config.CurrentPhase}";
+            }
+            else
+            {
+                GsdStatusText.Text = "GSD";
+            }
+        }
+    }
+
+    /// <summary>
+    /// 작업 폴더 변경 시 GSD 상태 체크
+    /// </summary>
+    private void CheckGsdStatusOnDirectoryChange()
+    {
+        if (DataContext is LocalTerminalViewModel vm)
+        {
+            var workingDir = vm.WorkingFolder ?? vm.CurrentDirectory;
+            UpdateGsdStatus(workingDir);
+        }
+    }
+
+    #endregion
+
+    #region GSD Workflow Panel 관리
+
+    /// <summary>
+    /// GSD Workflow 토글 버튼 클릭
+    /// </summary>
+    private void GsdWorkflowToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isGsdWorkflowPanelVisible)
+        {
+            HideGsdWorkflowPanel();
+        }
+        else
+        {
+            ShowGsdWorkflowPanel();
+        }
+    }
+
+    /// <summary>
+    /// GSD Workflow 패널 초기화
+    /// </summary>
+    private void InitializeGsdWorkflowPanel()
+    {
+        if (_isGsdWorkflowPanelInitialized) return;
+
+        // 작업 디렉토리 설정
+        if (DataContext is LocalTerminalViewModel vm && !string.IsNullOrEmpty(vm.CurrentDirectory))
+        {
+            GsdWorkflowPanelControl.SetWorkingDirectory(vm.CurrentDirectory);
+        }
+
+        // 패널 닫기 요청
+        GsdWorkflowPanelControl.CloseRequested += (s, e) =>
+        {
+            HideGsdWorkflowPanel();
+        };
+
+        // 프롬프트 전송 요청
+        GsdWorkflowPanelControl.SendPromptRequested += async (prompt) =>
+        {
+            await SendPromptToTerminal(prompt);
+        };
+
+        // 컨텍스트 리셋 요청
+        GsdWorkflowPanelControl.ResetContextRequested += async () =>
+        {
+            await ResetAIContext();
+        };
+
+        // 단계 변경 이벤트
+        GsdWorkflowPanelControl.StepChanged += (step) =>
+        {
+            Debug.WriteLine($"[GsdWorkflow] 단계 변경: {step}");
+        };
+
+        _isGsdWorkflowPanelInitialized = true;
+    }
+
+    /// <summary>
+    /// GSD Workflow 패널 표시
+    /// </summary>
+    private void ShowGsdWorkflowPanel()
+    {
+        InitializeGsdWorkflowPanel();
+
+        // 작업 디렉토리 동기화
+        if (DataContext is LocalTerminalViewModel vm)
+        {
+            var workingDir = vm.WorkingFolder ?? vm.CurrentDirectory;
+            if (!string.IsNullOrEmpty(workingDir))
+            {
+                GsdWorkflowPanelControl.SetWorkingDirectory(workingDir);
+            }
+        }
+
+        GsdWorkflowBorder.Visibility = Visibility.Visible;
+        _isGsdWorkflowPanelVisible = true;
+
+        // 다른 패널 숨김 (Ralph Loop, 메모리)
+        if (_isRalphLoopPanelVisible)
+        {
+            RalphLoopBorder.Visibility = Visibility.Collapsed;
+            _isRalphLoopPanelVisible = false;
+        }
+        if (_isMemoryPanelVisible)
+        {
+            MemoryBorder.Visibility = Visibility.Collapsed;
+            _isMemoryPanelVisible = false;
+        }
+    }
+
+    /// <summary>
+    /// GSD Workflow 패널 숨김
+    /// </summary>
+    private void HideGsdWorkflowPanel()
+    {
+        // Execute 중이면 확인
+        if (GsdWorkflowPanelControl.IsExecuting)
+        {
+            var result = MessageBox.Show(
+                LocalizationService.Instance.GetString("GsdWorkflow.ConfirmClose"),
+                LocalizationService.Instance.GetString("GsdWorkflow.Title"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+        }
+
+        GsdWorkflowBorder.Visibility = Visibility.Collapsed;
+        _isGsdWorkflowPanelVisible = false;
     }
 
     #endregion

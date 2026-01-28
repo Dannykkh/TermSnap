@@ -1,0 +1,82 @@
+<Window x:Class="TermSnap.Views.AddMemoryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="새 기억 추가"
+        Width="450" Height="380"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.FontFamily="{DynamicResource MaterialDesignFont}">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 제목 -->
+        <TextBlock Grid.Row="0" Text="새 기억 추가"
+                   FontSize="20" FontWeight="Bold"
+                   Margin="0,0,0,20"/>
+
+        <!-- 타입 선택 -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,16">
+            <TextBlock Text="타입" FontWeight="Medium" Margin="0,0,0,8"/>
+            <ComboBox x:Name="TypeCombo" Width="220" HorizontalAlignment="Left">
+                <ComboBoxItem Content="📌 사실 (이름, 직업 등)" Tag="Fact" IsSelected="True"/>
+                <ComboBoxItem Content="💡 선호도 (좋아하는 것)" Tag="Preference"/>
+                <ComboBoxItem Content="🔧 기술 스택" Tag="TechStack"/>
+                <ComboBoxItem Content="📁 프로젝트" Tag="Project"/>
+                <ComboBoxItem Content="🎯 경험" Tag="Experience"/>
+                <ComboBoxItem Content="⏰ 작업 패턴" Tag="WorkPattern"/>
+                <ComboBoxItem Content="⚠️ 지침 (항상 적용)" Tag="Instruction"/>
+                <ComboBoxItem Content="📚 학습된 교훈 (오류/실수)" Tag="Lesson"/>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- 내용 입력 -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,16">
+            <TextBlock Text="내용" FontWeight="Medium" Margin="0,0,0,8"/>
+            <TextBox x:Name="ContentBox"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     Height="100"
+                     VerticalScrollBarVisibility="Auto"
+                     materialDesign:HintAssist.Hint="기억할 내용을 입력하세요..."/>
+        </StackPanel>
+
+        <!-- 중요도 -->
+        <StackPanel Grid.Row="3" Margin="0,0,0,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="중요도" FontWeight="Medium"/>
+                <TextBlock x:Name="ImportanceText" Grid.Column="1"
+                           Text="50%" Foreground="{DynamicResource MaterialDesignBodyLight}"/>
+            </Grid>
+            <Slider x:Name="ImportanceSlider"
+                    Minimum="0" Maximum="100" Value="50"
+                    TickFrequency="10" IsSnapToTickEnabled="True"
+                    ValueChanged="ImportanceSlider_ValueChanged"/>
+        </StackPanel>
+
+        <!-- 버튼 -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Content="취소"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    Click="CancelButton_Click"
+                    Margin="0,0,8,0"/>
+            <Button Content="추가"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Click="AddButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

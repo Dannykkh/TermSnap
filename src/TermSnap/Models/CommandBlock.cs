@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using MaterialDesignThemes.Wpf;
 using TermSnap.Services;
 
 namespace TermSnap.Models;
@@ -22,6 +24,21 @@ public class CommandBlock : INotifyPropertyChanged
     private double _similarity = 0;
     private string _searchMethod = string.Empty;
     private TimeSpan _duration;
+
+    // AI JSON 응답 관련 필드
+    private double _confidence = 1.0;
+    private string? _warning;
+    private List<string>? _alternatives;
+    private bool _requiresSudo;
+    private bool _isDangerous;
+    private string? _category;
+    private int? _estimatedDuration;
+    private CommandRiskLevel _riskLevel = CommandRiskLevel.Low;
+
+    // 오류 분석 관련 필드
+    private string? _errorCause;
+    private string? _errorSolution;
+    private string? _requiredAction;
 
     /// <summary>
     /// 블록 ID
@@ -132,6 +149,113 @@ public class CommandBlock : INotifyPropertyChanged
         set { _duration = value; OnPropertyChanged(); OnPropertyChanged(nameof(DurationText)); }
     }
 
+    #region AI JSON 응답 속성
+
+    /// <summary>
+    /// AI 신뢰도 (0.0 ~ 1.0)
+    /// </summary>
+    public double Confidence
+    {
+        get => _confidence;
+        set { _confidence = value; OnPropertyChanged(); OnPropertyChanged(nameof(ConfidencePercent)); OnPropertyChanged(nameof(ConfidenceColor)); }
+    }
+
+    /// <summary>
+    /// 경고 메시지
+    /// </summary>
+    public string? Warning
+    {
+        get => _warning;
+        set { _warning = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasWarning)); }
+    }
+
+    /// <summary>
+    /// 대체 명령어 목록
+    /// </summary>
+    public List<string>? Alternatives
+    {
+        get => _alternatives;
+        set { _alternatives = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasAlternatives)); OnPropertyChanged(nameof(AlternativesText)); }
+    }
+
+    /// <summary>
+    /// sudo 필요 여부
+    /// </summary>
+    public bool RequiresSudo
+    {
+        get => _requiresSudo;
+        set { _requiresSudo = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// 위험한 명령어 여부
+    /// </summary>
+    public bool IsDangerous
+    {
+        get => _isDangerous;
+        set { _isDangerous = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// 명령어 카테고리 (파일, 네트워크, 프로세스, 시스템, 패키지)
+    /// </summary>
+    public string? Category
+    {
+        get => _category;
+        set { _category = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasCategory)); OnPropertyChanged(nameof(CategoryIcon)); }
+    }
+
+    /// <summary>
+    /// 예상 실행 시간 (초)
+    /// </summary>
+    public int? EstimatedDuration
+    {
+        get => _estimatedDuration;
+        set { _estimatedDuration = value; OnPropertyChanged(); OnPropertyChanged(nameof(EstimatedDurationText)); }
+    }
+
+    /// <summary>
+    /// 명령어 위험도 레벨
+    /// </summary>
+    public CommandRiskLevel RiskLevel
+    {
+        get => _riskLevel;
+        set { _riskLevel = value; OnPropertyChanged(); OnPropertyChanged(nameof(RiskLevelText)); OnPropertyChanged(nameof(RiskLevelColor)); OnPropertyChanged(nameof(RiskLevelIcon)); }
+    }
+
+    #endregion
+
+    #region 오류 분석 속성
+
+    /// <summary>
+    /// 오류 원인 (AI 분석)
+    /// </summary>
+    public string? ErrorCause
+    {
+        get => _errorCause;
+        set { _errorCause = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasErrorAnalysis)); }
+    }
+
+    /// <summary>
+    /// 오류 해결 방법 (AI 분석)
+    /// </summary>
+    public string? ErrorSolution
+    {
+        get => _errorSolution;
+        set { _errorSolution = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// 필요한 조치 (예: 패키지 설치)
+    /// </summary>
+    public string? RequiredAction
+    {
+        get => _requiredAction;
+        set { _requiredAction = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasRequiredAction)); }
+    }
+
+    #endregion
+
     /// <summary>
     /// 현재 작업 디렉토리
     /// </summary>
@@ -195,6 +319,77 @@ public class CommandBlock : INotifyPropertyChanged
     public string SimilarityText => IsFromCache ? $"{Similarity:P0}" : string.Empty;
     public string DurationText => Duration.TotalSeconds > 0 ? $"{Duration.TotalMilliseconds:N0}ms" : string.Empty;
 
+    // AI JSON 응답 Computed Properties
+    public bool HasWarning => !string.IsNullOrWhiteSpace(Warning);
+    public bool HasAlternatives => Alternatives != null && Alternatives.Count > 0;
+    public bool HasCategory => !string.IsNullOrWhiteSpace(Category);
+    public string ConfidencePercent => $"{Confidence * 100:0}%";
+    public string AlternativesText => HasAlternatives ? string.Join(" / ", Alternatives!) : string.Empty;
+    public string EstimatedDurationText => EstimatedDuration.HasValue ? $"~{EstimatedDuration}초" : string.Empty;
+
+    // 오류 분석 Computed Properties
+    public bool HasErrorAnalysis => !string.IsNullOrWhiteSpace(ErrorCause);
+    public bool HasRequiredAction => !string.IsNullOrWhiteSpace(RequiredAction);
+
+    /// <summary>
+    /// 위험도 레벨 텍스트
+    /// </summary>
+    public string RiskLevelText => RiskLevel switch
+    {
+        CommandRiskLevel.Low => "안전",
+        CommandRiskLevel.Medium => "주의",
+        CommandRiskLevel.High => "위험",
+        CommandRiskLevel.Critical => "치명적",
+        _ => "알 수 없음"
+    };
+
+    /// <summary>
+    /// 위험도 레벨 색상
+    /// </summary>
+    public string RiskLevelColor => RiskLevel switch
+    {
+        CommandRiskLevel.Low => "#4CAF50",      // 녹색
+        CommandRiskLevel.Medium => "#FF9800",   // 주황
+        CommandRiskLevel.High => "#FF5722",     // 진한 주황
+        CommandRiskLevel.Critical => "#F44336", // 빨강
+        _ => "#9E9E9E"
+    };
+
+    /// <summary>
+    /// 위험도 레벨 아이콘
+    /// </summary>
+    public PackIconKind RiskLevelIcon => RiskLevel switch
+    {
+        CommandRiskLevel.Low => PackIconKind.CheckCircleOutline,
+        CommandRiskLevel.Medium => PackIconKind.AlertCircleOutline,
+        CommandRiskLevel.High => PackIconKind.AlertOutline,
+        CommandRiskLevel.Critical => PackIconKind.SkullOutline,
+        _ => PackIconKind.HelpCircleOutline
+    };
+
+    /// <summary>
+    /// 신뢰도에 따른 색상
+    /// </summary>
+    public string ConfidenceColor => Confidence switch
+    {
+        >= 0.9 => "#4CAF50",  // 녹색 (높음)
+        >= 0.7 => "#FF9800",  // 주황색 (중간)
+        _ => "#F44336"        // 빨간색 (낮음)
+    };
+
+    /// <summary>
+    /// 카테고리 아이콘
+    /// </summary>
+    public PackIconKind CategoryIcon => Category?.ToLower() switch
+    {
+        "파일" => PackIconKind.FileOutline,
+        "네트워크" => PackIconKind.Web,
+        "프로세스" => PackIconKind.Memory,
+        "시스템" => PackIconKind.Cog,
+        "패키지" => PackIconKind.Package,
+        _ => PackIconKind.Console
+    };
+
     /// <summary>
     /// 응답 레이블 (로컬: "실행 결과", 서버: "서버 응답")
     /// </summary>
@@ -205,7 +400,7 @@ public class CommandBlock : INotifyPropertyChanged
     /// <summary>
     /// 응답 아이콘 (로컬: Console, 서버: ServerOutline)
     /// </summary>
-    public string ResponseIconKind => IsLocalSession ? "Console" : "ServerOutline";
+    public PackIconKind ResponseIconKind => IsLocalSession ? PackIconKind.Console : PackIconKind.ServerOutline;
 
     #endregion
 
