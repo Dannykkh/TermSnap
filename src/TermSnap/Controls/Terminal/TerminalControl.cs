@@ -664,11 +664,10 @@ public class TerminalControl : FrameworkElement
 
                 double cellRenderWidth = cell.IsWideChar ? _cellWidth * 2 : _cellWidth;
 
-                // 배경색 (공백 문자에는 배경색을 렌더링하지 않음 - 커서 아티팩트 방지)
-                // 실제 문자가 있는 셀에만 배경색 적용
+                // 배경색 렌더링 (기본 배경색이 아닌 경우)
+                // 공백 문자에도 배경색 적용 (diff 출력 등에서 줄 전체 배경색 필요)
                 if (cell.Background != TerminalColors.DefaultBackground &&
-                    cell.Background != Colors.Transparent &&
-                    cell.Character != ' ' && cell.Character != '\0')
+                    cell.Background != Colors.Transparent)
                 {
                     var cellBackgroundBrush = GetOrCreateBrush(cell.Background);
                     dc.DrawRectangle(
