@@ -30,12 +30,14 @@ public partial class LocalTerminalView : UserControl
     private bool _isSubProcessPanelInitialized = false;
     private SubProcessManager? _subProcessManager;
     private bool _isSubProcessPanelVisible = false;
-    private bool _isRalphLoopPanelInitialized = false;
-    private bool _isRalphLoopPanelVisible = false;
-    private bool _isMemoryPanelInitialized = false;
-    private bool _isMemoryPanelVisible = false;
-    private bool _isGsdWorkflowPanelInitialized = false;
-    private bool _isGsdWorkflowPanelVisible = false;
+
+    // 인터랙티브 모드 초기 로드 완료 감지용 타이머
+    private System.Windows.Threading.DispatcherTimer? _interactiveLoadTimer;
+    private bool _interactiveResizePending = false;
+
+    // IME 상태 모니터링용 타이머
+    private System.Windows.Threading.DispatcherTimer? _imeMonitorTimer;
+    private bool _lastImeState = false;
 
     public LocalTerminalView()
     {
@@ -82,6 +84,8 @@ public partial class LocalTerminalView : UserControl
         SetupAutoScroll();
         SetupWelcomePanel();
         SetupTerminalControl();
+        InitializePanelManager();
+
         // 초기 로드 시에만 UI 상태 복원 (탭 생성 시)
         // 탭 전환 시에는 복원하지 않음
         if (!_isFileTreeInitialized && !_isFileViewerInitialized)
@@ -110,6 +114,9 @@ public partial class LocalTerminalView : UserControl
     {
         // IME 상태 변경 이벤트 구독 해제
         InputLanguageManager.Current.InputLanguageChanged -= OnInputLanguageChanged;
+
+        // IME 모니터링 타이머 정리
+        StopImeMonitoring();
 
         // 출력 배치 타이머 정리
         if (_outputBatchTimer != null)
@@ -424,10 +431,25 @@ public partial class LocalTerminalView : UserControl
                 {
                     aiOptions.WorkingFolder = path;
 
+                    // Claude Code인 경우 장기기억 훅 설정
+                    var programName = aiOptions.Command.Split(' ')[0];
+                    if (programName.Contains("claude", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // .claude/settings.local.json 훅 설정
+                        if (ClaudeHookService.EnsureMemoryHooks(path))
+                        {
+                            Debug.WriteLine($"[FolderSelected] Claude 메모리 훅 설정 완료: {path}");
+                        }
+
+                        // CLAUDE.md, MEMORY.md 파일 설정
+                        if (ClaudeHookService.EnsureMemoryReference(path))
+                        {
+                            Debug.WriteLine($"[FolderSelected] CLAUDE.md/MEMORY.md 설정 완료: {path}");
+                        }
+                    }
+
                     // 터미널이 완전히 준비될 때까지 대기 (PowerShell 초기화 시간 포함)
                     await Task.Delay(2000);
-
-                    var programName = aiOptions.Command.Split(' ')[0];
                     var modeText = aiOptions.AutoMode ? "자동 모드" : "일반 모드";
                     vm.AddMessage($"🤖 AI CLI 시작 ({modeText}): {programName}", Models.MessageType.Info);
 
@@ -798,23 +820,13 @@ public partial class LocalTerminalView : UserControl
             }
         }
 
-        // Ralph Loop 패널로 출력 전달
-        if (_isRalphLoopPanelVisible)
+        // 인터랙티브 모드 로드 완료 감지 (출력이 들어올 때마다 타이머 리셋)
+        if (_interactiveResizePending)
         {
-            Dispatcher.BeginInvoke(() =>
-            {
-                RalphLoopPanelControl?.OnOutputReceived(rawData);
-            });
+            ResetInteractiveLoadTimer();
         }
 
-        // GSD Workflow 패널로 출력 전달
-        if (_isGsdWorkflowPanelVisible)
-        {
-            Dispatcher.BeginInvoke(() =>
-            {
-                GsdWorkflowPanelControl?.OnOutputReceived(rawData);
-            });
-        }
+        // AI Tools 패널 출력 전달은 통합 패널 내부에서 처리
     }
 
     /// <summary>
@@ -859,10 +871,17 @@ public partial class LocalTerminalView : UserControl
 
                 // 서브 프로세스 관리자 시작
                 StartSubProcessManager(vm.ProcessId);
+
+                // 인터랙티브 프로그램 로고 출력 완료 후 터미널 크기 동기화
+                // 출력이 멈추면 500ms 후 리사이즈 (타이머 기반)
+                _interactiveResizePending = true;
+                StartInteractiveLoadTimer();
             }
             else
             {
                 // 인터랙티브 모드 종료 시 서브 프로세스 패널 숨김
+                _interactiveResizePending = false;
+                StopInteractiveLoadTimer();
                 HideSubProcessPanel();
                 StopSubProcessManager();
             }
@@ -1995,12 +2014,56 @@ public partial class LocalTerminalView : UserControl
     }
 
     /// <summary>
-    /// IME 모니터링 시작 (이벤트 기반)
+    /// IME 모니터링 시작 (타이머 기반 - IME 내부 상태는 이벤트로 감지 불가)
     /// </summary>
     private void StartImeMonitoring()
     {
-        // 타이머 대신 InputLanguageChanged 이벤트만 사용 (성능 개선)
-        // 이벤트는 생성자에서 이미 구독됨
+        // 이미 실행 중이면 무시
+        if (_imeMonitorTimer != null && _imeMonitorTimer.IsEnabled)
+            return;
+
+        _imeMonitorTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(200)
+        };
+        _imeMonitorTimer.Tick += (s, e) =>
+        {
+            bool currentState = GetCurrentImeState();
+            if (currentState != _lastImeState)
+            {
+                _lastImeState = currentState;
+                UpdateImeButtonText();
+                Debug.WriteLine($"[ImeMonitor] 상태 변경 감지: {(currentState ? "한글" : "영문")}");
+            }
+        };
+        _imeMonitorTimer.Start();
+        Debug.WriteLine("[ImeMonitor] 모니터링 시작");
+    }
+
+    /// <summary>
+    /// 현재 IME 상태 가져오기 (true: 한글, false: 영문)
+    /// </summary>
+    private bool GetCurrentImeState()
+    {
+        try
+        {
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(Window.GetWindow(this)).Handle;
+            if (hwnd != IntPtr.Zero)
+            {
+                IntPtr hIMC = ImmGetContext(hwnd);
+                if (hIMC != IntPtr.Zero)
+                {
+                    bool isKorean = ImmGetOpenStatus(hIMC);
+                    ImmReleaseContext(hwnd, hIMC);
+                    return isKorean;
+                }
+            }
+        }
+        catch { }
+
+        // 폴백: InputLanguageManager 사용
+        var language = InputLanguageManager.Current.CurrentInputLanguage;
+        return language.Name.StartsWith("ko") || language.TwoLetterISOLanguageName == "ko";
     }
 
     /// <summary>
@@ -2008,7 +2071,12 @@ public partial class LocalTerminalView : UserControl
     /// </summary>
     private void StopImeMonitoring()
     {
-        // 타이머 없음
+        if (_imeMonitorTimer != null)
+        {
+            _imeMonitorTimer.Stop();
+            _imeMonitorTimer = null;
+            Debug.WriteLine("[ImeMonitor] 모니터링 중지");
+        }
     }
 
     /// <summary>
@@ -2362,169 +2430,61 @@ public partial class LocalTerminalView : UserControl
 
     #endregion
 
-    #region AI 장기기억 관리
+    #region AI Tools 패널 관리
+
+    private PanelManager? _panelManager;
 
     /// <summary>
-    /// 메모리 패널 토글 버튼 클릭
+    /// AI Tools 패널 토글 (Memory, RalphLoop, GSD 버튼 모두 이 패널로)
     /// </summary>
-    private void MemoryToggle_Click(object sender, RoutedEventArgs e)
+    private void AIToolsToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (_isMemoryPanelVisible)
-        {
-            HideMemoryPanel();
-        }
-        else
-        {
-            ShowMemoryPanel();
-        }
+        _panelManager?.TogglePanel(PanelType.AITools);
     }
 
     /// <summary>
-    /// 메모리 패널 초기화
+    /// PanelManager 초기화
     /// </summary>
-    private void InitializeMemoryPanel()
+    private void InitializePanelManager()
     {
-        if (_isMemoryPanelInitialized) return;
+        if (_panelManager != null) return;
+
+        _panelManager = new PanelManager(this);
+        _panelManager.RegisterPanels(
+            fileTreeBorder: null,  // FileTree는 별도 관리
+            fileViewerBorder: null,  // FileViewer는 별도 관리
+            aiToolsBorder: AIToolsBorder,
+            subProcessBorder: SubProcessBorder
+        );
+
+        // 명령어 실행 요청 이벤트
+        _panelManager.CommandRequested += async (s, command) =>
+        {
+            await SendPromptToTerminal(command);
+        };
 
         // 작업 디렉토리 설정
         if (DataContext is LocalTerminalViewModel vm && !string.IsNullOrEmpty(vm.CurrentDirectory))
         {
-            MemoryPanelControl.SetWorkingDirectory(vm.CurrentDirectory);
-        }
-
-        // 패널 닫기 요청
-        MemoryPanelControl.CloseRequested += (s, e) =>
-        {
-            HideMemoryPanel();
-        };
-
-        _isMemoryPanelInitialized = true;
-    }
-
-    /// <summary>
-    /// 메모리 패널 표시
-    /// </summary>
-    private void ShowMemoryPanel()
-    {
-        InitializeMemoryPanel();
-        MemoryBorder.Visibility = Visibility.Visible;
-        _isMemoryPanelVisible = true;
-
-        // 다른 패널 숨김 (Ralph Loop)
-        if (_isRalphLoopPanelVisible)
-        {
-            RalphLoopBorder.Visibility = Visibility.Collapsed;
-            _isRalphLoopPanelVisible = false;
+            _panelManager.SetWorkingDirectory(vm.CurrentDirectory);
         }
     }
 
     /// <summary>
-    /// 메모리 패널 숨김
+    /// AI Tools 패널 표시
     /// </summary>
-    private void HideMemoryPanel()
+    private void ShowAIToolsPanel()
     {
-        MemoryBorder.Visibility = Visibility.Collapsed;
-        _isMemoryPanelVisible = false;
-    }
-
-    #endregion
-
-    #region Ralph Loop 관리
-
-    /// <summary>
-    /// Ralph Loop 토글 버튼 클릭
-    /// </summary>
-    private void RalphLoopToggle_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isRalphLoopPanelVisible)
-        {
-            HideRalphLoopPanel();
-        }
-        else
-        {
-            ShowRalphLoopPanel();
-        }
+        InitializePanelManager();
+        _panelManager?.ShowPanel(PanelType.AITools);
     }
 
     /// <summary>
-    /// Ralph Loop 패널 초기화
+    /// AI Tools 패널 숨김
     /// </summary>
-    private void InitializeRalphLoopPanel()
+    private void HideAIToolsPanel()
     {
-        if (_isRalphLoopPanelInitialized) return;
-
-        // 작업 디렉토리 설정
-        if (DataContext is LocalTerminalViewModel vm && !string.IsNullOrEmpty(vm.CurrentDirectory))
-        {
-            RalphLoopPanelControl.SetWorkingDirectory(vm.CurrentDirectory);
-        }
-
-        // 패널 닫기 요청
-        RalphLoopPanelControl.CloseRequested += (s, e) =>
-        {
-            HideRalphLoopPanel();
-        };
-
-        // 프롬프트 전송 요청 - 터미널에 입력
-        RalphLoopPanelControl.SendPromptRequested += async (prompt) =>
-        {
-            await SendPromptToTerminal(prompt);
-        };
-
-        // 컨텍스트 리셋 요청 - AI CLI 재시작
-        RalphLoopPanelControl.ResetContextRequested += async () =>
-        {
-            await ResetAIContext();
-        };
-
-        // 상태 변경 이벤트
-        RalphLoopPanelControl.StateChanged += (state) =>
-        {
-            Debug.WriteLine($"[RalphLoop] 상태 변경: {state}");
-        };
-
-        _isRalphLoopPanelInitialized = true;
-    }
-
-    /// <summary>
-    /// Ralph Loop 패널 표시
-    /// </summary>
-    private void ShowRalphLoopPanel()
-    {
-        InitializeRalphLoopPanel();
-        RalphLoopBorder.Visibility = Visibility.Visible;
-        _isRalphLoopPanelVisible = true;
-
-        // 다른 패널 숨김 (메모리)
-        if (_isMemoryPanelVisible)
-        {
-            MemoryBorder.Visibility = Visibility.Collapsed;
-            _isMemoryPanelVisible = false;
-        }
-    }
-
-    /// <summary>
-    /// Ralph Loop 패널 숨김
-    /// </summary>
-    private void HideRalphLoopPanel()
-    {
-        // 실행 중이면 확인
-        if (RalphLoopPanelControl.IsRunning)
-        {
-            var result = MessageBox.Show(
-                "Ralph Loop가 실행 중입니다. 중지하고 닫으시겠습니까?",
-                "Ralph Loop",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result != MessageBoxResult.Yes)
-                return;
-
-            RalphLoopPanelControl.Stop();
-        }
-
-        RalphLoopBorder.Visibility = Visibility.Collapsed;
-        _isRalphLoopPanelVisible = false;
+        _panelManager?.HidePanel(PanelType.AITools);
     }
 
     /// <summary>
@@ -2536,12 +2496,11 @@ public partial class LocalTerminalView : UserControl
 
         try
         {
-            // 터미널에 텍스트 입력 후 Enter
             await vm.SendRawInputAsync(prompt + "\n");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[RalphLoop] 프롬프트 전송 실패: {ex.Message}");
+            Debug.WriteLine($"[AITools] 프롬프트 전송 실패: {ex.Message}");
         }
     }
 
@@ -2554,17 +2513,14 @@ public partial class LocalTerminalView : UserControl
 
         try
         {
-            // Ctrl+C로 현재 프로세스 종료
             await vm.SendCtrlCAsync();
             await Task.Delay(500);
-
-            // AI CLI 다시 시작
-            var config = RalphLoopPanelControl.GetConfig();
-            await vm.SendRawInputAsync(config.AICommand + "\n");
+            // AI CLI 명령어는 설정에서 가져와야 함
+            await vm.SendRawInputAsync("claude\n");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[RalphLoop] 컨텍스트 리셋 실패: {ex.Message}");
+            Debug.WriteLine($"[AITools] 컨텍스트 리셋 실패: {ex.Message}");
         }
     }
 
@@ -2929,116 +2885,59 @@ public partial class LocalTerminalView : UserControl
 
     #endregion
 
-    #region GSD Workflow Panel 관리
+    #region 인터랙티브 모드 로드 완료 감지
 
     /// <summary>
-    /// GSD Workflow 토글 버튼 클릭
+    /// 인터랙티브 모드 로드 타이머 시작
     /// </summary>
-    private void GsdWorkflowToggle_Click(object sender, RoutedEventArgs e)
+    private void StartInteractiveLoadTimer()
     {
-        if (_isGsdWorkflowPanelVisible)
+        if (_interactiveLoadTimer == null)
         {
-            HideGsdWorkflowPanel();
-        }
-        else
-        {
-            ShowGsdWorkflowPanel();
-        }
-    }
-
-    /// <summary>
-    /// GSD Workflow 패널 초기화
-    /// </summary>
-    private void InitializeGsdWorkflowPanel()
-    {
-        if (_isGsdWorkflowPanelInitialized) return;
-
-        // 작업 디렉토리 설정
-        if (DataContext is LocalTerminalViewModel vm && !string.IsNullOrEmpty(vm.CurrentDirectory))
-        {
-            GsdWorkflowPanelControl.SetWorkingDirectory(vm.CurrentDirectory);
-        }
-
-        // 패널 닫기 요청
-        GsdWorkflowPanelControl.CloseRequested += (s, e) =>
-        {
-            HideGsdWorkflowPanel();
-        };
-
-        // 프롬프트 전송 요청
-        GsdWorkflowPanelControl.SendPromptRequested += async (prompt) =>
-        {
-            await SendPromptToTerminal(prompt);
-        };
-
-        // 컨텍스트 리셋 요청
-        GsdWorkflowPanelControl.ResetContextRequested += async () =>
-        {
-            await ResetAIContext();
-        };
-
-        // 단계 변경 이벤트
-        GsdWorkflowPanelControl.StepChanged += (step) =>
-        {
-            Debug.WriteLine($"[GsdWorkflow] 단계 변경: {step}");
-        };
-
-        _isGsdWorkflowPanelInitialized = true;
-    }
-
-    /// <summary>
-    /// GSD Workflow 패널 표시
-    /// </summary>
-    private void ShowGsdWorkflowPanel()
-    {
-        InitializeGsdWorkflowPanel();
-
-        // 작업 디렉토리 동기화
-        if (DataContext is LocalTerminalViewModel vm)
-        {
-            var workingDir = vm.WorkingFolder ?? vm.CurrentDirectory;
-            if (!string.IsNullOrEmpty(workingDir))
+            _interactiveLoadTimer = new System.Windows.Threading.DispatcherTimer
             {
-                GsdWorkflowPanelControl.SetWorkingDirectory(workingDir);
-            }
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            _interactiveLoadTimer.Tick += OnInteractiveLoadTimerTick;
         }
 
-        GsdWorkflowBorder.Visibility = Visibility.Visible;
-        _isGsdWorkflowPanelVisible = true;
-
-        // 다른 패널 숨김 (Ralph Loop, 메모리)
-        if (_isRalphLoopPanelVisible)
-        {
-            RalphLoopBorder.Visibility = Visibility.Collapsed;
-            _isRalphLoopPanelVisible = false;
-        }
-        if (_isMemoryPanelVisible)
-        {
-            MemoryBorder.Visibility = Visibility.Collapsed;
-            _isMemoryPanelVisible = false;
-        }
+        _interactiveLoadTimer.Stop();
+        _interactiveLoadTimer.Start();
     }
 
     /// <summary>
-    /// GSD Workflow 패널 숨김
+    /// 인터랙티브 모드 로드 타이머 정지
     /// </summary>
-    private void HideGsdWorkflowPanel()
+    private void StopInteractiveLoadTimer()
     {
-        // Execute 중이면 확인
-        if (GsdWorkflowPanelControl.IsExecuting)
+        _interactiveLoadTimer?.Stop();
+    }
+
+    /// <summary>
+    /// 인터랙티브 모드 로드 타이머 리셋 (출력이 들어올 때마다 호출)
+    /// </summary>
+    private void ResetInteractiveLoadTimer()
+    {
+        Dispatcher.BeginInvoke(() =>
         {
-            var result = MessageBox.Show(
-                LocalizationService.Instance.GetString("GsdWorkflow.ConfirmClose"),
-                LocalizationService.Instance.GetString("GsdWorkflow.Title"),
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+            _interactiveLoadTimer?.Stop();
+            _interactiveLoadTimer?.Start();
+        }, System.Windows.Threading.DispatcherPriority.Background);
+    }
 
-            if (result != MessageBoxResult.Yes)
-                return;
+    /// <summary>
+    /// 인터랙티브 모드 로드 완료 (출력이 500ms 동안 멈추면 리사이즈)
+    /// </summary>
+    private void OnInteractiveLoadTimerTick(object? sender, EventArgs e)
+    {
+        _interactiveLoadTimer?.Stop();
+
+        if (_interactiveResizePending)
+        {
+            _interactiveResizePending = false;
+            Debug.WriteLine("[InteractiveLoad] 로드 완료 감지, 터미널 리사이즈 실행");
+            TerminalCtrl?.ResizeToFitImmediate();
         }
-
-        GsdWorkflowBorder.Visibility = Visibility.Collapsed;
-        _isGsdWorkflowPanelVisible = false;
     }
 
     #endregion

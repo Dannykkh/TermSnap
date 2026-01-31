@@ -71,6 +71,62 @@ public class MemoryEntry
     /// 세션 ID (어떤 세션에서 생성되었는지)
     /// </summary>
     public string? SessionId { get; set; }
+
+    #region Display Properties
+
+    /// <summary>
+    /// 타입 아이콘 (UI 표시용)
+    /// </summary>
+    public string TypeIcon => Type switch
+    {
+        MemoryType.Fact => "📌",
+        MemoryType.Preference => "💡",
+        MemoryType.TechStack => "🔧",
+        MemoryType.Project => "📁",
+        MemoryType.Instruction => "⚠️",
+        MemoryType.Lesson => "📚",
+        MemoryType.Experience => "🎯",
+        MemoryType.WorkPattern => "🔄",
+        _ => "📝"
+    };
+
+    /// <summary>
+    /// 타입 이름 (UI 표시용)
+    /// </summary>
+    public string TypeName => Type switch
+    {
+        MemoryType.Fact => "사실",
+        MemoryType.Preference => "선호도",
+        MemoryType.TechStack => "기술 스택",
+        MemoryType.Project => "프로젝트",
+        MemoryType.Instruction => "지침",
+        MemoryType.Lesson => "학습된 교훈",
+        MemoryType.Experience => "경험",
+        MemoryType.WorkPattern => "작업 패턴",
+        _ => "기타"
+    };
+
+    /// <summary>
+    /// 중요도 텍스트 (UI 표시용)
+    /// </summary>
+    public string ImportanceText => Importance switch
+    {
+        >= 0.8 => "높음",
+        >= 0.5 => "보통",
+        _ => "낮음"
+    };
+
+    /// <summary>
+    /// 소스 존재 여부
+    /// </summary>
+    public bool HasSource => !string.IsNullOrEmpty(Source);
+
+    /// <summary>
+    /// 접근 정보 (UI 표시용)
+    /// </summary>
+    public string AccessInfo => $"접근 {AccessCount}회";
+
+    #endregion
 }
 
 /// <summary>

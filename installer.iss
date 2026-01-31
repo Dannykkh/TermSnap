@@ -2,7 +2,7 @@
 ; Inno Setup 6.0 or higher required
 
 #define MyAppName "TermSnap"
-#define MyAppVersion "1.6.0"
+#define MyAppVersion "1.7.0"
 #define MyAppPublisher "Dannykkh"
 #define MyAppURL "https://github.com/Dannykkh/TermSnap"
 #define MyAppExeName "TermSnap.exe"

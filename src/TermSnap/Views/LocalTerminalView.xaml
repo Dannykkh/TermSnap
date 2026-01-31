@@ -253,8 +253,8 @@
                                    MaxHeight="300"/>
         </Border>
 
-        <!-- Ralph Loop 패널 (오버레이, 우측) -->
-        <Border x:Name="RalphLoopBorder"
+        <!-- AI Tools 통합 패널 (Memory, Ralph Loop, GSD) -->
+        <Border x:Name="AIToolsBorder"
                 Grid.Row="0"
                 Panel.ZIndex="100"
                 HorizontalAlignment="Right"
@@ -264,38 +264,8 @@
             <Border.Effect>
                 <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="10" ShadowDepth="0"/>
             </Border.Effect>
-            <local:RalphLoopPanel x:Name="RalphLoopPanelControl"
-                                  Width="380"/>
-        </Border>
-
-        <!-- GSD Workflow 패널 (오버레이, 우측) -->
-        <Border x:Name="GsdWorkflowBorder"
-                Grid.Row="0"
-                Panel.ZIndex="100"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Stretch"
-                Visibility="Collapsed"
-                Margin="4">
-            <Border.Effect>
-                <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="10" ShadowDepth="0"/>
-            </Border.Effect>
-            <local:GsdWorkflowPanel x:Name="GsdWorkflowPanelControl"
-                                    Width="450"/>
-        </Border>
-
-        <!-- AI 장기기억 패널 (오버레이, 우측) -->
-        <Border x:Name="MemoryBorder"
-                Grid.Row="0"
-                Panel.ZIndex="100"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Stretch"
-                Visibility="Collapsed"
-                Margin="4">
-            <Border.Effect>
-                <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="10" ShadowDepth="0"/>
-            </Border.Effect>
-            <local:MemoryPanel x:Name="MemoryPanelControl"
-                               Width="400"/>
+            <local:AIToolsPanel x:Name="AIToolsPanelControl"
+                                Width="450"/>
         </Border>
 
 
@@ -580,40 +550,16 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- AI 장기기억 토글 버튼 -->
-                        <Button x:Name="MemoryToggleButton"
-                                Click="MemoryToggle_Click"
-                                ToolTip="AI 장기기억"
+                        <!-- AI Tools 통합 버튼 (Memory, Ralph Loop, GSD) -->
+                        <Button x:Name="AIToolsToggleButton"
+                                Click="AIToolsToggle_Click"
+                                ToolTip="AI Tools (Memory, Ralph Loop, GSD)"
                                 Style="{StaticResource MaterialDesignIconButton}"
                                 Background="#7B1FA2"
                                 Foreground="White"
                                 Width="28" Height="26"
                                 Margin="0,0,8,0">
-                            <materialDesign:PackIcon Kind="Brain" Width="16" Height="16"/>
-                        </Button>
-
-                        <!-- Ralph Loop 토글 버튼 -->
-                        <Button x:Name="RalphLoopToggleButton"
-                                Click="RalphLoopToggle_Click"
-                                ToolTip="Ralph Loop (자동 반복)"
-                                Style="{StaticResource MaterialDesignIconButton}"
-                                Background="#FF6F00"
-                                Foreground="White"
-                                Width="28" Height="26"
-                                Margin="0,0,8,0">
-                            <materialDesign:PackIcon Kind="Repeat" Width="16" Height="16"/>
-                        </Button>
-
-                        <!-- GSD Workflow 토글 버튼 -->
-                        <Button x:Name="GsdWorkflowToggleButton"
-                                Click="GsdWorkflowToggle_Click"
-                                ToolTip="{DynamicResource GsdWorkflow.Title}"
-                                Style="{StaticResource MaterialDesignIconButton}"
-                                Background="#673AB7"
-                                Foreground="White"
-                                Width="28" Height="26"
-                                Margin="0,0,8,0">
-                            <materialDesign:PackIcon Kind="FormatListChecks" Width="16" Height="16"/>
+                            <materialDesign:PackIcon Kind="Toolbox" Width="16" Height="16"/>
                         </Button>
 
                         <!-- 서브 프로세스 토글 버튼 -->

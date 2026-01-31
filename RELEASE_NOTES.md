@@ -1,5 +1,111 @@
 # Release Notes
 
+## v1.7.0 - 2026-02-01
+
+### 🤖 AI Tools Integrated Panel (Major Feature)
+
+TermSnap now features a unified AI Tools panel combining Memory, Ralph Loop, and GSD workflow in a tabbed interface.
+
+#### AI Tools Panel Features
+- **Tabbed Interface**: Single panel with three tabs
+  - Memory: AI long-term memory management
+  - Ralph Loop: Automated iteration workflow
+  - GSD (Get Stuff Done): Structured development workflow
+- **One-Button Access**: Single "AI Tools" button replaces three separate buttons
+- **Claude Hook Setup**: Built-in button to configure MEMORY.md and CLAUDE.md
+
+#### Memory System
+- **MEMORY.md Integration**: Parse and display memories from MEMORY.md file
+  - Flexible parsing: Supports Korean/English section headers
+  - Auto-detection: Works with various markdown formats
+  - Live editing: Add, delete, and search memories
+- **Memory Types**: Fact, Preference, TechStack, Project, Instruction, Lesson, Experience, WorkPattern
+- **Display Properties**: TypeIcon, TypeName, ImportanceText for rich UI
+
+#### Claude Hook Service
+- **Auto-Setup**: Creates required files for Claude Code long-term memory
+  - `.claude/settings.local.json`: Hook configuration
+  - `MEMORY.md`: Long-term memory storage
+  - `CLAUDE.md`: Project instructions with @MEMORY.md import
+- **Memory Save Detection**: Hooks for "기억해/remember" patterns
+- **Task Complete Notification**: ULTRAWORK mode notifications
+
+### ⚡ Terminal Resize Performance
+
+Major improvements to terminal resize handling to eliminate freezing.
+
+#### Resize Debouncing Optimization
+- **Skip Rendering During Resize**: `_isResizing` flag prevents rendering while resizing
+- **Clear Visuals Immediately**: Screen cleared instantly on resize start
+- **Deferred Rendering**: Full re-render after debounce completes (300ms)
+- **No More Freezing**: Smooth resize experience without UI blocking
+
+#### Technical Details
+- `ClearAllVisuals()`: Immediately clears screen content
+- `RecreateLineVisuals()`: No longer calls UpdateLines() directly
+- Caller responsibility: `_isResizing = false` → `MarkAllLinesDirty()` → `RequestRender()`
+- Both `ResizeToFit()` and `ResizeToFitImmediate()` handle flag correctly
+
+### 🏗️ Architecture Improvements
+
+#### PanelManager Class
+- **Centralized Panel Management**: Single class handles all side panels
+- **Panel Types**: FileTree, FileViewer, AITools, SubProcess
+- **Events**: PanelOpened, PanelClosed, CommandRequested
+- **Lazy Initialization**: Panels initialized only when first opened
+
+#### Code Organization
+- Removed ~300 lines of duplicate panel code from LocalTerminalView
+- Unified panel toggle logic
+- Reusable panel management pattern
+
+### 📚 Documentation
+
+New comprehensive guides added:
+- `docs/AI_WORKFLOW_GUIDE.md` / `.ko.md`: AI workflow integration guide
+- `docs/LOCAL_TERMINAL_GUIDE.md` / `.ko.md`: Local terminal usage guide
+- `docs/SSH_SESSION_GUIDE.md` / `.ko.md`: SSH session guide
+
+### 🔧 Technical Improvements
+
+#### TerminalControl
+- `TerminalControl.cs`: Resize optimization
+  - Added `_isResizing` flag for render control
+  - `ClearAllVisuals()`: New method for immediate visual clearing
+  - `RecreateLineVisuals()`: Simplified, caller handles rendering
+  - `UpdateLines()`: Early return when `_isResizing == true`
+
+#### MemoryService
+- `MemoryService.cs`: Enhanced MEMORY.md parsing
+  - `ParseSectionName()`: Flexible matching for Korean/English headers
+  - `ParseMemoryFile()`: Handles various markdown list formats
+  - Ignores placeholder content ("(없음)", "...", "(none)")
+
+#### LocalTerminalView
+- `LocalTerminalView.xaml`: Consolidated AI Tools button
+- `LocalTerminalView.xaml.cs`: Removed individual panel toggle methods
+
+### 🐛 Bug Fixes
+- Fixed terminal not rendering after resize (RecreateLineVisuals flow)
+- Fixed `_isResizing` flag never being reset in early return paths
+- Fixed MEMORY.md not parsing due to localization key mismatch
+- Fixed Memory panel showing 0 items when MEMORY.md exists
+
+### 📋 New Files
+- `AIToolsPanel.xaml` / `.xaml.cs`: Integrated AI tools panel
+- `PanelManager.cs`: Centralized panel management
+- `ClaudeHookService.cs`: Claude Code hook configuration
+
+---
+
+## v1.6.0 - 2026-01-27
+
+### 🤖 Agent System & UI Improvements
+
+See [GitHub Release v1.6.0](https://github.com/Dannykkh/TermSnap/releases/tag/v1.6.0) for details.
+
+---
+
 ## v1.5.0 - 2026-01-26
 
 ### 🎨 IDE-Style File Editor (Major Update)
