@@ -1,0 +1,515 @@
+<UserControl x:Class="TermSnap.Views.AIToolsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             Background="{DynamicResource SurfaceBrush}"
+             MinWidth="400">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- 탭 버튼 스타일 -->
+        <Style x:Key="TabButtonStyle" TargetType="RadioButton">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsChecked" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource CardBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border CornerRadius="8"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            Background="{DynamicResource SurfaceBrush}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- 헤더 -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource PrimaryBrush}"
+                    CornerRadius="8,8,0,0"
+                    Padding="12,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Robot"
+                                                 Width="20" Height="20"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="White"/>
+                        <TextBlock Text="AI Tools"
+                                   FontWeight="Bold"
+                                   FontSize="14"
+                                   Foreground="White"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Claude Hook 설정 버튼 -->
+                    <Button x:Name="SetupHooksButton"
+                            Grid.Column="2"
+                            Style="{StaticResource MaterialDesignIconButton}"
+                            Width="28" Height="28"
+                            Click="SetupHooksButton_Click"
+                            ToolTip="Claude 장기기억 훅 설정 (MEMORY.md, CLAUDE.md 생성)">
+                        <materialDesign:PackIcon Kind="Cog" Width="16" Height="16" Foreground="White"/>
+                    </Button>
+
+                    <!-- 닫기 버튼 -->
+                    <Button x:Name="CloseButton"
+                            Grid.Column="3"
+                            Style="{StaticResource MaterialDesignIconButton}"
+                            Width="28" Height="28"
+                            Click="CloseButton_Click"
+                            ToolTip="닫기">
+                        <materialDesign:PackIcon Kind="Close" Width="16" Height="16" Foreground="White"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- 탭 헤더 -->
+            <Border Grid.Row="1" Background="{DynamicResource BackgroundBrush}" Padding="8,6">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <RadioButton x:Name="MemoryTabButton"
+                                 IsChecked="True"
+                                 Checked="TabButton_Checked"
+                                 Tag="Memory"
+                                 Style="{StaticResource TabButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Brain" Width="16" Height="16" VerticalAlignment="Center"/>
+                            <TextBlock Text="Memory" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="RalphLoopTabButton"
+                                 Checked="TabButton_Checked"
+                                 Tag="RalphLoop"
+                                 Style="{StaticResource TabButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Repeat" Width="16" Height="16" VerticalAlignment="Center"/>
+                            <TextBlock Text="Ralph Loop" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="GsdTabButton"
+                                 Checked="TabButton_Checked"
+                                 Tag="GSD"
+                                 Style="{StaticResource TabButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FormatListChecks" Width="16" Height="16" VerticalAlignment="Center"/>
+                            <TextBlock Text="GSD" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12"/>
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+            </Border>
+
+            <!-- 탭 컨텐츠 -->
+            <Grid Grid.Row="2">
+                <!-- Memory 컨텐츠 -->
+                <ScrollViewer x:Name="MemoryContent" Visibility="Visible"
+                              VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 검색 및 필터 -->
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox x:Name="MemorySearchBox"
+                                     materialDesign:HintAssist.Hint="기억 검색..."
+                                     materialDesign:HintAssist.Foreground="{DynamicResource TextSecondaryBrush}"
+                                     Background="{DynamicResource CardBrush}"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
+                                     BorderBrush="{DynamicResource BorderBrush}"
+                                     CaretBrush="{DynamicResource TextPrimaryBrush}"
+                                     Padding="10,8"
+                                     Margin="0,0,8,0"
+                                     KeyDown="MemorySearchBox_KeyDown"/>
+
+                            <Button Grid.Column="1"
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    Click="MemorySearchButton_Click"
+                                    Foreground="{DynamicResource PrimaryBrush}"
+                                    ToolTip="검색">
+                                <materialDesign:PackIcon Kind="Magnify"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- 타입 필터 -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="타입:" VerticalAlignment="Center" Margin="0,0,8,0"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <ComboBox x:Name="MemoryTypeFilterCombo" Width="150"
+                                      SelectionChanged="MemoryTypeFilterCombo_SelectionChanged"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      Background="{DynamicResource CardBrush}">
+                                <ComboBoxItem Content="전체" Tag="" IsSelected="True"/>
+                                <ComboBoxItem Content="📌 사실" Tag="Fact"/>
+                                <ComboBoxItem Content="💡 선호도" Tag="Preference"/>
+                                <ComboBoxItem Content="🔧 기술 스택" Tag="TechStack"/>
+                                <ComboBoxItem Content="📁 프로젝트" Tag="Project"/>
+                                <ComboBoxItem Content="⚠️ 지침" Tag="Instruction"/>
+                                <ComboBoxItem Content="📚 학습된 교훈" Tag="Lesson"/>
+                            </ComboBox>
+
+                            <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                    Margin="8,0,0,0" Click="MemoryRefreshButton_Click"
+                                    ToolTip="새로고침">
+                                <materialDesign:PackIcon Kind="Refresh"/>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- 메모리 목록 -->
+                        <ListBox x:Name="MemoryList" Grid.Row="2"
+                                 Margin="0,8,0,0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 SelectionChanged="MemoryList_SelectionChanged"
+                                 Background="Transparent"
+                                 BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="12" Margin="0,4"
+                                            Background="{DynamicResource CardBrush}"
+                                            CornerRadius="6"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                                                <TextBlock Text="{Binding TypeIcon}" FontSize="16"
+                                                           VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding Content}"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                                           FontWeight="Medium"/>
+                                            </StackPanel>
+
+                                            <Button Grid.Row="0" Grid.Column="1"
+                                                    Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                    Width="24" Height="24"
+                                                    Click="DeleteMemory_Click"
+                                                    Tag="{Binding Id}"
+                                                    ToolTip="삭제">
+                                                <materialDesign:PackIcon Kind="Delete" Width="16" Height="16"/>
+                                            </Button>
+
+                                            <StackPanel Grid.Row="1" Grid.ColumnSpan="2"
+                                                        Orientation="Horizontal" Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding TypeName}"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                           FontSize="11"/>
+                                                <TextBlock Text=" · " Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                                                <TextBlock Text="{Binding ImportanceText}"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                           FontSize="11"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- 하단 컨트롤 -->
+                        <Grid Grid.Row="3" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock x:Name="MemoryStatsText" Text="총 0개의 기억"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                        Click="AddMemoryButton_Click"
+                                        ToolTip="새 기억 추가">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Plus" VerticalAlignment="Center"/>
+                                        <TextBlock Text="추가" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                        Click="ExportMemoryButton_Click"
+                                        Margin="8,0,0,0"
+                                        ToolTip="MEMORY.md 파일 열기">
+                                    <materialDesign:PackIcon Kind="FileDocumentEdit"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- Ralph Loop 컨텐츠 -->
+                <ScrollViewer x:Name="RalphLoopContent" Visibility="Collapsed"
+                              VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="PRD (Product Requirements Document)"
+                                   FontWeight="SemiBold"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   Margin="0,0,0,6"/>
+
+                        <TextBox x:Name="RalphPrdTextBox"
+                                 Grid.Row="1"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 MinHeight="200"
+                                 MaxHeight="400"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 Background="{DynamicResource BackgroundBrush}"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}"
+                                 Padding="8"/>
+
+                        <!-- 진행 상황 -->
+                        <Grid Grid.Row="2" Margin="0,12,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <ProgressBar x:Name="RalphProgressBar"
+                                         Grid.Row="0"
+                                         Value="0"
+                                         Maximum="100"
+                                         Height="6"
+                                         Foreground="{DynamicResource PrimaryBrush}"
+                                         Background="{DynamicResource BorderBrush}"/>
+
+                            <Grid Grid.Row="1" Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock x:Name="RalphCurrentTaskText"
+                                           Grid.Column="0"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextTrimming="CharacterEllipsis"/>
+
+                                <TextBlock x:Name="RalphIterationText"
+                                           Grid.Column="1"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Text="반복: 0/100"/>
+                            </Grid>
+                        </Grid>
+
+                        <!-- 버튼 영역 -->
+                        <Grid Grid.Row="3" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ComboBox x:Name="RalphAiCommandCombo"
+                                      Grid.Column="0"
+                                      Width="120"
+                                      HorizontalAlignment="Left"
+                                      SelectedIndex="0"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      Background="{DynamicResource CardBrush}">
+                                <ComboBoxItem Content="Claude Code" Tag="claude"/>
+                                <ComboBoxItem Content="Aider" Tag="aider"/>
+                                <ComboBoxItem Content="Codex" Tag="codex"/>
+                                <ComboBoxItem Content="Gemini CLI" Tag="gemini"/>
+                            </ComboBox>
+
+                            <Button x:Name="RalphStartButton"
+                                    Grid.Column="1"
+                                    Content="시작"
+                                    Click="RalphStartButton_Click"
+                                    Background="{DynamicResource SuccessBrush}"
+                                    Foreground="White"
+                                    Padding="16,8"
+                                    Margin="8,0,0,0"/>
+
+                            <Button x:Name="RalphResetButton"
+                                    Grid.Column="2"
+                                    Content="리셋"
+                                    Click="RalphResetButton_Click"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Padding="12,8"
+                                    Margin="8,0,0,0"/>
+                        </Grid>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- GSD 컨텐츠 -->
+                <ScrollViewer x:Name="GsdContent" Visibility="Collapsed"
+                              VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Phase 및 Mode 선택 -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Phase:"
+                                       FontWeight="SemiBold"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0"/>
+                            <ComboBox x:Name="GsdPhaseCombo"
+                                      Width="60"
+                                      SelectedIndex="0"
+                                      SelectionChanged="GsdPhaseCombo_SelectionChanged"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      Background="{DynamicResource CardBrush}">
+                                <ComboBoxItem Content="1"/>
+                                <ComboBoxItem Content="2"/>
+                                <ComboBoxItem Content="3"/>
+                                <ComboBoxItem Content="4"/>
+                                <ComboBoxItem Content="5"/>
+                            </ComboBox>
+
+                            <TextBlock Text="Mode:"
+                                       FontWeight="SemiBold"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="16,0,8,0"/>
+                            <ComboBox x:Name="GsdModeCombo"
+                                      Width="100"
+                                      SelectedIndex="0"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      Background="{DynamicResource CardBrush}">
+                                <ComboBoxItem Content="Interactive" Tag="Interactive"/>
+                                <ComboBoxItem Content="Eco" Tag="EcoMode"/>
+                                <ComboBoxItem Content="Pipeline" Tag="Pipeline"/>
+                                <ComboBoxItem Content="Swarm" Tag="Swarm"/>
+                                <ComboBoxItem Content="Expert" Tag="Expert"/>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- Step 선택 -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+                            <RadioButton x:Name="GsdDiscussRadio"
+                                         Content="Discuss"
+                                         IsChecked="True"
+                                         Checked="GsdStepRadio_Checked"
+                                         Tag="Discuss"
+                                         Margin="0,0,12,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <RadioButton x:Name="GsdPlanRadio"
+                                         Content="Plan"
+                                         Checked="GsdStepRadio_Checked"
+                                         Tag="Plan"
+                                         Margin="0,0,12,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <RadioButton x:Name="GsdExecuteRadio"
+                                         Content="Execute"
+                                         Checked="GsdStepRadio_Checked"
+                                         Tag="Execute"
+                                         Margin="0,0,12,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <RadioButton x:Name="GsdVerifyRadio"
+                                         Content="Verify"
+                                         Checked="GsdStepRadio_Checked"
+                                         Tag="Verify"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </StackPanel>
+
+                        <!-- 컨텐츠 영역 -->
+                        <TextBox x:Name="GsdContentTextBox"
+                                 Grid.Row="2"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 MinHeight="200"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 Background="{DynamicResource BackgroundBrush}"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}"
+                                 Padding="8"/>
+
+                        <!-- 버튼 영역 -->
+                        <StackPanel Grid.Row="3" Orientation="Horizontal"
+                                    HorizontalAlignment="Right" Margin="0,12,0,0">
+                            <Button x:Name="GsdSaveButton"
+                                    Content="Save"
+                                    Click="GsdSaveButton_Click"
+                                    Padding="12,6"
+                                    Margin="0,0,8,0"/>
+                            <Button x:Name="GsdNextButton"
+                                    Content="Next Step"
+                                    Click="GsdNextButton_Click"
+                                    Background="{DynamicResource PrimaryBrush}"
+                                    Foreground="White"
+                                    Padding="12,6"/>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

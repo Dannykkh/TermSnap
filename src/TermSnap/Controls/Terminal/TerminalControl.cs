@@ -25,6 +25,7 @@ public class TerminalControl : FrameworkElement
     private int _pendingResizeCols;
     private int _pendingResizeRows;
     private bool _renderPending = false;
+    private bool _isResizing = false;  // 리사이즈 중 렌더링 스킵
 
     // DrawingVisual 기반 라인별 캐싱 (CPU 최적화)
     private readonly VisualCollection _visualChildren;
@@ -413,6 +414,10 @@ public class TerminalControl : FrameworkElement
 
         System.Diagnostics.Debug.WriteLine($"[ResizeToFit] Actual: {actualCols}x{actualRows} → Tiered: {cols}x{rows}");
 
+        // 리사이즈 시작 - 렌더링 중지 및 화면 비우기
+        _isResizing = true;
+        ClearAllVisuals();
+
         // 펜딩 크기 저장 및 디바운스 타이머 시작
         _pendingResizeCols = cols;
         _pendingResizeRows = rows;
@@ -420,6 +425,29 @@ public class TerminalControl : FrameworkElement
         // 디바운스: 타이머 리셋
         _resizeDebounceTimer.Stop();
         _resizeDebounceTimer.Start();
+    }
+
+    /// <summary>
+    /// 모든 Visual 내용 비우기 (리사이즈 중 빈 화면 표시)
+    /// </summary>
+    private void ClearAllVisuals()
+    {
+        // 배경만 그리고 라인은 비움
+        if (_backgroundVisual != null)
+        {
+            using var dc = _backgroundVisual.RenderOpen();
+            dc.DrawRectangle(
+                new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)),
+                null,
+                new Rect(0, 0, ActualWidth, ActualHeight));
+        }
+
+        // 라인 Visuals 내용 비우기
+        foreach (var visual in _lineVisuals)
+        {
+            using var dc = visual.RenderOpen();
+            // 빈 내용으로 닫음
+        }
     }
 
     /// <summary>
@@ -457,8 +485,21 @@ public class TerminalControl : FrameworkElement
     {
         _resizeDebounceTimer.Stop();
 
-        if (_pendingResizeCols <= 0 || _pendingResizeRows <= 0) return;
-        if (_pendingResizeCols == _buffer.Columns && _pendingResizeRows == _buffer.Rows) return;
+        // 조건 불충족 시에도 렌더링 재개
+        if (_pendingResizeCols <= 0 || _pendingResizeRows <= 0)
+        {
+            _isResizing = false;
+            _buffer.MarkAllLinesDirty();
+            RequestRender();
+            return;
+        }
+        if (_pendingResizeCols == _buffer.Columns && _pendingResizeRows == _buffer.Rows)
+        {
+            _isResizing = false;
+            _buffer.MarkAllLinesDirty();
+            RequestRender();
+            return;
+        }
 
         System.Diagnostics.Debug.WriteLine($"[ResizeToFit] " +
             $"OldBuffer: {_buffer.Columns}x{_buffer.Rows}, " +
@@ -471,12 +512,20 @@ public class TerminalControl : FrameworkElement
         // DrawingVisual 배열 재생성
         RecreateLineVisuals();
 
+        // 리사이즈 완료 - 렌더링 재개
+        _isResizing = false;
+
+        // 전체 다시 그리기
+        _buffer.MarkAllLinesDirty();
+        RequestRender();
+
         // 이벤트 발생
         TerminalSizeChanged?.Invoke(_pendingResizeCols, _pendingResizeRows);
     }
 
     /// <summary>
     /// 라인 Visual 배열 재생성 (리사이즈 시)
+    /// 호출자가 _isResizing = false 설정 및 렌더링 요청을 책임짐
     /// </summary>
     private void RecreateLineVisuals()
     {
@@ -496,9 +545,8 @@ public class TerminalControl : FrameworkElement
             _visualChildren.Insert(1 + i, _lineVisuals[i]);
         }
 
-        // 모든 라인 다시 그리기
+        // 호출자가 렌더링 책임 (여기서 UpdateLines 호출하지 않음)
         _buffer.MarkAllLinesDirty();
-        UpdateLines();
     }
 
     /// <summary>
@@ -538,6 +586,7 @@ public class TerminalControl : FrameworkElement
         if (_cellWidth <= 0 || _cellHeight <= 0)
         {
             System.Diagnostics.Debug.WriteLine($"[ResizeToFitImmediate] 셀 크기 미설정: {_cellWidth}x{_cellHeight}");
+            _isResizing = false;
             return;
         }
 
@@ -552,6 +601,13 @@ public class TerminalControl : FrameworkElement
         if (cols == _buffer.Columns && rows == _buffer.Rows)
         {
             System.Diagnostics.Debug.WriteLine($"[ResizeToFitImmediate] 크기 변경 없음: {cols}x{rows} (actual: {actualCols}x{actualRows})");
+            // 리사이즈 플래그가 있으면 렌더링 재개
+            if (_isResizing)
+            {
+                _isResizing = false;
+                _buffer.MarkAllLinesDirty();
+                RequestRender();
+            }
             return;
         }
 
@@ -562,6 +618,15 @@ public class TerminalControl : FrameworkElement
             $"CellSize: {_cellWidth:F2}x{_cellHeight:F2}");
 
         _buffer.Resize(cols, rows);
+
+        // DrawingVisual 배열 재생성
+        RecreateLineVisuals();
+
+        // 리사이즈 완료 - 렌더링 재개
+        _isResizing = false;
+        _buffer.MarkAllLinesDirty();
+        RequestRender();
+
         TerminalSizeChanged?.Invoke(cols, rows);
     }
 
@@ -584,6 +649,7 @@ public class TerminalControl : FrameworkElement
     private void UpdateLines()
     {
         if (_cellWidth <= 0 || _cellHeight <= 0) return;
+        if (_isResizing) return;  // 리사이즈 중 렌더링 스킵
 
         // 배경 업데이트 (항상)
         UpdateBackground();

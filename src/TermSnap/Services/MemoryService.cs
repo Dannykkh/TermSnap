@@ -158,24 +158,36 @@ public class MemoryService : IDisposable
         {
             var line = rawLine.Trim();
 
-            // 섹션 헤더 (## 타입명)
-            if (line.StartsWith("## "))
+            // 빈 줄이나 구분선 무시
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("---") || line.StartsWith("*"))
+                continue;
+
+            // 섹션 헤더 (## 또는 ### 타입명)
+            if (line.StartsWith("## ") || line.StartsWith("### "))
             {
-                var sectionName = line.Substring(3).Trim();
+                var sectionName = line.TrimStart('#', ' ').Trim();
                 currentType = ParseSectionName(sectionName);
                 continue;
             }
 
-            // 메모리 항목 (- 내용)
-            if (line.StartsWith("- "))
+            // 제목 줄 무시 (# 로 시작)
+            if (line.StartsWith("#"))
+                continue;
+
+            // 메모리 항목 (- 또는 * 로 시작하는 리스트)
+            if (line.StartsWith("- ") || line.StartsWith("* "))
             {
-                var content2 = line.Substring(2).Trim();
-                if (!string.IsNullOrWhiteSpace(content2))
+                var itemContent = line.Substring(2).Trim();
+                if (!string.IsNullOrWhiteSpace(itemContent) && itemContent.Length > 2)
                 {
+                    // 템플릿 플레이스홀더 무시 (예: "- (없음)", "- ...")
+                    if (itemContent == "(없음)" || itemContent == "..." || itemContent == "(none)")
+                        continue;
+
                     memories.Add(new MemoryEntry
                     {
                         Id = id++,
-                        Content = content2,
+                        Content = itemContent,
                         Type = currentType,
                         IsActive = true,
                         CreatedAt = DateTime.Now
@@ -200,18 +212,32 @@ public class MemoryService : IDisposable
         _ => "기타"
     };
 
-    private static MemoryType ParseSectionName(string name) => name switch
+    private static MemoryType ParseSectionName(string name)
     {
-        "사실" => MemoryType.Fact,
-        "선호도" => MemoryType.Preference,
-        "기술 스택" => MemoryType.TechStack,
-        "프로젝트" => MemoryType.Project,
-        "경험" => MemoryType.Experience,
-        "작업 패턴" => MemoryType.WorkPattern,
-        "지침" => MemoryType.Instruction,
-        "학습된 교훈" => MemoryType.Lesson,
-        _ => MemoryType.Fact
-    };
+        var lowerName = name.ToLowerInvariant();
+
+        // 한국어 매칭
+        if (name.Contains("사실") || lowerName.Contains("fact"))
+            return MemoryType.Fact;
+        if (name.Contains("선호") || lowerName.Contains("preference"))
+            return MemoryType.Preference;
+        if (name.Contains("기술") || lowerName.Contains("tech") || lowerName.Contains("stack"))
+            return MemoryType.TechStack;
+        if (name.Contains("프로젝트") || lowerName.Contains("project") || lowerName.Contains("context"))
+            return MemoryType.Project;
+        if (name.Contains("경험") || lowerName.Contains("experience"))
+            return MemoryType.Experience;
+        if (name.Contains("패턴") || lowerName.Contains("pattern") || lowerName.Contains("work"))
+            return MemoryType.WorkPattern;
+        if (name.Contains("지침") || lowerName.Contains("instruction") || lowerName.Contains("caution") || lowerName.Contains("주의"))
+            return MemoryType.Instruction;
+        if (name.Contains("교훈") || lowerName.Contains("lesson") || lowerName.Contains("learn"))
+            return MemoryType.Lesson;
+        if (name.Contains("결정") || lowerName.Contains("decision"))
+            return MemoryType.Project;
+
+        return MemoryType.Fact;
+    }
 
     #region CRUD Operations
 
