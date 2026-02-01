@@ -6,7 +6,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**[한국어](README.ko.md)** | English
+**[Korean](README.ko.md)** | English
 
 ---
 
