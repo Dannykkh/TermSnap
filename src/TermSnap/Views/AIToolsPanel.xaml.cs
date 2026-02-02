@@ -15,6 +15,7 @@ namespace TermSnap.Views;
 
 /// <summary>
 /// AI Tools 통합 패널 (Memory, Ralph Loop, GSD, Skills)
+/// 각 탭마다 독립적인 인스턴스를 가짐 (탭별 프로젝트 관리)
 /// </summary>
 public partial class AIToolsPanel : UserControl
 {
@@ -22,7 +23,15 @@ public partial class AIToolsPanel : UserControl
     private List<MemoryEntry> _memories = new();
     private bool _isRalphRunning = false;
 
-    // Skills 탭용
+    // Memory 탭용 - 탭별 독립 인스턴스
+    private readonly MemoryService _memoryService = new();
+
+    /// <summary>
+    /// 이 패널의 MemoryService 인스턴스 (외부에서 접근용)
+    /// </summary>
+    public MemoryService MemoryService => _memoryService;
+
+    // Skills 탭용 - 탭별 독립 인스턴스
     private readonly SkillRecommendationService _skillService = new();
     private SkillRecommendationService.RecommendationResult? _skillRecommendations;
     private ObservableCollection<SkillItemViewModel> _skillItems = new();
@@ -141,8 +150,8 @@ public partial class AIToolsPanel : UserControl
 
         try
         {
-            MemoryService.Instance.SetWorkingDirectory(_workingDirectory);
-            _memories = MemoryService.Instance.GetAllMemories();
+            _memoryService.SetWorkingDirectory(_workingDirectory);
+            _memories = _memoryService.GetAllMemories();
             MemoryList.ItemsSource = _memories;
             MemoryStatsText.Text = $"총 {_memories.Count}개의 기억";
         }
@@ -226,7 +235,7 @@ public partial class AIToolsPanel : UserControl
 
             if (result == MessageBoxResult.Yes)
             {
-                MemoryService.Instance.DeleteMemory(id);
+                _memoryService.DeleteMemory(id);
                 LoadMemories();
             }
         }
@@ -247,7 +256,7 @@ public partial class AIToolsPanel : UserControl
                 CreatedAt = DateTime.Now
             };
 
-            await MemoryService.Instance.AddMemory(newMemory);
+            await _memoryService.AddMemory(newMemory);
             LoadMemories();
         }
     }

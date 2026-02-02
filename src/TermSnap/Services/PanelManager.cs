@@ -64,6 +64,11 @@ public class PanelManager : IDisposable
     /// </summary>
     public bool IsAIToolsVisible => _currentRightPanel == PanelType.AITools;
 
+    /// <summary>
+    /// AIToolsPanel의 MemoryService 인스턴스 (탭별 독립)
+    /// </summary>
+    public MemoryService? MemoryService => _aiToolsPanel?.MemoryService;
+
     public PanelManager(FrameworkElement owner)
     {
         _owner = owner;

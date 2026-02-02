@@ -13,6 +13,7 @@ namespace TermSnap.Services;
 /// AI 장기기억 서비스 (MEMORY.md 기반)
 /// - MEMORY.md 파일로 저장 (claude CLI가 직접 읽음)
 /// - CLAUDE.md에서 참조하도록 설정
+/// - 탭별로 인스턴스를 생성하여 사용 (각 프로젝트별 독립 관리)
 /// </summary>
 public class MemoryService : IDisposable
 {
@@ -21,28 +22,19 @@ public class MemoryService : IDisposable
     private List<MemoryEntry> _memories = new();
     private bool _disposed = false;
 
-    private static MemoryService? _instance;
-    private static readonly object _lock = new();
+    /// <summary>
+    /// 새 MemoryService 인스턴스 생성
+    /// 각 탭/패널에서 독립적으로 인스턴스를 생성하여 사용
+    /// </summary>
+    public MemoryService() { }
 
     /// <summary>
-    /// 싱글톤 인스턴스
+    /// 작업 디렉토리와 함께 초기화
     /// </summary>
-    public static MemoryService Instance
+    public MemoryService(string workingDirectory) : this()
     {
-        get
-        {
-            if (_instance == null)
-            {
-                lock (_lock)
-                {
-                    _instance ??= new MemoryService();
-                }
-            }
-            return _instance;
-        }
+        SetWorkingDirectory(workingDirectory);
     }
-
-    private MemoryService() { }
 
     /// <summary>
     /// 현재 작업 디렉토리의 MEMORY.md 경로

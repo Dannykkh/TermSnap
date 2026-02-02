@@ -1545,7 +1545,12 @@ public partial class LocalTerminalView : UserControl
             if (!userInput.Contains(' ') || userInput.StartsWith("/") || userInput.StartsWith("!"))
                 return;
 
-            var memories = await MemoryService.Instance.ExtractMemoriesFromConversation(userInput);
+            // 탭별 MemoryService 인스턴스 사용
+            var memoryService = _panelManager?.MemoryService;
+            if (memoryService == null)
+                return;
+
+            var memories = await memoryService.ExtractMemoriesFromConversation(userInput);
 
             if (memories.Count > 0)
             {
