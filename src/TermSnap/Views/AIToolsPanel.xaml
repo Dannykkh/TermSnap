@@ -134,6 +134,15 @@
                             <TextBlock Text="GSD" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12"/>
                         </StackPanel>
                     </RadioButton>
+                    <RadioButton x:Name="SkillsTabButton"
+                                 Checked="TabButton_Checked"
+                                 Tag="Skills"
+                                 Style="{StaticResource TabButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Puzzle" Width="16" Height="16" VerticalAlignment="Center"/>
+                            <TextBlock Text="Skills" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12"/>
+                        </StackPanel>
+                    </RadioButton>
                 </StackPanel>
             </Border>
 
@@ -507,6 +516,210 @@
                                     Foreground="White"
                                     Padding="12,6"/>
                         </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- Skills 컨텐츠 -->
+                <ScrollViewer x:Name="SkillsContent" Visibility="Collapsed"
+                              VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 프로젝트 분석 상태 -->
+                        <Border Grid.Row="0"
+                                Background="{DynamicResource CardBrush}"
+                                CornerRadius="6"
+                                Padding="12"
+                                Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock x:Name="SkillsProjectNameText"
+                                               Text="프로젝트: (분석 대기)"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <TextBlock x:Name="SkillsStackText"
+                                               Text="감지된 기술: -"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                        Click="SkillsAnalyzeButton_Click"
+                                        ToolTip="프로젝트 분석">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Magnify" VerticalAlignment="Center"/>
+                                        <TextBlock Text="분석" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- 리소스 타입 필터 -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                            <RadioButton x:Name="SkillsFilterAll"
+                                         Content="전체"
+                                         IsChecked="True"
+                                         Checked="SkillsFilter_Checked"
+                                         Tag="All"
+                                         Margin="0,0,8,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <RadioButton x:Name="SkillsFilterSkills"
+                                         Content="스킬"
+                                         Checked="SkillsFilter_Checked"
+                                         Tag="Skill"
+                                         Margin="0,0,8,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <RadioButton x:Name="SkillsFilterAgents"
+                                         Content="에이전트"
+                                         Checked="SkillsFilter_Checked"
+                                         Tag="Agent"
+                                         Margin="0,0,8,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <RadioButton x:Name="SkillsFilterCommands"
+                                         Content="커맨드"
+                                         Checked="SkillsFilter_Checked"
+                                         Tag="Command"
+                                         Margin="0,0,8,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <RadioButton x:Name="SkillsFilterHooks"
+                                         Content="훅"
+                                         Checked="SkillsFilter_Checked"
+                                         Tag="Hook"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </StackPanel>
+
+                        <!-- 추천 리소스 목록 -->
+                        <ListBox x:Name="SkillsList" Grid.Row="2"
+                                 SelectionMode="Multiple"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 Background="Transparent"
+                                 BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10" Margin="0,3"
+                                            Background="{DynamicResource CardBrush}"
+                                            CornerRadius="6"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- 체크박스 -->
+                                            <CheckBox Grid.Column="0"
+                                                      IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,8,0"/>
+
+                                            <!-- 정보 -->
+                                            <StackPanel Grid.Column="1">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding PriorityIcon}"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,4,0"/>
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                    <Border Background="{DynamicResource PrimaryBrush}"
+                                                            CornerRadius="3"
+                                                            Padding="6,1"
+                                                            Margin="8,0,0,0"
+                                                            Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="설치됨" FontSize="10" Foreground="White"/>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Description}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,2,0,0"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                    <Border Background="{DynamicResource BackgroundBrush}"
+                                                            CornerRadius="3"
+                                                            Padding="6,2">
+                                                        <TextBlock Text="{Binding TypeName}"
+                                                                   FontSize="10"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    </Border>
+                                                    <Border Background="{DynamicResource BackgroundBrush}"
+                                                            CornerRadius="3"
+                                                            Padding="6,2"
+                                                            Margin="4,0,0,0">
+                                                        <TextBlock Text="{Binding Category}"
+                                                                   FontSize="10"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    </Border>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- 설치 버튼 -->
+                                            <Button Grid.Column="2"
+                                                    Style="{StaticResource MaterialDesignIconButton}"
+                                                    Width="28" Height="28"
+                                                    Click="InstallSingleSkill_Click"
+                                                    Tag="{Binding}"
+                                                    ToolTip="설치"
+                                                    IsEnabled="{Binding IsNotInstalled}">
+                                                <materialDesign:PackIcon Kind="Download" Width="16" Height="16"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- 하단 컨트롤 -->
+                        <Grid Grid.Row="3" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock x:Name="SkillsStatsText"
+                                       Text="추천: 0개 (설치됨: 0개)"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                        Click="SkillsSelectAllButton_Click"
+                                        ToolTip="전체 선택">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="CheckAll" VerticalAlignment="Center"/>
+                                        <TextBlock Text="전체 선택" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button x:Name="SkillsInstallButton"
+                                        Click="SkillsInstallSelectedButton_Click"
+                                        Background="{DynamicResource SuccessBrush}"
+                                        Foreground="White"
+                                        Padding="12,6"
+                                        Margin="8,0,0,0"
+                                        ToolTip="선택한 리소스 설치">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Download" VerticalAlignment="Center"/>
+                                        <TextBlock Text="설치" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </ScrollViewer>
             </Grid>
