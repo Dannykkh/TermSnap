@@ -2476,6 +2476,18 @@ public partial class LocalTerminalView : UserControl
     private void ShowAIToolsPanel()
     {
         InitializePanelManager();
+
+        // 패널 열 때마다 현재 작업 디렉토리 업데이트
+        if (DataContext is LocalTerminalViewModel vm && !string.IsNullOrEmpty(vm.CurrentDirectory))
+        {
+            _panelManager?.SetWorkingDirectory(vm.CurrentDirectory);
+            System.Diagnostics.Debug.WriteLine($"[AIToolsPanel] 작업 디렉토리 설정: {vm.CurrentDirectory}");
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine("[AIToolsPanel] 경고: 작업 디렉토리가 없습니다");
+        }
+
         _panelManager?.ShowPanel(PanelType.AITools);
     }
 
