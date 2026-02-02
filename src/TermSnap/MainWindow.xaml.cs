@@ -48,6 +48,9 @@ public partial class MainWindow : Window
         // 초기 레이아웃 설정
         Loaded += (s, e) =>
         {
+            // 창 상태 복원 (위치, 크기, 최대화)
+            RestoreWindowSettings();
+
             UpdateSplitLayout();
 
             // MCP IPC 서버 시작
@@ -856,10 +859,83 @@ public partial class MainWindow : Window
                     localVm.SaveUISettings();
                 }
             }
+
+            // 창 상태 저장
+            SaveWindowSettings();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[MainWindow] UI 설정 저장 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 창 상태 저장
+    /// </summary>
+    private void SaveWindowSettings()
+    {
+        try
+        {
+            var config = ConfigService.Load();
+
+            // 최대화 상태일 때는 이전 Normal 크기 유지 (RestoreBounds 사용)
+            if (WindowState == System.Windows.WindowState.Maximized)
+            {
+                config.MainWindowSettings.WindowState = "Maximized";
+                // 최대화 상태에서는 RestoreBounds로 Normal 크기 저장
+                config.MainWindowSettings.Left = RestoreBounds.Left;
+                config.MainWindowSettings.Top = RestoreBounds.Top;
+                config.MainWindowSettings.Width = RestoreBounds.Width;
+                config.MainWindowSettings.Height = RestoreBounds.Height;
+            }
+            else
+            {
+                config.MainWindowSettings.WindowState = "Normal";
+                config.MainWindowSettings.Left = Left;
+                config.MainWindowSettings.Top = Top;
+                config.MainWindowSettings.Width = Width;
+                config.MainWindowSettings.Height = Height;
+            }
+
+            ConfigService.Save(config);
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] 창 상태 저장: {config.MainWindowSettings.WindowState}, {config.MainWindowSettings.Width}x{config.MainWindowSettings.Height}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] 창 상태 저장 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 창 상태 복원
+    /// </summary>
+    private void RestoreWindowSettings()
+    {
+        try
+        {
+            var config = ConfigService.Load();
+            var settings = config.MainWindowSettings;
+
+            if (settings.IsValid)
+            {
+                // 위치/크기 복원
+                Left = settings.Left;
+                Top = settings.Top;
+                Width = settings.Width;
+                Height = settings.Height;
+
+                // 최대화 상태 복원
+                if (settings.WindowState == "Maximized")
+                {
+                    WindowState = System.Windows.WindowState.Maximized;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] 창 상태 복원: {settings.WindowState}, {settings.Width}x{settings.Height}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] 창 상태 복원 실패: {ex.Message}");
         }
     }
 }

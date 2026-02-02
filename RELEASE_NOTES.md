@@ -1,5 +1,89 @@
 # Release Notes
 
+## v1.8.0 - 2026-02-02
+
+### 🎯 Skills Tab & Resource Recommendations (Major Feature)
+
+TermSnap now recommends project-specific resources (skills, agents, commands, hooks, MCPs) based on your tech stack.
+
+#### Skills Tab Features
+- **Project Analysis**: Detects technologies (React, Python, .NET, etc.) from package files
+- **Resource Types**: Skills, Agents, Commands, Hooks, MCP servers
+- **GitHub Integration**: Fetches resource catalog from oh-my-claude-code repository
+- **Batch Install/Delete**: Select multiple resources for bulk operations
+- **Priority Indicators**: 🔴 Essential, 🟡 Recommended, ⚪ Optional
+
+#### Resource Categories
+- **Skill**: Prompt templates for specific tasks (code review, commit, etc.)
+- **Agent**: Specialized sub-agents (frontend, backend, devops, etc.)
+- **Command**: Slash commands for common operations
+- **Hook**: Automated triggers for memory and workflow
+- **MCP**: Model Context Protocol servers
+
+### 📚 Memory Tab Restructuring
+
+Memory tab now uses sub-tabs for better organization.
+
+#### Sub-Tab Structure
+- **기억 (Memories)**: MEMORY.md-based long-term memory
+  - Type filtering (Fact, Preference, TechStack, etc.)
+  - Add/Delete/Search memories
+- **대화 (Conversations)**: Conversation log viewer
+  - `.claude/conversations/` directory logs
+  - Date-based listing with keyword extraction
+  - Preview panel for selected conversation
+- **검색 (Search)**: Unified search across memories and conversations
+  - Search both MEMORY.md and conversation files
+  - Combined results display
+
+### 🎼 Orchestrator Tab (PM Mode)
+
+New Orchestrator tab for managing multi-agent workflows.
+
+#### Orchestrator Features
+- **Plan Files**: List and preview PLAN.md, PRD.md files
+- **AI CLI Detection**: Shows available AI CLIs (Claude, Codex, Gemini)
+- **Task Progress**: Real-time progress bar (pending/in_progress/completed/failed)
+- **FileSystemWatcher**: Auto-refresh when `.orchestrator/state.json` changes
+- **PM Mode Start**: Launch workpm with selected plan file
+
+#### Hook-Based Triggers
+- **workpm**: PM mode trigger word (analyzes plan, creates tasks)
+- **pmworker**: Worker mode trigger word (claims and executes tasks)
+- Uses UserPromptSubmit hooks with regex matchers
+
+### 🔧 MCP Server Enhancements
+
+New tools added to claude-orchestrator-mcp server.
+
+#### Plan File Tools
+- `orchestrator_get_latest_plan`: Get most recently modified plan file
+- `orchestrator_list_plan_files`: List all plan files in project
+- `orchestrator_read_plan`: Read specific plan file content
+
+### 🏗️ Architecture Improvements
+
+#### MemoryService Refactoring
+- Changed from singleton to per-tab instance
+- Each tab has independent memory context
+- AIToolsPanel.MemoryService property for external access
+
+#### AIToolsPanel IDisposable
+- Proper cleanup of FileSystemWatcher resources
+- Dispose pattern implementation with finalizer
+
+### 🐛 Bug Fixes
+- Fixed working directory not updating when opening AI Tools panel
+- Fixed Skills tab showing no loading indicator during analysis
+- Fixed Memory sub-tab scroll issues
+- Fixed Orchestrator progress not auto-refreshing
+
+### 📋 New Files
+- `docs/memory-system.md`: Memory system documentation
+- `docs/orchestrator-guide.md`: Orchestrator usage guide
+
+---
+
 ## v1.7.0 - 2026-02-01
 
 ### 🤖 AI Tools Integrated Panel (Major Feature)

@@ -44,11 +44,11 @@ Output: df -h | awk '$5 > 80 {print}'
 
 Auto-detect installation status, one-click install button if not installed
 
-### AI Workflow Panel (NEW!)
-Visually manage your AI coding sessions.
-- **Progress Tab**: Real-time task list, ULTRAWORK mode
-- **Plan Tab**: `.planning/` folder management
-- **Memory Tab**: AI long-term memory (MEMORY.md) management
+### AI Tools Panel
+Integrated panel for AI-assisted development.
+- **Memory Tab**: Long-term memory (MEMORY.md), conversation logs, unified search
+- **Orchestrator Tab**: Multi-agent PM mode, task progress tracking
+- **Skills Tab**: Project-based resource recommendations (skills, agents, hooks, MCPs)
 
 Details: [AI Workflow Guide](docs/AI_WORKFLOW_GUIDE.md)
 

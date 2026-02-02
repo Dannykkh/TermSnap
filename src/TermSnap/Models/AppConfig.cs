@@ -78,6 +78,9 @@ public class AppConfig
     // 로컬 터미널 UI 설정
     public LocalTerminalUISettings LocalTerminalUI { get; set; } = new();
 
+    // 메인 창 상태 설정
+    public WindowSettings MainWindowSettings { get; set; } = new();
+
     // 선택된 AI 제공자
     public AIProviderType SelectedProvider { get; set; } = AIProviderType.Gemini;
     
@@ -420,4 +423,40 @@ public class LocalTerminalUISettings
     /// 마지막으로 선택한 쉘 타입
     /// </summary>
     public string LastShellType { get; set; } = "PowerShell";
+}
+
+/// <summary>
+/// 창 상태 설정 (위치, 크기, 최대화 여부)
+/// </summary>
+public class WindowSettings
+{
+    /// <summary>
+    /// 창 왼쪽 위치
+    /// </summary>
+    public double Left { get; set; } = double.NaN;
+
+    /// <summary>
+    /// 창 상단 위치
+    /// </summary>
+    public double Top { get; set; } = double.NaN;
+
+    /// <summary>
+    /// 창 너비
+    /// </summary>
+    public double Width { get; set; } = 1400;
+
+    /// <summary>
+    /// 창 높이
+    /// </summary>
+    public double Height { get; set; } = 900;
+
+    /// <summary>
+    /// 창 상태 (Normal, Maximized)
+    /// </summary>
+    public string WindowState { get; set; } = "Normal";
+
+    /// <summary>
+    /// 설정이 유효한지 확인
+    /// </summary>
+    public bool IsValid => !double.IsNaN(Left) && !double.IsNaN(Top) && Width > 100 && Height > 100;
 }

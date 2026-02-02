@@ -88,10 +88,26 @@ public class PanelManager : IDisposable
         _aiToolsBorder = aiToolsBorder;
         _subProcessBorder = subProcessBorder;
 
-        // AITools 패널 초기화
+        // AITools 패널 초기화 (Grid 안에 있을 수 있음)
         if (_aiToolsBorder?.Child is AIToolsPanel aiTools)
         {
             _aiToolsPanel = aiTools;
+        }
+        else if (_aiToolsBorder?.Child is Grid grid)
+        {
+            // Grid 안에서 AIToolsPanel 찾기
+            foreach (var child in grid.Children)
+            {
+                if (child is AIToolsPanel panel)
+                {
+                    _aiToolsPanel = panel;
+                    break;
+                }
+            }
+        }
+
+        if (_aiToolsPanel != null)
+        {
             _aiToolsPanel.CloseRequested += (s, e) => HidePanel(PanelType.AITools);
             _aiToolsPanel.CommandRequested += (s, cmd) => CommandRequested?.Invoke(this, cmd);
         }
@@ -275,14 +291,6 @@ public class PanelManager : IDisposable
     #endregion
 
     #region AI Tools Specific
-
-    /// <summary>
-    /// AI Tools 패널 진행 상황 업데이트 (Ralph Loop용)
-    /// </summary>
-    public void UpdateRalphProgress(int progress, int iteration, int maxIterations, string currentTask)
-    {
-        _aiToolsPanel?.UpdateRalphProgress(progress, iteration, maxIterations, currentTask);
-    }
 
     #endregion
 

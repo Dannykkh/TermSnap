@@ -431,27 +431,16 @@ public partial class LocalTerminalView : UserControl
                 {
                     aiOptions.WorkingFolder = path;
 
-                    // Claude Code인 경우 장기기억 훅 설정
+                    // Claude Code인 경우 장기기억 시스템 전체 설치
+                    // (hooks, settings.local.json, MEMORY.md, CLAUDE.md, agents, skills, docs, MCP 서버)
                     var programName = aiOptions.Command.Split(' ')[0];
                     if (programName.Contains("claude", StringComparison.OrdinalIgnoreCase))
                     {
-                        // .claude/settings.local.json 훅 설정
-                        if (ClaudeHookService.EnsureMemoryHooks(path))
+                        if (ClaudeHookService.InstallMemorySystem(path))
                         {
-                            Debug.WriteLine($"[FolderSelected] Claude 메모리 훅 설정 완료: {path}");
-                        }
-
-                        // CLAUDE.md, MEMORY.md 파일 설정
-                        if (ClaudeHookService.EnsureMemoryReference(path))
-                        {
-                            Debug.WriteLine($"[FolderSelected] CLAUDE.md/MEMORY.md 설정 완료: {path}");
+                            Debug.WriteLine($"[FolderSelected] Claude 장기기억 시스템 설치 완료: {path}");
                         }
                     }
-
-                    // 터미널이 완전히 준비될 때까지 대기 (PowerShell 초기화 시간 포함)
-                    await Task.Delay(2000);
-                    var modeText = aiOptions.AutoMode ? "자동 모드" : "일반 모드";
-                    vm.AddMessage($"🤖 AI CLI 시작 ({modeText}): {programName}", Models.MessageType.Info);
 
                     // 프로그램 이름 설정 (경과 시간 표시용)
                     vm.SetAICLIProgramName(programName);
@@ -461,27 +450,39 @@ public partial class LocalTerminalView : UserControl
                     {
                         try
                         {
-                            Debug.WriteLine("[FolderSelected] AI CLI 명령어 입력창에 표시");
+                            Debug.WriteLine("[FolderSelected] AI CLI 명령어 실행 준비");
 
-                            // 1. 입력창에 명령어 표시 (사용자가 볼 수 있도록)
+                            // 0. 터미널이 실제로 렌더링될 때까지 대기 (최대 2초)
+                            var waitCount = 0;
+                            while (TerminalCtrl != null && TerminalCtrl.ActualWidth < 100 && waitCount < 20)
+                            {
+                                await Task.Delay(100);
+                                waitCount++;
+                            }
+
+                            // 터미널 크기 강제 동기화
+                            TerminalCtrl?.ResizeToFitImmediate();
+
+                            // 쉘 초기화 최소 대기
+                            await Task.Delay(300);
+
+                            var modeText = aiOptions.AutoMode ? "자동 모드" : "일반 모드";
+                            vm.AddMessage($"🤖 AI CLI 시작 ({modeText}): {programName}", Models.MessageType.Info);
+
+                            // 1. 명령어 설정 및 즉시 실행
                             vm.UserInput = aiOptions.Command;
-                            InputTextBox.Focus();
-                            InputTextBox.CaretIndex = InputTextBox.Text.Length;
-
-                            // 2. 잠시 대기 (사용자가 명령어를 확인할 수 있도록)
-                            await Task.Delay(1500);
+                            TerminalCtrl?.ResizeToFitImmediate();
 
                             Debug.WriteLine("[FolderSelected] AI CLI 명령어 실행 시작");
 
-                            // 3. ExecuteCurrentInputAsync를 호출하여 인터랙티브 모드 감지 로직 실행
-                            // (이렇게 하면 IsInteractiveMode가 자동으로 true로 설정됨)
+                            // 2. ExecuteCurrentInputAsync를 호출하여 인터랙티브 모드 감지 로직 실행
                             await vm.ExecuteCurrentInputAsync();
 
                             Debug.WriteLine("[FolderSelected] AI CLI 명령어 실행 완료");
 
-                            // 4. 단계별 크기 로직이 자동으로 적절한 크기를 설정함
-                            // Claude Code는 터미널 크기를 감지하면 자동으로 웰컴 박스를 그림
-                            await Task.Delay(500); // Claude Code 초기화 대기
+                            // 3. 초기화 완료 후 크기 재동기화
+                            await Task.Delay(200);
+                            TerminalCtrl?.ResizeToFitImmediate();
                         }
                         catch (Exception ex)
                         {
@@ -549,8 +550,8 @@ public partial class LocalTerminalView : UserControl
                             vm.ShowWelcome = false;
                         }
 
-                        // 터미널이 완전히 준비될 때까지 대기 (PowerShell 초기화 시간 포함)
-                        await Task.Delay(2000);
+                        // 쉘 초기화 최소 대기
+                        await Task.Delay(300);
                     }
 
                     // AI CLI 명령어 실행
@@ -568,19 +569,12 @@ public partial class LocalTerminalView : UserControl
                         {
                             try
                             {
-                                Debug.WriteLine("[ClaudeRunRequested] 명령어 입력창에 표시");
+                                Debug.WriteLine("[ClaudeRunRequested] 명령어 즉시 실행");
 
-                                // 1. 입력창에 명령어 표시 (사용자가 볼 수 있도록)
+                                // 1. 명령어 설정 및 즉시 실행
                                 vm.UserInput = options.Command;
-                                InputTextBox.Focus();
-                                InputTextBox.CaretIndex = InputTextBox.Text.Length;
 
-                                // 2. 잠시 대기 (사용자가 명령어를 확인할 수 있도록)
-                                await Task.Delay(1500);
-
-                                Debug.WriteLine("[ClaudeRunRequested] 명령어 실행 시작");
-
-                                // 3. ExecuteCurrentInputAsync를 호출하여 인터랙티브 모드 감지 로직 실행
+                                // 2. ExecuteCurrentInputAsync를 호출하여 인터랙티브 모드 감지 로직 실행
                                 await vm.ExecuteCurrentInputAsync();
 
                                 Debug.WriteLine("[ClaudeRunRequested] 명령어 실행 완료");
@@ -591,7 +585,7 @@ public partial class LocalTerminalView : UserControl
                                     Debug.WriteLine($"[ClaudeRunRequested] 초기 프롬프트 대기 중: {options.InitialPrompt}");
 
                                     // AI CLI 시작 대기 (Claude 로딩 시간 고려)
-                                    await Task.Delay(5000);
+                                    await Task.Delay(3000);
 
                                     // 인터랙티브 모드에서 프롬프트 전송
                                     vm.AddMessage($"📝 초기 프롬프트 전송: {options.InitialPrompt}", Models.MessageType.Info);
@@ -600,7 +594,7 @@ public partial class LocalTerminalView : UserControl
                                     await Dispatcher.InvokeAsync(async () =>
                                     {
                                         InteractiveInputTextBox.Text = options.InitialPrompt;
-                                        await Task.Delay(500);
+                                        await Task.Delay(200);
                                         await SendInteractiveInputAsync();
                                     });
 
@@ -902,6 +896,14 @@ public partial class LocalTerminalView : UserControl
         {
             // 작업 디렉토리 변경 시 GSD 상태 체크
             CheckGsdStatusOnDirectoryChange();
+
+            // PanelManager에 작업 디렉토리 전달 (AIToolsPanel 등에서 사용)
+            var workDir = vm.WorkingFolder ?? vm.CurrentDirectory;
+            if (!string.IsNullOrEmpty(workDir))
+            {
+                _panelManager?.SetWorkingDirectory(workDir);
+                System.Diagnostics.Debug.WriteLine($"[PropertyChanged] 작업 디렉토리 전달: {workDir}");
+            }
         }
         else if (e.PropertyName == nameof(LocalTerminalViewModel.AICLIProgramName))
         {
@@ -2469,9 +2471,13 @@ public partial class LocalTerminalView : UserControl
         };
 
         // 작업 디렉토리 설정
-        if (DataContext is LocalTerminalViewModel vm && !string.IsNullOrEmpty(vm.CurrentDirectory))
+        if (DataContext is LocalTerminalViewModel vm)
         {
-            _panelManager.SetWorkingDirectory(vm.CurrentDirectory);
+            var workDir = vm.WorkingFolder ?? vm.CurrentDirectory;
+            if (!string.IsNullOrEmpty(workDir))
+            {
+                _panelManager.SetWorkingDirectory(workDir);
+            }
         }
     }
 
@@ -2483,14 +2489,18 @@ public partial class LocalTerminalView : UserControl
         InitializePanelManager();
 
         // 패널 열 때마다 현재 작업 디렉토리 업데이트
-        if (DataContext is LocalTerminalViewModel vm && !string.IsNullOrEmpty(vm.CurrentDirectory))
+        if (DataContext is LocalTerminalViewModel vm)
         {
-            _panelManager?.SetWorkingDirectory(vm.CurrentDirectory);
-            System.Diagnostics.Debug.WriteLine($"[AIToolsPanel] 작업 디렉토리 설정: {vm.CurrentDirectory}");
-        }
-        else
-        {
-            System.Diagnostics.Debug.WriteLine("[AIToolsPanel] 경고: 작업 디렉토리가 없습니다");
+            var workDir = vm.WorkingFolder ?? vm.CurrentDirectory;
+            if (!string.IsNullOrEmpty(workDir))
+            {
+                _panelManager?.SetWorkingDirectory(workDir);
+                System.Diagnostics.Debug.WriteLine($"[AIToolsPanel] 작업 디렉토리 설정: {workDir}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[AIToolsPanel] 경고: 작업 디렉토리가 없습니다");
+            }
         }
 
         _panelManager?.ShowPanel(PanelType.AITools);
@@ -2538,6 +2548,20 @@ public partial class LocalTerminalView : UserControl
         catch (Exception ex)
         {
             Debug.WriteLine($"[AITools] 컨텍스트 리셋 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// AI Tools 패널 리사이즈 핸들러
+    /// </summary>
+    private void AIToolsResizeThumb_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+    {
+        var newWidth = AIToolsPanelControl.Width - e.HorizontalChange;
+
+        // MinWidth/MaxWidth 범위 내에서 조절
+        if (newWidth >= AIToolsPanelControl.MinWidth && newWidth <= AIToolsPanelControl.MaxWidth)
+        {
+            AIToolsPanelControl.Width = newWidth;
         }
     }
 
