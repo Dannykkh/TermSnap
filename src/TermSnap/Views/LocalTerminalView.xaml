@@ -264,8 +264,33 @@
             <Border.Effect>
                 <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="10" ShadowDepth="0"/>
             </Border.Effect>
-            <local:AIToolsPanel x:Name="AIToolsPanelControl"
-                                Width="450"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <!-- 리사이즈 핸들 (왼쪽) -->
+                <Thumb x:Name="AIToolsResizeThumb"
+                       Grid.Column="0"
+                       Width="6"
+                       Cursor="SizeWE"
+                       DragDelta="AIToolsResizeThumb_DragDelta"
+                       Background="Transparent">
+                    <Thumb.Template>
+                        <ControlTemplate TargetType="Thumb">
+                            <Border Background="Transparent">
+                                <Rectangle Width="2" Fill="{DynamicResource BorderBrush}"
+                                           HorizontalAlignment="Center" Opacity="0.5"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Thumb.Template>
+                </Thumb>
+                <local:AIToolsPanel x:Name="AIToolsPanelControl"
+                                    Grid.Column="1"
+                                    Width="450"
+                                    MinWidth="300"
+                                    MaxWidth="800"/>
+            </Grid>
         </Border>
 
 

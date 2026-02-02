@@ -9,9 +9,9 @@
     <AssemblyName>TermSnap</AssemblyName>
     <RootNamespace>TermSnap</RootNamespace>
     <!-- Version Information -->
-    <Version>1.7.0</Version>
-    <AssemblyVersion>1.7.0.0</AssemblyVersion>
-    <FileVersion>1.7.0.0</FileVersion>
+    <Version>1.8.0</Version>
+    <AssemblyVersion>1.8.0.0</AssemblyVersion>
+    <FileVersion>1.8.0.0</FileVersion>
     <Product>TermSnap</Product>
     <Company>Dannykkh</Company>
     <Copyright>Copyright © 2026 Dannykkh</Copyright>
@@ -66,6 +66,11 @@
     <Resource Include="Resources\AILogos\claude-logo.png" />
     <Resource Include="Resources\AILogos\openai-logo.png" />
     <Resource Include="Resources\AILogos\gemini-logo.png" />
+    <!-- MCP 서버 파일 (출력 디렉토리로 복사) -->
+    <Content Include="Resources\mcp-servers\claude-orchestrator-mcp\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>mcp-servers\claude-orchestrator-mcp\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
 
 </Project>
