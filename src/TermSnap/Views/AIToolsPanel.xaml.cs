@@ -465,14 +465,28 @@ public partial class AIToolsPanel : UserControl
 
     private async void AnalyzeProjectSkills()
     {
-        if (string.IsNullOrEmpty(_workingDirectory)) return;
+        if (string.IsNullOrEmpty(_workingDirectory))
+        {
+            SkillsProjectNameText.Text = "프로젝트: (폴더를 먼저 열어주세요)";
+            SkillsStackText.Text = "감지된 기술: -";
+            MessageBox.Show(
+                "작업 디렉토리가 설정되지 않았습니다.\n로컬 터미널에서 폴더를 먼저 열어주세요.",
+                "알림",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        // 로딩 상태 시작
+        SetSkillsLoadingState(true);
 
         try
         {
             SkillsProjectNameText.Text = $"프로젝트: {Path.GetFileName(_workingDirectory)} (분석 중...)";
             SkillsStackText.Text = "감지된 기술: 분석 중...";
 
-            _skillRecommendations = await _skillService.AnalyzeAndRecommend(_workingDirectory);
+            // 비동기 분석 실행
+            _skillRecommendations = await Task.Run(() => _skillService.AnalyzeAndRecommend(_workingDirectory));
 
             // UI 업데이트
             SkillsProjectNameText.Text = $"프로젝트: {_skillRecommendations.Stack.ProjectName}";
@@ -484,16 +498,47 @@ public partial class AIToolsPanel : UserControl
 
             SkillsStackText.Text = techList.Any()
                 ? $"감지된 기술: {string.Join(", ", techList)}"
-                : "감지된 기술: (없음)";
+                : "감지된 기술: (기술 스택을 감지하지 못했습니다)";
 
             // 리스트 아이템 생성
             RefreshSkillsList();
+
+            if (_skillRecommendations.TotalCount == 0)
+            {
+                SkillsStatsText.Text = "추천: 0개 (기본 스킬을 추가해보세요)";
+            }
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[AIToolsPanel] 스킬 분석 실패: {ex.Message}");
             SkillsProjectNameText.Text = $"프로젝트: {Path.GetFileName(_workingDirectory)}";
-            SkillsStackText.Text = "감지된 기술: (분석 실패)";
+            SkillsStackText.Text = $"감지된 기술: (분석 실패: {ex.Message})";
+            MessageBox.Show($"프로젝트 분석 중 오류가 발생했습니다.\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            SetSkillsLoadingState(false);
+        }
+    }
+
+    private void SetSkillsLoadingState(bool isLoading)
+    {
+        // 분석 버튼 상태
+        if (SkillsAnalyzeButton != null)
+        {
+            SkillsAnalyzeButton.IsEnabled = !isLoading;
+            var buttonText = SkillsAnalyzeButton.Content as StackPanel;
+            if (buttonText?.Children.Count > 1 && buttonText.Children[1] is TextBlock textBlock)
+            {
+                textBlock.Text = isLoading ? "분석 중..." : "분석";
+            }
+        }
+
+        // 프로그레스 바 표시 (있는 경우)
+        if (SkillsProgressBar != null)
+        {
+            SkillsProgressBar.Visibility = isLoading ? Visibility.Visible : Visibility.Collapsed;
+            SkillsProgressBar.IsIndeterminate = isLoading;
         }
     }
 

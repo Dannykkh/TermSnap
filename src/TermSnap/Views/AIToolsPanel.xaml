@@ -554,10 +554,11 @@
                                                Margin="0,4,0,0"/>
                                 </StackPanel>
 
-                                <Button Grid.Column="1"
+                                <Button x:Name="SkillsAnalyzeButton"
+                                        Grid.Column="1"
                                         Style="{StaticResource MaterialDesignFlatButton}"
                                         Click="SkillsAnalyzeButton_Click"
-                                        ToolTip="프로젝트 분석">
+                                        ToolTip="프로젝트 기술 스택 분석 및 스킬 추천">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="Magnify" VerticalAlignment="Center"/>
                                         <TextBlock Text="분석" Margin="4,0,0,0"/>
@@ -565,6 +566,15 @@
                                 </Button>
                             </Grid>
                         </Border>
+
+                        <!-- 로딩 인디케이터 -->
+                        <ProgressBar x:Name="SkillsProgressBar"
+                                     Grid.Row="0"
+                                     Height="3"
+                                     Margin="0,8,0,0"
+                                     IsIndeterminate="True"
+                                     Visibility="Collapsed"
+                                     Foreground="{DynamicResource PrimaryBrush}"/>
 
                         <!-- 리소스 타입 필터 -->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
