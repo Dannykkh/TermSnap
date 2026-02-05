@@ -5,9 +5,12 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
 using TermSnap.Models;
 using TermSnap.Services;
 
@@ -32,6 +35,7 @@ public partial class AIToolsPanel : UserControl, IDisposable
 
     // Memory 탭용 - 탭별 독립 인스턴스
     private readonly MemoryService _memoryService = new();
+    private readonly ConversationSearchService _conversationSearchService = new();
 
     /// <summary>
     /// 이 패널의 MemoryService 인스턴스 (외부에서 접근용)
@@ -55,6 +59,11 @@ public partial class AIToolsPanel : UserControl, IDisposable
     /// </summary>
     public event EventHandler<string>? CommandRequested;
 
+    /// <summary>
+    /// 파일 열기 요청 이벤트 (파일 뷰어에서 열기)
+    /// </summary>
+    public event EventHandler<string>? OpenFileRequested;
+
     public AIToolsPanel()
     {
         InitializeComponent();
@@ -69,6 +78,9 @@ public partial class AIToolsPanel : UserControl, IDisposable
         LoadMemories();
         LoadConversations();
         SetupOrchestratorWatcher();
+
+        // 대화 검색 서비스 초기화
+        _conversationSearchService.SetWorkingDirectory(path);
     }
 
     /// <summary>
@@ -204,7 +216,7 @@ public partial class AIToolsPanel : UserControl, IDisposable
 
     #region Header Buttons
 
-    private void SetupHooksButton_Click(object sender, RoutedEventArgs e)
+    private async void SetupHooksButton_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_workingDirectory))
         {
@@ -216,20 +228,54 @@ public partial class AIToolsPanel : UserControl, IDisposable
             return;
         }
 
+        // 버튼 비활성화 및 상태 표시
+        var button = sender as Button;
+        if (button != null) button.IsEnabled = false;
+
+        var progressWindow = new Window
+        {
+            Title = "Claude 시스템 설치 중...",
+            Width = 400,
+            Height = 150,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = Window.GetWindow(this),
+            ResizeMode = ResizeMode.NoResize,
+            WindowStyle = WindowStyle.ToolWindow
+        };
+
+        var progressPanel = new StackPanel { Margin = new Thickness(20) };
+        var statusText = new TextBlock { Text = "설치 준비 중...", FontSize = 14, Margin = new Thickness(0, 0, 0, 10) };
+        var progressBar = new System.Windows.Controls.ProgressBar { Height = 20, Minimum = 0, Maximum = 100 };
+        progressPanel.Children.Add(statusText);
+        progressPanel.Children.Add(progressBar);
+        progressWindow.Content = progressPanel;
+
+        progressWindow.Show();
+
         try
         {
-            // Claude 훅 설정
-            var hooksCreated = ClaudeHookService.EnsureMemoryHooks(_workingDirectory);
-            var memoryCreated = ClaudeHookService.EnsureMemoryReference(_workingDirectory);
+            var anyCreated = await ClaudeHookService.InstallMemorySystemAsync(_workingDirectory, (step, current, total) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    statusText.Text = step;
+                    progressBar.Value = (current * 100.0) / total;
+                });
+            });
 
-            if (hooksCreated || memoryCreated)
+            progressWindow.Close();
+
+            if (anyCreated)
             {
                 MessageBox.Show(
-                    $"Claude 장기기억 설정이 완료되었습니다.\n\n" +
-                    $"생성된 파일:\n" +
-                    $"• .claude/settings.local.json\n" +
-                    $"• MEMORY.md\n" +
-                    $"• CLAUDE.md (없으면 생성)\n\n" +
+                    $"Claude 시스템 설정이 완료되었습니다.\n\n" +
+                    $"설치된 항목:\n" +
+                    $"• .claude/settings.local.json (MCP 설정)\n" +
+                    $"• MEMORY.md, CLAUDE.md\n" +
+                    $"• .claude/skills/gepetto (구현 계획 스킬)\n" +
+                    $"• .claude/commands/ (workpm, pmworker, wrap-up)\n" +
+                    $"• mcp-servers/ (오케스트레이터 MCP)\n" +
+                    $"• ~/.claude/ (Mnemo 글로벌 설치)\n\n" +
                     $"경로: {_workingDirectory}",
                     "설정 완료",
                     MessageBoxButton.OK,
@@ -238,7 +284,7 @@ public partial class AIToolsPanel : UserControl, IDisposable
             else
             {
                 MessageBox.Show(
-                    "이미 Claude 장기기억 설정이 존재합니다.",
+                    "이미 Claude 시스템이 설치되어 있습니다.",
                     "알림",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -246,11 +292,16 @@ public partial class AIToolsPanel : UserControl, IDisposable
         }
         catch (Exception ex)
         {
+            progressWindow.Close();
             MessageBox.Show(
                 $"설정 중 오류가 발생했습니다.\n{ex.Message}",
                 "오류",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (button != null) button.IsEnabled = true;
         }
     }
 
@@ -266,7 +317,43 @@ public partial class AIToolsPanel : UserControl, IDisposable
     {
         if (sender is ScrollViewer scrollViewer)
         {
-            scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta / 3);
+            // 마우스가 이 ScrollViewer 위에 있는지 확인
+            var mousePos = e.GetPosition(scrollViewer);
+            if (mousePos.X >= 0 && mousePos.X <= scrollViewer.ActualWidth &&
+                mousePos.Y >= 0 && mousePos.Y <= scrollViewer.ActualHeight)
+            {
+                scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta / 3);
+                e.Handled = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// UserControl 전체의 마우스 휠 이벤트 처리 (내부 컨트롤이 휠을 먹는 문제 해결)
+    /// </summary>
+    private void UserControl_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        // 이미 처리된 경우 스킵
+        if (e.Handled) return;
+
+        // 마우스 위치에서 가장 가까운 ScrollViewer 찾기
+        var element = e.OriginalSource as DependencyObject;
+        ScrollViewer? targetScrollViewer = null;
+
+        while (element != null)
+        {
+            if (element is ScrollViewer sv && sv.ComputedVerticalScrollBarVisibility == Visibility.Visible)
+            {
+                targetScrollViewer = sv;
+                break;
+            }
+            element = VisualTreeHelper.GetParent(element);
+        }
+
+        // ScrollViewer를 찾았으면 스크롤
+        if (targetScrollViewer != null)
+        {
+            targetScrollViewer.ScrollToVerticalOffset(targetScrollViewer.VerticalOffset - e.Delta / 3);
             e.Handled = true;
         }
     }
@@ -295,20 +382,20 @@ public partial class AIToolsPanel : UserControl, IDisposable
         }
     }
 
-    private void MemorySearchBox_KeyDown(object sender, KeyEventArgs e)
+    private async void MemorySearchBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
-            SearchMemories();
+            await SearchMemoriesAsync();
         }
     }
 
-    private void MemorySearchButton_Click(object sender, RoutedEventArgs e)
+    private async void MemorySearchButton_Click(object sender, RoutedEventArgs e)
     {
-        SearchMemories();
+        await SearchMemoriesAsync();
     }
 
-    private void SearchMemories()
+    private async System.Threading.Tasks.Task SearchMemoriesAsync()
     {
         var query = MemorySearchBox?.Text?.Trim();
 
@@ -330,10 +417,14 @@ public partial class AIToolsPanel : UserControl, IDisposable
         if (SearchPlaceholderText != null)
             SearchPlaceholderText.Visibility = Visibility.Collapsed;
 
-        // 1. MEMORY.md 검색
+        // 로딩 표시
+        MemoryStatsText.Text = "검색 중...";
+
+        // 1. MEMORY.md 검색 (로컬, 빠름)
         var filteredMemories = _memories.Where(m =>
             m.Content.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-            (m.Source?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false)
+            (m.Source?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (m.Context?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false)
         ).ToList();
 
         // 검색 결과 UI 업데이트 (기억)
@@ -343,22 +434,18 @@ public partial class AIToolsPanel : UserControl, IDisposable
             SearchMemoryResultsBorder.Visibility = filteredMemories.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        // 2. 대화 로그 검색 (키워드 + 내용)
-        var filteredConversations = _conversations.Where(c =>
-            c.Summary.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-            c.Keywords.Any(k => k.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
-            SearchConversationContent(c.FilePath, query)
-        ).ToList();
+        // 2. 대화 로그 검색 (ConversationSearchService 사용 - grep 기반)
+        var conversationResults = await _conversationSearchService.SearchFullTextAsync(query);
 
         // 검색 결과 UI 업데이트 (대화)
         if (SearchConversationResultsList != null && SearchConversationResultsBorder != null)
         {
-            SearchConversationResultsList.ItemsSource = filteredConversations;
-            SearchConversationResultsBorder.Visibility = filteredConversations.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            SearchConversationResultsList.ItemsSource = conversationResults;
+            SearchConversationResultsBorder.Visibility = conversationResults.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // 결과 표시
-        MemoryStatsText.Text = $"검색 결과: 기억 {filteredMemories.Count}개, 대화 {filteredConversations.Count}개";
+        MemoryStatsText.Text = $"검색 결과: 기억 {filteredMemories.Count}개, 대화 {conversationResults.Count}개";
     }
 
     /// <summary>
@@ -375,6 +462,26 @@ public partial class AIToolsPanel : UserControl, IDisposable
         catch
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 대화 검색 결과 선택 시 컨텍스트 표시
+    /// </summary>
+    private void SearchConversationResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (SearchConversationResultsList?.SelectedItem is ConversationSearchResult result)
+        {
+            // 컨텍스트 가져오기 (Lazy Loading)
+            var context = _conversationSearchService.GetContext(result.FilePath, result.LineNumber, 5);
+
+            // 미리보기 표시
+            if (ConversationPreviewBorder != null)
+            {
+                ConversationPreviewBorder.Visibility = Visibility.Visible;
+                ConversationPreviewTitle.Text = $"📍 {result.DateDisplay} - 줄 {result.LineNumber}";
+                ConversationPreviewText.Text = context;
+            }
         }
     }
 
@@ -486,27 +593,23 @@ public partial class AIToolsPanel : UserControl, IDisposable
 
     private static string GetMemoryTypeIcon(MemoryType type) => type switch
     {
-        MemoryType.Fact => "📌",
-        MemoryType.Preference => "💡",
-        MemoryType.TechStack => "🔧",
-        MemoryType.Project => "📁",
-        MemoryType.Experience => "🎯",
-        MemoryType.WorkPattern => "⏰",
-        MemoryType.Instruction => "⚠️",
-        MemoryType.Lesson => "📚",
+        MemoryType.Architecture => "🏗️",
+        MemoryType.Pattern => "🔄",
+        MemoryType.Tool => "🔧",
+        MemoryType.Gotcha => "⚠️",
+        MemoryType.Goal => "🎯",
+        MemoryType.Meta => "📁",
         _ => "•"
     };
 
     private static string GetMemoryTypeName(MemoryType type) => type switch
     {
-        MemoryType.Fact => "사실",
-        MemoryType.Preference => "선호도",
-        MemoryType.TechStack => "기술 스택",
-        MemoryType.Project => "프로젝트",
-        MemoryType.Experience => "경험",
-        MemoryType.WorkPattern => "작업 패턴",
-        MemoryType.Instruction => "지침",
-        MemoryType.Lesson => "학습된 교훈",
+        MemoryType.Architecture => "아키텍처",
+        MemoryType.Pattern => "패턴",
+        MemoryType.Tool => "도구",
+        MemoryType.Gotcha => "주의사항",
+        MemoryType.Goal => "목표",
+        MemoryType.Meta => "메타",
         _ => "기타"
     };
 
@@ -603,7 +706,7 @@ public partial class AIToolsPanel : UserControl, IDisposable
         _planFiles.Clear();
         if (string.IsNullOrEmpty(_workingDirectory)) return;
 
-        // 플랜 파일 검색 경로들
+        // 플랜 파일 검색 경로들 (gepetto의 plan 폴더 포함)
         var planPatterns = new[]
         {
             "PLAN.md",
@@ -612,7 +715,12 @@ public partial class AIToolsPanel : UserControl, IDisposable
             ".claude/plan.md",
             ".claude/plans/*.md",
             "docs/PLAN.md",
-            "docs/PRD.md"
+            "docs/PRD.md",
+            "docs/plan/*.md",        // gepetto 계획 폴더
+            "docs/plan/**/*.md",     // gepetto 하위 폴더
+            "plan/*.md",             // 루트 plan 폴더
+            "*-spec.md",             // gepetto spec 파일
+            "*-plan.md"              // gepetto plan 파일
         };
 
         foreach (var pattern in planPatterns)
@@ -663,28 +771,174 @@ public partial class AIToolsPanel : UserControl, IDisposable
         LoadPlanFiles();
     }
 
+    /// <summary>
+    /// 플랜 파일 직접 선택 (프로젝트 폴더 내에서만)
+    /// </summary>
+    private void BrowsePlanFileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_workingDirectory))
+        {
+            MessageBox.Show("작업 디렉토리가 설정되지 않았습니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "플랜 파일 선택 (프로젝트 폴더 내)",
+            Filter = "Markdown 파일 (*.md)|*.md|모든 파일 (*.*)|*.*",
+            InitialDirectory = _workingDirectory,
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            var selectedPath = dialog.FileName;
+            var normalizedSelected = Path.GetFullPath(selectedPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var normalizedWorkDir = Path.GetFullPath(_workingDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            // 프로젝트 폴더 내에 있는지 확인
+            if (!normalizedSelected.StartsWith(normalizedWorkDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !normalizedSelected.Equals(normalizedWorkDir, StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(
+                    $"프로젝트 폴더 외부의 파일은 선택할 수 없습니다.\n\n프로젝트 폴더: {_workingDirectory}",
+                    "경고",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            // 이미 목록에 있는지 확인
+            var existingItem = _planFiles.FirstOrDefault(p =>
+                Path.GetFullPath(p.FilePath).Equals(normalizedSelected, StringComparison.OrdinalIgnoreCase));
+
+            if (existingItem != null)
+            {
+                // 기존 항목 선택
+                PlanFileList.SelectedItem = existingItem;
+            }
+            else
+            {
+                // 새 항목 추가
+                var fileInfo = new FileInfo(selectedPath);
+                var newItem = new PlanFileItem
+                {
+                    FileName = Path.GetRelativePath(_workingDirectory, selectedPath),
+                    FilePath = selectedPath,
+                    ModifiedTime = fileInfo.LastWriteTime.ToString("MM/dd HH:mm")
+                };
+                _planFiles.Insert(0, newItem);
+                PlanFileList.SelectedIndex = 0;
+            }
+
+            // 플랜 파일 없음 메시지 숨김
+            NoPlanFilesText.Visibility = Visibility.Collapsed;
+            PlanFileList.Visibility = Visibility.Visible;
+        }
+    }
+
     private void PlanFileList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (PlanFileList.SelectedItem is PlanFileItem item)
         {
             _selectedPlanFilePath = item.FilePath;
             LoadPlanPreview(item.FilePath);
+
+            // 선택된 파일 정보 업데이트
+            SelectedPlanFileText.Text = $"선택됨: {item.FileName}";
+        }
+        else
+        {
+            SelectedPlanFileText.Text = "선택된 파일 없음";
         }
     }
+
+    // 마크다운 렌더러 인스턴스
+    private MarkdownRenderer? _markdownRenderer;
 
     private void LoadPlanPreview(string filePath)
     {
         try
         {
             var content = File.ReadAllText(filePath);
-            // 500자까지만 미리보기
-            if (content.Length > 500)
-                content = content.Substring(0, 497) + "...";
-            PlanPreviewText.Text = content;
+            // 2000자까지 미리보기
+            if (content.Length > 2000)
+                content = content.Substring(0, 1997) + "\n\n*...더 보기*";
+            RenderMarkdownPreview(content);
         }
         catch (Exception ex)
         {
-            PlanPreviewText.Text = $"파일을 읽을 수 없습니다: {ex.Message}";
+            SetPlanPreviewPlainText($"파일을 읽을 수 없습니다: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 플랜 미리보기에 일반 텍스트 설정
+    /// </summary>
+    private void SetPlanPreviewPlainText(string text)
+    {
+        var document = new FlowDocument();
+        document.Blocks.Add(new Paragraph(new Run(text)
+        {
+            Foreground = (Brush)FindResource("TextSecondaryBrush")
+        }));
+        PlanPreviewRichText.Document = document;
+    }
+
+    /// <summary>
+    /// 마크다운 렌더링 (공통 MarkdownRenderer 사용)
+    /// </summary>
+    private void RenderMarkdownPreview(string markdown)
+    {
+        // 렌더러 초기화 (한 번만)
+        if (_markdownRenderer == null)
+        {
+            _markdownRenderer = new MarkdownRenderer();
+        }
+
+        // 테마 색상 설정
+        _markdownRenderer.TextBrush = (Brush)FindResource("TextPrimaryBrush");
+        _markdownRenderer.SecondaryBrush = (Brush)FindResource("TextSecondaryBrush");
+        _markdownRenderer.BorderBrush = (Brush)FindResource("MaterialDesignDivider");
+        _markdownRenderer.CodeBackgroundBrush = new SolidColorBrush(Color.FromArgb(40, 128, 128, 128));
+
+        PlanPreviewRichText.Document = _markdownRenderer.Render(markdown);
+    }
+
+    /// <summary>
+    /// 플랜 파일 목록에서 제거
+    /// </summary>
+    private void RemovePlanFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is PlanFileItem item)
+        {
+            _planFiles.Remove(item);
+            PlanFileList.ItemsSource = null;
+            PlanFileList.ItemsSource = _planFiles;
+
+            // 목록이 비었으면 메시지 표시
+            if (_planFiles.Count == 0)
+            {
+                NoPlanFilesText.Visibility = Visibility.Visible;
+                SetPlanPreviewPlainText("플랜 파일을 선택하세요");
+                SelectedPlanFileText.Text = "선택된 파일 없음";
+            }
+            else if (PlanFileList.SelectedItem == null && _planFiles.Count > 0)
+            {
+                PlanFileList.SelectedIndex = 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 선택된 플랜 파일을 파일 뷰어에서 열기
+    /// </summary>
+    private void OpenPlanFileInViewer_Click(object sender, RoutedEventArgs e)
+    {
+        if (PlanFileList.SelectedItem is PlanFileItem item && !string.IsNullOrEmpty(item.FilePath))
+        {
+            // 파일 뷰어에서 열기 요청 이벤트 발생
+            OpenFileRequested?.Invoke(this, item.FilePath);
         }
     }
 
@@ -887,13 +1141,118 @@ public partial class AIToolsPanel : UserControl, IDisposable
             }
 
             _selectedPlanFilePath = null;
-            PlanPreviewText.Text = "플랜 파일을 선택하세요";
+            SetPlanPreviewPlainText("플랜 파일을 선택하세요");
             UpdateOrchestratorUI(0, 0, 0, 0, 0);
             MessageBox.Show("초기화 완료", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             MessageBox.Show($"초기화 실패: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void OrchestratorUpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_workingDirectory))
+        {
+            MessageBox.Show("작업 디렉토리가 설정되지 않았습니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        // 버전 확인
+        var (localVersion, remoteVersion, needsUpdate) = await ClaudeHookService.CheckOrchestratorVersionAsync(_workingDirectory);
+
+        if (!needsUpdate)
+        {
+            MessageBox.Show(
+                $"이미 최신 버전입니다.\n\n로컬: {localVersion}\nGitHub: {remoteVersion}",
+                "Orchestrator 업데이트",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            $"GitHub에서 최신 Orchestrator를 다운로드합니다.\n\n" +
+            $"로컬 버전: {localVersion}\n" +
+            $"GitHub 버전: {remoteVersion}\n\n" +
+            "계속하시겠습니까?",
+            "Orchestrator 업데이트",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (confirm != MessageBoxResult.Yes) return;
+
+        // 버튼 비활성화
+        OrchestratorUpdateButton.IsEnabled = false;
+        OrchestratorUpdateButton.Content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Children =
+            {
+                new MaterialDesignThemes.Wpf.PackIcon { Kind = MaterialDesignThemes.Wpf.PackIconKind.Loading },
+                new TextBlock { Text = "업데이트 중...", Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, FontSize = 11 }
+            }
+        };
+
+        try
+        {
+            var (success, message) = await ClaudeHookService.UpdateOrchestratorFromGitHubAsync(
+                _workingDirectory,
+                progress =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        // 진행 상황 표시 (간단하게 버튼 텍스트로)
+                        System.Diagnostics.Debug.WriteLine($"[Orchestrator Update] {progress}");
+                    });
+                });
+
+            if (success)
+            {
+                MessageBox.Show(
+                    $"✓ Orchestrator 업데이트 완료!\n\n" +
+                    $"버전: {remoteVersion}\n\n" +
+                    "MCP 서버가 최신 버전으로 업데이트되었습니다.\n" +
+                    "workpm, pmworker 명령어를 사용할 수 있습니다.",
+                    "업데이트 완료",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                // 상태 새로고침
+                OrchestratorRefreshButton_Click(sender, e);
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"업데이트 실패:\n{message}\n\n" +
+                    "Node.js가 설치되어 있는지 확인하세요.",
+                    "업데이트 실패",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"업데이트 중 오류 발생:\n{ex.Message}",
+                "오류",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            // 버튼 복원
+            OrchestratorUpdateButton.IsEnabled = true;
+            OrchestratorUpdateButton.Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Children =
+                {
+                    new MaterialDesignThemes.Wpf.PackIcon { Kind = MaterialDesignThemes.Wpf.PackIconKind.CloudDownload, VerticalAlignment = VerticalAlignment.Center },
+                    new TextBlock { Text = "업데이트", Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, FontSize = 11 }
+                }
+            };
         }
     }
 
@@ -1009,6 +1368,10 @@ public partial class AIToolsPanel : UserControl, IDisposable
         // 설치 상태 필터링
         if (_currentInstallFilter == "Installed")
             resources = resources.Where(r => r.IsInstalled).ToList();
+        else if (_currentInstallFilter == "Global")
+            resources = resources.Where(r => r.IsInstalled && r.IsGlobalInstall).ToList();
+        else if (_currentInstallFilter == "Local")
+            resources = resources.Where(r => r.IsInstalled && !r.IsGlobalInstall).ToList();
         else if (_currentInstallFilter == "NotInstalled")
             resources = resources.Where(r => !r.IsInstalled).ToList();
 
@@ -1034,14 +1397,19 @@ public partial class AIToolsPanel : UserControl, IDisposable
             return;
         }
 
-        var total = _skillRecommendations.TotalCount;
-        var installed = _skillRecommendations.Skills.Count(s => s.IsInstalled) +
-                        _skillRecommendations.Agents.Count(a => a.IsInstalled) +
-                        _skillRecommendations.Commands.Count(c => c.IsInstalled) +
-                        _skillRecommendations.Hooks.Count(h => h.IsInstalled) +
-                        _skillRecommendations.MCPs.Count(m => m.IsInstalled);
+        var allResources = _skillRecommendations.Skills
+            .Concat(_skillRecommendations.Agents)
+            .Concat(_skillRecommendations.Commands)
+            .Concat(_skillRecommendations.Hooks)
+            .Concat(_skillRecommendations.MCPs)
+            .ToList();
 
-        SkillsStatsText.Text = $"추천: {total}개 (설치됨: {installed}개)";
+        var total = allResources.Count;
+        var installed = allResources.Count(r => r.IsInstalled);
+        var globalCount = allResources.Count(r => r.IsInstalled && r.IsGlobalInstall);
+        var localCount = allResources.Count(r => r.IsInstalled && !r.IsGlobalInstall);
+
+        SkillsStatsText.Text = $"추천: {total}개 (설치됨: {installed}개 - 🌐{globalCount} / 📁{localCount})";
     }
 
     private void SkillsAnalyzeButton_Click(object sender, RoutedEventArgs e)
@@ -1552,6 +1920,10 @@ public partial class AIToolsPanel : UserControl, IDisposable
                 _orchestratorWatcher = null;
             }
 
+            // 서비스 정리
+            _memoryService.Dispose();
+            _conversationSearchService.Dispose();
+
             Debug.WriteLine("[AIToolsPanel] Disposed");
         }
     }
@@ -1592,6 +1964,18 @@ public class SkillItemViewModel : INotifyPropertyChanged
         _ => "⚪"   // 선택
     };
 
+    /// <summary>
+    /// 설치 위치 표시 (글로벌/로컬)
+    /// </summary>
+    public string InstallLocation => IsInstalled
+        ? (IsGlobalInstall ? "🌐 글로벌" : "📁 로컬")
+        : "";
+
+    /// <summary>
+    /// 설치 위치 표시 여부
+    /// </summary>
+    public bool ShowInstallLocation => IsInstalled;
+
     private bool _isSelected;
     public bool IsSelected
     {
@@ -1612,6 +1996,20 @@ public class SkillItemViewModel : INotifyPropertyChanged
             _isInstalled = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsInstalled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNotInstalled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InstallLocation)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowInstallLocation)));
+        }
+    }
+
+    private bool _isGlobalInstall;
+    public bool IsGlobalInstall
+    {
+        get => _isGlobalInstall;
+        set
+        {
+            _isGlobalInstall = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsGlobalInstall)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InstallLocation)));
         }
     }
 
@@ -1623,6 +2021,7 @@ public class SkillItemViewModel : INotifyPropertyChanged
     {
         Resource = resource;
         _isInstalled = resource.IsInstalled;
+        _isGlobalInstall = resource.IsGlobalInstall;
     }
 }
 
@@ -1638,6 +2037,10 @@ public class ConversationLogItem
     public string Summary { get; set; } = string.Empty;
     public string KeywordCount { get; set; } = string.Empty;
     public List<string> Keywords { get; set; } = new();
+
+    // claude-mem 스타일 UI용 속성
+    public bool HasSummary => !string.IsNullOrWhiteSpace(Summary);
+    public bool HasKeywords => Keywords.Count > 0;
 }
 
 /// <summary>

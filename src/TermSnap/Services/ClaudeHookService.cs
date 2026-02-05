@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace TermSnap.Services;
@@ -23,10 +24,24 @@ public static class ClaudeHookService
     private const string MemoryFileName = "MEMORY.md";
 
     /// <summary>
-    /// 장기기억 시스템 전체 설치
+    /// 설치 진행 상태 콜백
+    /// </summary>
+    public delegate void InstallProgressCallback(string step, int progress, int total);
+
+    /// <summary>
+    /// 장기기억 시스템 전체 설치 (동기 버전 - 호환성 유지)
     /// Claude Code 실행 전 호출하여 모든 필요 파일/폴더 생성
     /// </summary>
     public static bool InstallMemorySystem(string workingDirectory)
+    {
+        return InstallMemorySystemAsync(workingDirectory, null).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// 장기기억 시스템 전체 설치 (비동기 버전)
+    /// 진행 상태 콜백을 통해 UI에 설치 과정 표시 가능
+    /// </summary>
+    public static async Task<bool> InstallMemorySystemAsync(string workingDirectory, InstallProgressCallback? onProgress)
     {
         if (string.IsNullOrEmpty(workingDirectory) || !Directory.Exists(workingDirectory))
             return false;
@@ -34,36 +49,34 @@ public static class ClaudeHookService
         try
         {
             var anyCreated = false;
+            var totalSteps = 5;
+            var currentStep = 0;
 
-            // 1. hooks 폴더 및 스크립트 생성
-            anyCreated |= EnsureHooksFolder(workingDirectory);
+            // 1. .claude 폴더 및 conversations 폴더 생성
+            onProgress?.Invoke("폴더 구조 생성 중...", ++currentStep, totalSteps);
+            await Task.Run(() => { anyCreated |= EnsureClaudeFolders(workingDirectory); });
 
-            // 2. .claude 폴더 및 conversations 폴더 생성
-            anyCreated |= EnsureClaudeFolders(workingDirectory);
+            // 2. settings.local.json 생성/업데이트
+            onProgress?.Invoke("설정 파일 생성 중...", ++currentStep, totalSteps);
+            await Task.Run(() => { anyCreated |= EnsureSettingsJson(workingDirectory); });
 
-            // 3. settings.local.json 생성/업데이트
-            anyCreated |= EnsureSettingsJson(workingDirectory);
+            // Note: MEMORY.md, CLAUDE.md는 Claude Code가 자동 생성하므로 제거
 
-            // 4. MEMORY.md 생성
-            anyCreated |= EnsureMemoryMd(workingDirectory);
+            // 3. Gepetto 스킬 설치 (구현 계획 생성)
+            onProgress?.Invoke("Gepetto 스킬 설치 중...", ++currentStep, totalSteps);
+            anyCreated |= await InstallGepettoSkillAsync(workingDirectory);
 
-            // 5. CLAUDE.md에 @MEMORY.md import 추가
-            anyCreated |= EnsureClaudeMd(workingDirectory);
+            // 4. 오케스트라 MCP 서버 설치 (시간이 가장 오래 걸림)
+            onProgress?.Invoke("Orchestrator MCP 설치 중... (npm install)", ++currentStep, totalSteps);
+            anyCreated |= await InstallOrchestratorMCPAsync(workingDirectory);
 
-            // 6. 에이전트 설치 (memory-writer, keyword-extractor)
-            anyCreated |= InstallMemoryAgents(workingDirectory);
-
-            // 7. 스킬 설치 (long-term-memory)
-            anyCreated |= InstallMemorySkills(workingDirectory);
-
-            // 8. 가이드 문서 설치
-            anyCreated |= InstallGuideDocuments(workingDirectory);
-
-            // 9. 오케스트라 MCP 서버 설치
-            anyCreated |= InstallOrchestratorMCP(workingDirectory);
-
-            // 10. 오케스트라 커맨드 설치 (workpm, pmworker)
-            anyCreated |= InstallOrchestratorCommands(workingDirectory);
+            // 5. 오케스트라 커맨드 + Mnemo 글로벌 설치
+            onProgress?.Invoke("커맨드 및 Mnemo 설치 중...", ++currentStep, totalSteps);
+            await Task.Run(() =>
+            {
+                anyCreated |= InstallOrchestratorCommands(workingDirectory);
+                anyCreated |= InstallMnemoGlobal();
+            });
 
             if (anyCreated)
             {
@@ -88,290 +101,6 @@ public static class ClaudeHookService
     /// 기존 메서드 호환성 유지
     /// </summary>
     public static bool EnsureMemoryReference(string workingDirectory) => EnsureClaudeMd(workingDirectory);
-
-    #region Hooks Folder
-
-    /// <summary>
-    /// hooks 폴더 및 스크립트 생성
-    /// </summary>
-    private static bool EnsureHooksFolder(string workingDirectory)
-    {
-        var hooksFolder = Path.Combine(workingDirectory, HooksFolderName);
-        var created = false;
-
-        // hooks 폴더 생성
-        if (!Directory.Exists(hooksFolder))
-        {
-            Directory.CreateDirectory(hooksFolder);
-            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] hooks 폴더 생성: {hooksFolder}");
-            created = true;
-        }
-
-        // save-conversation.ps1 생성
-        var saveConversationPath = Path.Combine(hooksFolder, "save-conversation.ps1");
-        if (!File.Exists(saveConversationPath))
-        {
-            File.WriteAllText(saveConversationPath, GenerateSaveConversationScript(), Encoding.UTF8);
-            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] save-conversation.ps1 생성");
-            created = true;
-        }
-
-        // update-memory.ps1 생성
-        var updateMemoryPath = Path.Combine(hooksFolder, "update-memory.ps1");
-        if (!File.Exists(updateMemoryPath))
-        {
-            File.WriteAllText(updateMemoryPath, GenerateUpdateMemoryScript(), Encoding.UTF8);
-            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] update-memory.ps1 생성");
-            created = true;
-        }
-
-        // workpm-hook.ps1 생성 (PM 모드 시동어 훅)
-        var workpmHookPath = Path.Combine(hooksFolder, "workpm-hook.ps1");
-        if (!File.Exists(workpmHookPath))
-        {
-            File.WriteAllText(workpmHookPath, GenerateWorkPMHookScript(), Encoding.UTF8);
-            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] workpm-hook.ps1 생성");
-            created = true;
-        }
-
-        // pmworker-hook.ps1 생성 (Worker 모드 시동어 훅)
-        var pmworkerHookPath = Path.Combine(hooksFolder, "pmworker-hook.ps1");
-        if (!File.Exists(pmworkerHookPath))
-        {
-            File.WriteAllText(pmworkerHookPath, GeneratePMWorkerHookScript(), Encoding.UTF8);
-            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] pmworker-hook.ps1 생성");
-            created = true;
-        }
-
-        return created;
-    }
-
-    /// <summary>
-    /// save-conversation.ps1 스크립트 생성
-    /// 매 프롬프트마다 대화를 .claude/conversations/YYYY-MM-DD.md에 저장
-    /// </summary>
-    private static string GenerateSaveConversationScript()
-    {
-        return @"# save-conversation.ps1
-# 대화 내용을 날짜별 마크다운 파일로 저장
-# 사용법: powershell -File hooks/save-conversation.ps1 ""$PROMPT""
-
-param(
-    [string]$Prompt
-)
-
-# 프로젝트 디렉토리 (스크립트 위치 기준)
-$ProjectDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-if (-not $ProjectDir) { $ProjectDir = Get-Location }
-
-# 대화 저장 폴더
-$ConversationsDir = Join-Path $ProjectDir "".claude/conversations""
-if (-not (Test-Path $ConversationsDir)) {
-    New-Item -ItemType Directory -Path $ConversationsDir -Force | Out-Null
-}
-
-# 오늘 날짜 파일
-$Today = Get-Date -Format ""yyyy-MM-dd""
-$LogFile = Join-Path $ConversationsDir ""$Today.md""
-
-# 파일이 없으면 헤더 추가
-if (-not (Test-Path $LogFile)) {
-    $ProjectName = Split-Path -Leaf $ProjectDir
-    $Header = @""
-# 대화 기록: $Today
-프로젝트: $ProjectName
-
----
-
-""@
-    $Header | Out-File -FilePath $LogFile -Encoding UTF8
-}
-
-# 타임스탬프와 함께 프롬프트 추가
-$Timestamp = Get-Date -Format ""HH:mm:ss""
-$Entry = @""
-
-## [$Timestamp] User
-$Prompt
-
-""@
-
-$Entry | Out-File -FilePath $LogFile -Encoding UTF8 -Append
-
-Write-Host ""[Memory] Conversation saved to $LogFile""
-";
-    }
-
-    /// <summary>
-    /// update-memory.ps1 스크립트 생성
-    /// 세션 종료 시 Claude를 호출하여 MEMORY.md 자동 업데이트
-    /// </summary>
-    private static string GenerateUpdateMemoryScript()
-    {
-        return @"# update-memory.ps1
-# 세션 종료 시 오늘 대화를 분석하여 MEMORY.md 업데이트
-# 사용법: powershell -File hooks/update-memory.ps1
-
-# 프로젝트 디렉토리
-$ProjectDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-if (-not $ProjectDir) { $ProjectDir = Get-Location }
-
-# 오늘 대화 로그 파일
-$Today = Get-Date -Format ""yyyy-MM-dd""
-$LogFile = Join-Path $ProjectDir "".claude/conversations/$Today.md""
-$MemoryFile = Join-Path $ProjectDir ""MEMORY.md""
-
-# 대화 로그와 MEMORY.md 둘 다 있어야 실행
-if (-not (Test-Path $LogFile)) {
-    Write-Host ""[Memory] No conversation log for today. Skipping memory update.""
-    exit 0
-}
-
-if (-not (Test-Path $MemoryFile)) {
-    Write-Host ""[Memory] MEMORY.md not found. Skipping memory update.""
-    exit 0
-}
-
-Write-Host ""[Memory] Analyzing today's conversation and updating MEMORY.md...""
-
-# Claude CLI를 사용하여 메모리 업데이트
-# --print: 비대화형 모드
-# --max-turns 3: 빠른 완료를 위해 턴 수 제한
-$Prompt = @""
-You are a memory-writer agent. Analyze today's conversation log and update MEMORY.md.
-
-Instructions:
-1. Read the conversation log: $LogFile
-2. Extract important information (decisions, preferences, lessons learned, technical choices)
-3. Update MEMORY.md with new entries under appropriate sections
-4. Do NOT duplicate existing entries
-5. Keep entries concise (1-2 sentences each)
-6. Add timestamp to new entries
-
-Sections in MEMORY.md:
-- 프로젝트: Project-level information
-- 사실: Facts about the user/project
-- 선호도: User preferences
-- 기술 스택: Technology choices
-- 작업 패턴: Work patterns
-- 지침: Instructions/rules
-- 학습된 교훈: Lessons learned
-
-Please update MEMORY.md now.
-""@
-
-try {
-    claude --print --max-turns 3 $Prompt
-    Write-Host ""[Memory] MEMORY.md updated successfully.""
-} catch {
-    Write-Host ""[Memory] Failed to update MEMORY.md: $_""
-    Write-Host ""[Memory] You can manually run: claude 'MEMORY.md를 오늘 대화 기반으로 업데이트해줘'""
-}
-";
-    }
-
-    /// <summary>
-    /// workpm-hook.ps1 스크립트 생성
-    /// PM 모드 시동어 훅 - 프롬프트에 workpm이 포함되면 PM 모드 컨텍스트 주입
-    /// </summary>
-    private static string GenerateWorkPMHookScript()
-    {
-        return @"# workpm-hook.ps1
-# PM 모드 시동어 훅 - workpm 입력 시 PM 모드 활성화
-# 출력 내용은 Claude의 additional context로 주입됨
-
-Write-Host @""
-[PM MODE ACTIVATED]
-
-당신은 Multi-AI Orchestrator의 PM(Project Manager)입니다.
-
-## 시작 절차
-
-1. **AI Provider 감지**
-   orchestrator_detect_providers 도구로 설치된 AI CLI 확인
-
-2. **플랜 파일 로드**
-   orchestrator_get_latest_plan으로 최신 플랜 자동 로드
-   플랜 파일을 분석하여 작업 목록 추출
-
-3. **프로젝트 분석**
-   orchestrator_analyze_codebase로 코드 구조 파악
-
-4. **태스크 생성**
-   orchestrator_create_task로 태스크 생성
-   - 의존성(depends_on) 설정
-   - scope 명시 (수정 가능 파일)
-   - AI Provider 배정 (강점에 따라)
-
-5. **모니터링**
-   orchestrator_get_progress로 진행 상황 확인
-
-## AI 배정 가이드
-
-| 태스크 유형 | 추천 AI |
-|------------|---------|
-| 코드 생성 | codex |
-| 리팩토링 | claude |
-| 코드 리뷰 | gemini |
-| 문서 작성 | claude |
-
-## Worker 추가
-
-다른 터미널에서 'pmworker'를 입력하면 Worker가 추가됩니다.
-
----
-지금 바로 orchestrator_detect_providers를 호출하여 시작하세요.
-""@
-";
-    }
-
-    /// <summary>
-    /// pmworker-hook.ps1 스크립트 생성
-    /// Worker 모드 시동어 훅 - 프롬프트에 pmworker가 포함되면 Worker 모드 컨텍스트 주입
-    /// </summary>
-    private static string GeneratePMWorkerHookScript()
-    {
-        return @"# pmworker-hook.ps1
-# Worker 모드 시동어 훅 - pmworker 입력 시 Worker 모드 활성화
-# 출력 내용은 Claude의 additional context로 주입됨
-
-Write-Host @""
-[WORKER MODE ACTIVATED]
-
-당신은 Multi-AI Orchestrator의 Worker입니다.
-PM이 생성한 태스크를 가져와 처리합니다.
-
-## 작업 루프
-
-```
-while (태스크가 있는 동안) {
-    1. orchestrator_get_available_tasks
-    2. orchestrator_claim_task(첫번째_태스크)
-    3. orchestrator_lock_file(수정할_파일들)
-    4. 작업_수행
-    5. orchestrator_complete_task 또는 orchestrator_fail_task
-}
-```
-
-## 중요 규칙
-
-1. **반드시 claim 먼저**: 작업 전 반드시 claim_task 호출
-2. **lock 먼저**: 파일 수정 전 반드시 lock_file 호출
-3. **scope 준수**: 태스크 scope 외의 파일 수정 금지
-4. **완료 보고**: 작업 후 반드시 complete_task 또는 fail_task
-
-## 파일 락 충돌 시
-
-- 다른 Worker가 락 보유 중이면 잠시 대기
-- 다른 가용 태스크가 있으면 먼저 처리
-
----
-지금 바로 orchestrator_get_available_tasks를 호출하여 시작하세요.
-""@
-";
-    }
-
-    #endregion
 
     #region Claude Folders
 
@@ -419,7 +148,8 @@ while (태스크가 있는 동안) {
             var content = File.ReadAllText(gitignorePath, Encoding.UTF8);
             if (!content.Contains(".claude/conversations"))
             {
-                var addition = "\n# Claude conversation logs (auto-generated)\n.claude/conversations/\n";
+                var prefix = content.EndsWith("\n") ? "" : "\n";
+                var addition = $"{prefix}\n# Claude conversation logs (auto-generated)\n.claude/conversations/\n";
                 File.AppendAllText(gitignorePath, addition, Encoding.UTF8);
                 System.Diagnostics.Debug.WriteLine("[ClaudeHook] .gitignore에 conversations 추가");
             }
@@ -478,7 +208,7 @@ while (태스크가 있는 동안) {
     }
 
     /// <summary>
-    /// 완전한 메모리 훅이 있는지 확인 (UserPromptSubmit + Stop)
+    /// 메모리 훅이 완전한지 확인 (UserPromptSubmit + Stop 훅 모두 확인)
     /// </summary>
     private static bool HasCompleteMemoryHooks(JsonObject settings)
     {
@@ -489,8 +219,8 @@ while (태스크가 있는 동안) {
         if (hooks == null)
             return false;
 
-        var hasUserPromptHook = false;
-        var hasStopHook = false;
+        var hasSaveConversation = false;
+        var hasSaveResponse = false;
 
         // UserPromptSubmit에 save-conversation 훅 확인
         if (hooks.ContainsKey("UserPromptSubmit"))
@@ -503,32 +233,32 @@ while (태스크가 있는 동안) {
                     var command = hook?["hooks"]?[0]?["command"]?.ToString();
                     if (command != null && command.Contains("save-conversation"))
                     {
-                        hasUserPromptHook = true;
+                        hasSaveConversation = true;
                         break;
                     }
                 }
             }
         }
 
-        // Stop에 update-memory 훅 확인
+        // Stop에 save-response 훅 확인
         if (hooks.ContainsKey("Stop"))
         {
-            var hookArray = hooks["Stop"]?.AsArray();
-            if (hookArray != null)
+            var stopArray = hooks["Stop"]?.AsArray();
+            if (stopArray != null)
             {
-                foreach (var hook in hookArray)
+                foreach (var hook in stopArray)
                 {
                     var command = hook?["hooks"]?[0]?["command"]?.ToString();
-                    if (command != null && command.Contains("update-memory"))
+                    if (command != null && command.Contains("save-response"))
                     {
-                        hasStopHook = true;
+                        hasSaveResponse = true;
                         break;
                     }
                 }
             }
         }
 
-        return hasUserPromptHook && hasStopHook;
+        return hasSaveConversation && hasSaveResponse;
     }
 
     /// <summary>
@@ -562,7 +292,7 @@ while (태스크가 있는 동안) {
         {
             userPromptHooks.Add(new JsonObject
             {
-                ["matcher"] = ".*",  // 모든 프롬프트에 대해 실행
+                ["matcher"] = "",  // 빈문자열 = 모든 프롬프트에 대해 실행
                 ["hooks"] = new JsonArray
                 {
                     new JsonObject
@@ -576,32 +306,31 @@ while (태스크가 있는 동안) {
 
         hooks["UserPromptSubmit"] = userPromptHooks;
 
-        // 2. Stop 훅 - 세션 종료 시 MEMORY.md 업데이트
+        // 2. Stop 훅 - AI 응답 완료 후 save-response.ps1 실행
         var stopHooks = hooks["Stop"]?.AsArray() ?? new JsonArray();
 
-        // 기존에 update-memory 훅이 없으면 추가
-        var hasUpdateHook = false;
+        var hasSaveResponseHook = false;
         foreach (var hook in stopHooks)
         {
             var command = hook?["hooks"]?[0]?["command"]?.ToString();
-            if (command != null && command.Contains("update-memory"))
+            if (command != null && command.Contains("save-response"))
             {
-                hasUpdateHook = true;
+                hasSaveResponseHook = true;
                 break;
             }
         }
 
-        if (!hasUpdateHook)
+        if (!hasSaveResponseHook)
         {
             stopHooks.Add(new JsonObject
             {
-                ["matcher"] = ".*",  // 모든 종료에 대해 실행
+                ["matcher"] = "",  // 빈문자열 = 모든 응답에 대해 실행
                 ["hooks"] = new JsonArray
                 {
                     new JsonObject
                     {
                         ["type"] = "command",
-                        ["command"] = "powershell -ExecutionPolicy Bypass -File hooks/update-memory.ps1"
+                        ["command"] = "powershell -ExecutionPolicy Bypass -File hooks/save-response.ps1"
                     }
                 }
             });
@@ -637,7 +366,7 @@ while (태스크가 있는 동안) {
             });
         }
 
-        // 4. pmworker 훅 - Worker 모드 시동어
+        // 5. pmworker 훅 - Worker 모드 시동어
         var hasPmworkerHook = false;
         foreach (var hook in userPromptHooks)
         {
@@ -674,633 +403,143 @@ while (태스크가 있는 동안) {
 
     #endregion
 
-    #region Memory Agents & Skills
+    #region Gepetto Skill
 
     /// <summary>
-    /// 장기기억 관련 에이전트 설치
-    /// - memory-writer.md: 메모리 정리 에이전트
-    /// - keyword-extractor.md: 키워드 추출 에이전트
+    /// Gepetto 스킬 - 19단계 구현 계획 생성 워크플로우
+    /// 리서치 → 이해관계자 인터뷰 → 멀티 LLM 리뷰 → 구현 검증
     /// </summary>
-    private static bool InstallMemoryAgents(string workingDirectory)
-    {
-        var agentsFolder = Path.Combine(workingDirectory, ClaudeFolderName, "agents");
-        if (!Directory.Exists(agentsFolder))
-        {
-            Directory.CreateDirectory(agentsFolder);
-        }
-
-        var anyCreated = false;
-
-        // memory-writer.md
-        var memoryWriterPath = Path.Combine(agentsFolder, "memory-writer.md");
-        if (!File.Exists(memoryWriterPath))
-        {
-            File.WriteAllText(memoryWriterPath, GetMemoryWriterAgent(), Encoding.UTF8);
-            System.Diagnostics.Debug.WriteLine("[ClaudeHook] memory-writer.md 에이전트 설치됨");
-            anyCreated = true;
-        }
-
-        // keyword-extractor.md
-        var keywordExtractorPath = Path.Combine(agentsFolder, "keyword-extractor.md");
-        if (!File.Exists(keywordExtractorPath))
-        {
-            File.WriteAllText(keywordExtractorPath, GetKeywordExtractorAgent(), Encoding.UTF8);
-            System.Diagnostics.Debug.WriteLine("[ClaudeHook] keyword-extractor.md 에이전트 설치됨");
-            anyCreated = true;
-        }
-
-        return anyCreated;
-    }
-
-    /// <summary>
-    /// 장기기억 관련 스킬 설치
-    /// - long-term-memory: 메모리 관리 스킬
-    /// </summary>
-    private static bool InstallMemorySkills(string workingDirectory)
-    {
-        var skillsFolder = Path.Combine(workingDirectory, ClaudeFolderName, "skills", "long-term-memory");
-        if (!Directory.Exists(skillsFolder))
-        {
-            Directory.CreateDirectory(skillsFolder);
-        }
-
-        var anyCreated = false;
-
-        // SKILL.md
-        var skillPath = Path.Combine(skillsFolder, "SKILL.md");
-        if (!File.Exists(skillPath))
-        {
-            File.WriteAllText(skillPath, GetLongTermMemorySkill(), Encoding.UTF8);
-            System.Diagnostics.Debug.WriteLine("[ClaudeHook] long-term-memory 스킬 설치됨");
-            anyCreated = true;
-        }
-
-        return anyCreated;
-    }
-
-    private static string GetMemoryWriterAgent()
-    {
-        return @"# Memory Writer Agent
-
-세션 종료 시 대화를 분석하여 MEMORY.md를 자동 업데이트하는 에이전트입니다.
-
-## 역할
-
-- 오늘 대화에서 중요한 결정사항 추출
-- MEMORY.md의 적절한 섹션에 정보 추가
-- 중복 방지 및 간결한 정리
-
-## 사용 시점
-
-- Stop 훅에서 자동 호출
-- 수동: ""memory-writer 에이전트로 MEMORY.md 업데이트해줘""
-
-## 동작
-
-1. `.claude/conversations/YYYY-MM-DD.md` 읽기
-2. 중요 정보 추출:
-   - 아키텍처/설계 결정
-   - 버그 원인과 해결책
-   - 기술 스택 선택 이유
-   - 반복되는 작업 패턴
-3. MEMORY.md 적절한 섹션에 추가
-4. 타임스탬프 포함
-
-## 추출 대상
-
-| 섹션 | 추출 내용 |
-|------|----------|
-| 사실 | 프로젝트/사용자 관련 사실 |
-| 선호도 | 코딩 스타일, 도구 선호 |
-| 기술 스택 | 사용 중인 기술 |
-| 작업 패턴 | 반복 작업 방식 |
-| 지침 | 규칙, 주의사항 |
-| 학습된 교훈 | 문제 해결 경험 |
-
-## 주의사항
-
-- 기존 내용과 중복 금지
-- 1-2문장으로 간결하게
-- 날짜 타임스탬프 필수
-";
-    }
-
-    private static string GetKeywordExtractorAgent()
-    {
-        return @"# Keyword Extractor Agent
-
-대화 로그에서 키워드를 추출하고 인덱스를 업데이트하는 에이전트입니다.
-
-## 역할
-
-- 대화에서 핵심 키워드 10-20개 추출
-- frontmatter keywords 필드 업데이트
-- index.json 인덱스 업데이트
-- 1-2문장 요약 생성
-
-## 사용 시점
-
-- Stop 훅에서 자동 호출
-- 수동: ""keyword-extractor 에이전트로 키워드 추출해줘""
-
-## 추출 대상
-
-| 유형 | 예시 |
-|------|------|
-| 기술 스택 | react, typescript, python, docker |
-| 기능/모듈 | orchestrator, authentication, caching |
-| 파일/경로 | state-manager.ts, launch.ps1 |
-| 작업 유형 | refactor, implement, fix, config |
-| 주요 결정 | jwt-선택, redis-도입 |
-
-## 출력 형식
-
-**frontmatter 업데이트:**
-```yaml
----
-date: 2026-02-02
-project: my-project
-keywords: [react, hooks, authentication, jwt, refactor]
-summary: ""React 훅 최적화 및 JWT 인증 구현""
----
-```
-
-**index.json 업데이트:**
-```json
-{
-  ""conversations"": [...],
-  ""keywordIndex"": {
-    ""react"": [""2026-02-02""],
-    ""jwt"": [""2026-02-02""]
-  }
-}
-```
-";
-    }
-
-    private static string GetLongTermMemorySkill()
+    private static string GetGepettoSkill()
     {
         return @"---
-name: long-term-memory
-description: 장기기억 관리 스킬 - 기억 추가, 검색, 조회
-trigger: /memory
+name: gepetto
+description: ""상세한 구현 계획을 생성합니다. '계획을 세워보자', '계획을 세우고 싶어', 'plan' 등의 요청 시 자동 호출됩니다. 리서치, 이해관계자 인터뷰, 멀티 LLM 리뷰를 통해 실행 가능한 계획을 만들고, 구현 후 검증합니다.""
+trigger: /gepetto
 auto_trigger:
-  - ""기억해""
-  - ""remember""
-  - ""기억 찾아""
-  - ""이전에 뭘 했""
+  - ""계획 세워줘""
+  - ""계획을 세워보자""
+  - ""계획을 세우고 싶어""
+  - ""계획 만들어줘""
+  - ""계획을 세워""
+  - ""계획 세우자""
+  - ""기획해줘""
+  - ""설계해줘""
+  - ""구현 계획""
+  - ""plan this""
+  - ""plan 세우자""
+  - ""implementation plan""
+  - ""let's plan""
 ---
 
-# Long-term Memory Skill
+# Gepetto: Implementation Planning Skill
 
-세션 간 컨텍스트 유지를 위한 장기기억 관리 스킬입니다.
+Research → Interview → Spec Synthesis → Plan → External Review → Sections → Verify
 
-## 명령어
-
-### /memory add <내용>
-정보를 MEMORY.md에 저장합니다.
+## 사용법
 
 ```
-/memory add Redis TTL은 항상 1시간으로 설정
-기억해: API 키는 환경변수로 관리
+/gepetto @docs/plan/my-feature-spec.md
 ```
 
-### /memory search <키워드>
-MEMORY.md에서 키워드 검색합니다.
+- spec 파일 경로를 지정하면 **planning_dir** = 해당 파일의 부모 폴더
+- 폴더와 spec 파일이 없으면 자동 생성
+- 이미 계획 파일이 있으면 자동으로 Resume
+
+## 19단계 워크플로우
+
+### Setup (Step 1-3)
+1. Print Intro - 배너 출력
+2. Validate Spec File - @file 경로 확인
+3. Setup Planning Session - 폴더/파일 생성, Resume 포인트 결정
+
+### Research (Step 4-5)
+4. Research Decision - 코드베이스/웹 리서치 여부 결정
+5. Execute Research - 병렬 서브에이전트로 리서치 실행 → `claude-research.md`
+
+### Interview (Step 6-7)
+6. Detailed Interview - 사용자 인터뷰 (AskUserQuestion)
+7. Save Interview - `claude-interview.md`
+
+### Spec Synthesis (Step 8-9)
+8. Write Initial Spec - 리서치+인터뷰 종합 → `claude-spec.md`
+9. Generate Plan - 상세 구현 계획 → `claude-plan.md`
+
+### External Review (Step 10-12)
+10. External Review - Gemini/Codex 병렬 리뷰 → `reviews/`
+11. Integrate Feedback - 피드백 반영 → `claude-integration-notes.md`
+12. User Review - 사용자 확인
+
+### Sections (Step 13-15)
+13. Create Section Index - `sections/index.md` (SECTION_MANIFEST)
+14. Write Section Files - 병렬 서브에이전트 → `sections/section-*.md`
+15. Generate Execution Files → `claude-ralph-loop-prompt.md`, `claude-ralphy-prd.md`
+
+### Output (Step 16-17)
+16. Final Status - 파일 검증
+17. Output Summary - 요약 및 다음 단계 안내
+
+### Verification (Step 18-19)
+18. Verify Implementation - 구현 검증 (병렬 서브에이전트)
+19. Verification Report → `claude-verify-report.md`
+
+## Resume 포인트
+
+| 존재하는 파일 | Resume 단계 |
+|--------------|------------|
+| 없음 | Step 4 (새로 시작) |
+| research만 | Step 6 (인터뷰) |
+| research + interview | Step 8 (스펙 종합) |
+| + spec | Step 9 (계획) |
+| + plan | Step 10 (외부 리뷰) |
+| + reviews | Step 11 (피드백 통합) |
+| + integration-notes | Step 12 (사용자 확인) |
+| + sections/index.md | Step 14 (섹션 작성) |
+| 모든 섹션 완료 | Step 15 (실행 파일) |
+| + ralph-loop + ralphy-prd | Step 18 (검증) |
+| + verify-report | 완료 |
+
+## 출력 파일 구조
 
 ```
-/memory search redis
-redis 관련 기억 찾아줘
+<planning_dir>/              # spec 파일의 부모 폴더
+├── your-spec.md             # 사용자 spec 파일 (자동 생성 가능)
+├── claude-research.md       # 리서치 결과
+├── claude-interview.md      # 인터뷰 Q&A
+├── claude-spec.md           # 종합 명세서
+├── claude-plan.md           # 구현 계획
+├── claude-integration-notes.md  # 피드백 반영 기록
+├── claude-ralph-loop-prompt.md  # ralph-loop용
+├── claude-ralphy-prd.md     # Ralphy CLI용
+├── claude-verify-report.md  # 검증 보고서
+├── reviews/                 # 외부 LLM 리뷰
+│   ├── gemini-review.md
+│   └── codex-review.md
+└── sections/                # 구현 단위
+    ├── index.md             # SECTION_MANIFEST
+    ├── section-01-*.md
+    └── section-02-*.md
 ```
 
-### /memory find <키워드>
-대화 로그 인덱스에서 검색합니다 (RAG 스타일).
+## 구현 옵션
 
-```
-/memory find orchestrator
-이전에 orchestrator 구현한 적 있어?
-```
+**Option A - Manual:**
+섹션 파일을 순서대로 직접 구현
 
-### /memory read <날짜>
-특정 날짜의 대화 로그를 읽습니다.
-
+**Option B - ralph-loop:**
 ```
-/memory read 2026-02-02
-어제 대화 보여줘
+/ralph-loop @<planning_dir>/claude-ralph-loop-prompt.md
 ```
 
-### /memory tag <키워드들>
-오늘 대화에 키워드를 수동 추가합니다.
-
+**Option C - Ralphy CLI:**
 ```
-/memory tag oauth, jwt, authentication
+ralphy --prd <planning_dir>/claude-ralphy-prd.md
 ```
 
-### /memory list
-MEMORY.md 전체 내용을 표시합니다.
-
+**Option D - Verify:**
+구현 완료 후 같은 spec으로 재실행하면 자동 검증 모드
 ```
-/memory list
-장기기억 보여줘
+/gepetto @<planning_dir>/your-spec.md
 ```
-
-## 파일 구조
-
-```
-프로젝트/
-├── MEMORY.md                    # 구조화된 장기기억
-├── CLAUDE.md                    # @MEMORY.md 참조
-└── .claude/
-    └── conversations/           # 대화 로그
-        ├── 2026-02-02.md
-        ├── 2026-02-01.md
-        └── index.json           # 키워드 인덱스
-```
-
-## 자동 동작
-
-1. **UserPromptSubmit**: 모든 대화 자동 저장
-2. **Stop**: 키워드 추출 + MEMORY.md 업데이트
-";
-    }
-
-    #endregion
-
-    #region Guide Documents
-
-    /// <summary>
-    /// 가이드 문서 설치 (.claude/docs/)
-    /// - memory-system.md: 장기기억 시스템 가이드
-    /// - orchestrator-guide.md: 오케스트레이터 가이드
-    /// </summary>
-    public static bool InstallGuideDocuments(string workingDirectory)
-    {
-        if (string.IsNullOrEmpty(workingDirectory) || !Directory.Exists(workingDirectory))
-            return false;
-
-        try
-        {
-            var claudeFolder = Path.Combine(workingDirectory, ClaudeFolderName);
-            var docsFolder = Path.Combine(claudeFolder, "docs");
-
-            // .claude/docs 폴더 생성
-            if (!Directory.Exists(docsFolder))
-            {
-                Directory.CreateDirectory(docsFolder);
-                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] .claude/docs 폴더 생성: {docsFolder}");
-            }
-
-            var anyCreated = false;
-
-            // memory-system.md 설치
-            var memorySystemPath = Path.Combine(docsFolder, "memory-system.md");
-            if (!File.Exists(memorySystemPath))
-            {
-                File.WriteAllText(memorySystemPath, GetMemorySystemGuide(), Encoding.UTF8);
-                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] memory-system.md 설치됨");
-                anyCreated = true;
-            }
-
-            // orchestrator-guide.md 설치
-            var orchestratorGuidePath = Path.Combine(docsFolder, "orchestrator-guide.md");
-            if (!File.Exists(orchestratorGuidePath))
-            {
-                File.WriteAllText(orchestratorGuidePath, GetOrchestratorGuide(), Encoding.UTF8);
-                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] orchestrator-guide.md 설치됨");
-                anyCreated = true;
-            }
-
-            if (anyCreated)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] 가이드 문서 설치 완료: {docsFolder}");
-            }
-
-            return anyCreated;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] 가이드 문서 설치 실패: {ex.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 장기기억 시스템 가이드 문서
-    /// 출처: https://github.com/Dannykkh/claude-code-agent-customizations/blob/master/docs/memory-system.md
-    /// </summary>
-    private static string GetMemorySystemGuide()
-    {
-        return @"# 장기기억 시스템 (Long-term Memory System)
-
-세션 간 컨텍스트 유지 및 키워드 기반 대화 검색을 위한 메모리 시스템입니다.
-
----
-
-## 개요
-
-### 문제
-- Claude Code 세션은 컨텍스트 제한이 있음
-- 이전 세션에서 무엇을 했는지 기억하지 못함
-- ""이전에 어떻게 구현했지?"" 질문에 답할 수 없음
-
-### 해결
-
-| 구성요소 | 역할 |
-|---------|------|
-| **MEMORY.md** | 중요한 결정사항, 교훈 저장 (항상 로드됨) |
-| **대화 로그** | 모든 대화 원시 저장 + 키워드 태깅 |
-| **index.json** | 키워드 인덱스 (RAG 스타일 검색용) |
-| **검색 명령어** | `/memory find`, `/memory search` |
-
----
-
-## 시스템 구조
-
-```
-프로젝트/
-├── MEMORY.md                          # 구조화된 장기기억 (Git 추적)
-├── CLAUDE.md                          # @MEMORY.md 참조 → 항상 로드
-└── .claude/
-    ├── conversations/                 # 대화 로그 (Git 제외)
-    │   ├── 2026-02-02.md              # 오늘 대화 (frontmatter + 키워드)
-    │   ├── 2026-02-01.md              # 어제 대화
-    │   └── index.json                 # 키워드 인덱스
-    ├── agents/                        # 에이전트 정의
-    │   ├── memory-writer.md           # 메모리 정리 에이전트
-    │   └── keyword-extractor.md       # 키워드 추출 에이전트
-    └── skills/                        # 스킬 정의
-        └── long-term-memory/          # 메모리 관리 스킬
-            └── SKILL.md
-```
-
----
-
-## 자동 동작
-
-### 세션 중 (UserPromptSubmit 훅)
-1. 사용자 입력 → save-conversation.ps1 실행
-2. `.claude/conversations/YYYY-MM-DD.md`에 대화 저장
-3. 해시태그(#keyword) 자동 추출
-
-### 세션 종료 (Stop 훅)
-1. keyword-extractor 에이전트: 키워드 추출 + index.json 업데이트
-2. memory-writer 에이전트: MEMORY.md 업데이트
-
----
-
-## 명령어 가이드
-
-### /memory add - 정보 기억하기
-```
-/memory add Redis TTL은 항상 1시간으로 설정
-기억해: API 키는 환경변수로 관리
-```
-
-### /memory search - MEMORY.md 검색
-```
-/memory search redis
-redis 관련 기억 찾아줘
-```
-
-### /memory find - 대화 키워드 검색 (RAG 스타일)
-```
-/memory find orchestrator
-이전에 orchestrator 구현한 적 있어?
-```
-
-### /memory read - 특정 대화 읽기
-```
-/memory read 2026-02-02
-어제 대화 보여줘
-```
-
-### /memory tag - 수동 키워드 태깅
-```
-/memory tag oauth, jwt, authentication
-```
-
-### /memory list - 전체 기억 보기
-```
-/memory list
-장기기억 보여줘
-```
-
----
-
-## 해시태그로 키워드 추가
-
-대화 중 해시태그를 사용하면 자동으로 키워드에 추가됩니다:
-
-```
-jwt 인증 구현해줘 #authentication #security
-→ keywords: [authentication, security] 자동 추가
-```
-
----
-
-## 훅 설정
-
-`.claude/settings.local.json`:
-
-```json
-{
-  ""hooks"": {
-    ""UserPromptSubmit"": [
-      {""hooks"": [""powershell -ExecutionPolicy Bypass -File hooks/save-conversation.ps1 \""$PROMPT\""""]}
-    ],
-    ""Stop"": [
-      {""hooks"": [""powershell -ExecutionPolicy Bypass -File hooks/update-memory.ps1""]}
-    ]
-  }
-}
-```
-
----
-
-## 참고
-
-- 원본: https://github.com/Dannykkh/claude-code-agent-customizations/blob/master/docs/memory-system.md
-- TermSnap에서 Claude Code 시작 시 자동 설치됩니다.
-";
-    }
-
-    /// <summary>
-    /// 오케스트레이터 가이드 문서
-    /// 출처: https://github.com/Dannykkh/claude-code-agent-customizations/blob/master/docs/orchestrator-guide.md
-    /// </summary>
-    private static string GetOrchestratorGuide()
-    {
-        return @"# Multi-AI Orchestrator 상세 가이드
-
-PM + Multi-AI Worker 병렬 처리 시스템의 완전한 사용 가이드입니다.
-
----
-
-## 개요
-
-### 무엇인가?
-
-Multi-AI Orchestrator는 여러 AI CLI (Claude, Codex, Gemini)를 동시에 활용하여 대규모 작업을 병렬로 처리하는 시스템입니다.
-
-### 언제 사용하나?
-
-| 상황 | 권장 |
-|------|------|
-| 단일 파일 수정 | 일반 Claude Code |
-| 다중 모듈 동시 작업 | **Orchestrator** |
-| 대규모 리팩토링 | **Orchestrator** |
-| 여러 관점의 코드 리뷰 | **Orchestrator** (Multi-AI) |
-
-### 핵심 기능
-
-- **파일 락킹**: 다중 Worker 간 파일 충돌 방지
-- **태스크 의존성**: 선행 작업 완료 후 자동 언블록
-- **Multi-AI**: Claude + Codex + Gemini 병렬 실행
-- **자동 Fallback**: 설치된 AI만 자동 감지
-
----
-
-## 아키텍처
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         PM (Claude)                          │
-│  workpm 입력 → AI 감지 → 프로젝트 분석 → 태스크 생성         │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-              ┌───────────────┼───────────────┐
-              ↓               ↓               ↓
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│   Worker-1      │ │   Worker-2      │ │   Worker-3      │
-│   (Claude)      │ │   (Codex)       │ │   (Gemini)      │
-│ claim → work    │ │ claim → work    │ │ claim → work    │
-│ → complete      │ │ → complete      │ │ → complete      │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-```
-
----
-
-## PM 모드 (workpm)
-
-PM 터미널에서 `workpm` 입력 후:
-
-1. **AI Provider 감지** - 설치된 CLI 자동 감지
-2. **프로젝트 분석** - 모듈, 파일 구조 분석
-3. **태스크 분해 및 생성** - scope, 의존성, AI 배정
-4. **진행 상황 모니터링**
-
-### 태스크 설계 원칙
-
-| 원칙 | 설명 |
-|------|------|
-| **단일 책임** | 하나의 태스크 = 하나의 목표 |
-| **명확한 범위** | scope로 수정 가능 파일 명시 |
-| **적절한 크기** | 1-2시간 내 완료 가능 |
-| **의존성 명시** | depends_on으로 순서 지정 |
-
-### AI 배정 가이드
-
-| 태스크 유형 | 추천 AI | 이유 |
-|------------|---------|------|
-| 코드 생성/구현 | `codex` | 빠른 코드 생성 |
-| 리팩토링 | `claude` | 복잡한 추론 |
-| 코드 리뷰/보안 | `gemini` | 대용량 컨텍스트 |
-| 문서 작성 | `claude` | 자연어 품질 |
-
----
-
-## Worker 모드 (pmworker)
-
-Worker 터미널에서 `pmworker` 입력 후:
-
-1. **가용 태스크 확인** - get_available_tasks
-2. **태스크 담당 선언** - claim_task
-3. **파일 락 획득** - lock_file
-4. **작업 수행** - 세부 TODO 작성 및 진행
-5. **완료/실패 보고** - complete_task / fail_task
-
-### 파일 락 규칙
-
-- 다른 Worker가 같은 경로를 락하면 충돌
-- 상위/하위 경로도 충돌로 처리
-- 태스크 완료 시 자동 해제
-
----
-
-## 설치 및 설정
-
-### 1. MCP 서버 빌드
-
-```powershell
-cd mcp-servers/claude-orchestrator-mcp
-npm install && npm run build
-```
-
-### 2. settings.local.json
-
-```json
-{
-  ""mcpServers"": {
-    ""orchestrator"": {
-      ""command"": ""node"",
-      ""args"": [""path/to/claude-orchestrator-mcp/dist/index.js""],
-      ""env"": {
-        ""ORCHESTRATOR_PROJECT_ROOT"": ""${workspaceFolder}"",
-        ""ORCHESTRATOR_WORKER_ID"": ""pm""
-      }
-    }
-  }
-}
-```
-
-### 3. 다중 터미널 실행
-
-```powershell
-.\scripts\launch.ps1 -ProjectPath ""C:\project"" -MultiAI
-```
-
----
-
-## MCP 도구 레퍼런스
-
-### PM 전용
-
-| 도구 | 설명 |
-|------|------|
-| `orchestrator_detect_providers` | AI CLI 감지 |
-| `orchestrator_analyze_codebase` | 프로젝트 분석 |
-| `orchestrator_create_task` | 태스크 생성 |
-| `orchestrator_get_progress` | 진행 상황 |
-
-### Worker 전용
-
-| 도구 | 설명 |
-|------|------|
-| `orchestrator_get_available_tasks` | 가용 태스크 |
-| `orchestrator_claim_task` | 태스크 담당 |
-| `orchestrator_lock_file` | 파일 락 |
-| `orchestrator_complete_task` | 완료 보고 |
-| `orchestrator_fail_task` | 실패 보고 |
-
----
-
-## 트러블슈팅
-
-### ""Task has unmet dependencies""
-→ 선행 태스크 완료 대기
-
-### ""Path is locked by another worker""
-→ get_file_locks()로 확인, 해당 Worker 완료 대기
-
-### AI Provider 감지 안됨
-→ CLI 설치 및 PATH 확인 (`claude --version`)
-
----
-
-## 참고
-
-- 원본: https://github.com/Dannykkh/claude-code-agent-customizations/blob/master/docs/orchestrator-guide.md
-- TermSnap에서 Claude Code 시작 시 자동 설치됩니다.
 ";
     }
 
@@ -1309,16 +548,134 @@ npm install && npm run build
     #region Orchestrator MCP
 
     /// <summary>
-    /// 오케스트라 MCP 서버 설치
-    /// TermSnap 리소스에서 대상 프로젝트로 MCP 서버 파일 복사 및 설정 추가
+    /// 오케스트라 MCP 서버 설치 (GitHub에서 최신 소스 다운로드)
+    /// - 폴더가 없으면: GitHub에서 다운로드하여 설치
+    /// - 폴더가 있으면: 백그라운드에서 업데이트 확인
     /// </summary>
     private static bool InstallOrchestratorMCP(string workingDirectory)
     {
         try
         {
+            var mcpServersFolder = Path.Combine(workingDirectory, "mcp-servers", "claude-orchestrator-mcp");
+            var distIndexPath = Path.Combine(mcpServersFolder, "dist", "index.js");
+
+            // 이미 설치되어 있는지 확인
+            if (File.Exists(distIndexPath))
+            {
+                // 백그라운드에서 버전 확인 및 업데이트 (비동기)
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    try
+                    {
+                        var (localVersion, remoteVersion, needsUpdate) = await CheckOrchestratorVersionAsync(workingDirectory);
+                        if (needsUpdate)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 업데이트 필요: {localVersion} → {remoteVersion}");
+                            await UpdateOrchestratorFromGitHubAsync(workingDirectory);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 업데이트 확인 실패: {ex.Message}");
+                    }
+                });
+
+                // settings.local.json에 MCP 서버 설정 확인/추가
+                AddMCPServerToSettings(workingDirectory);
+                return false;
+            }
+
+            // 새로 설치 필요 - GitHub에서 다운로드 (동기 대기)
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 새로 설치: GitHub에서 다운로드 중...");
+
+            try
+            {
+                // 동기적으로 GitHub에서 다운로드 및 빌드
+                var task = UpdateOrchestratorFromGitHubAsync(workingDirectory);
+                task.Wait(TimeSpan.FromMinutes(3)); // 최대 3분 대기
+
+                if (task.Result.Success)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 설치 완료");
+                    return true;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 설치 실패: {task.Result.Message}");
+                    // 실패 시 하드코딩 폴백
+                    return InstallOrchestratorMCPFallback(workingDirectory);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] GitHub 다운로드 실패, 폴백 설치: {ex.Message}");
+                // GitHub 실패 시 하드코딩 폴백
+                return InstallOrchestratorMCPFallback(workingDirectory);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] 오케스트라 MCP 설치 실패: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 오케스트라 MCP 서버 설치 (비동기 버전)
+    /// </summary>
+    private static async Task<bool> InstallOrchestratorMCPAsync(string workingDirectory)
+    {
+        try
+        {
+            var mcpServersFolder = Path.Combine(workingDirectory, "mcp-servers", "claude-orchestrator-mcp");
+            var distIndexPath = Path.Combine(mcpServersFolder, "dist", "index.js");
+
+            // 이미 설치되어 있으면 백그라운드에서 업데이트 확인
+            if (File.Exists(distIndexPath))
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var (_, _, needsUpdate) = await CheckOrchestratorVersionAsync(workingDirectory);
+                        if (needsUpdate) await UpdateOrchestratorFromGitHubAsync(workingDirectory);
+                    }
+                    catch { /* 무시 */ }
+                });
+
+                AddMCPServerToSettings(workingDirectory);
+                return false;
+            }
+
+            // 새로 설치 - GitHub에서 다운로드
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 새로 설치: GitHub에서 다운로드 중...");
+
+            var result = await UpdateOrchestratorFromGitHubAsync(workingDirectory);
+            if (result.Success)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 설치 완료");
+                return true;
+            }
+
+            // 실패 시 하드코딩 폴백
+            return await Task.Run(() => InstallOrchestratorMCPFallback(workingDirectory));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 설치 실패: {ex.Message}");
+            return await Task.Run(() => InstallOrchestratorMCPFallback(workingDirectory));
+        }
+    }
+
+    /// <summary>
+    /// Orchestrator 폴백 설치 (GitHub 실패 시 하드코딩 버전 사용)
+    /// </summary>
+    private static bool InstallOrchestratorMCPFallback(string workingDirectory)
+    {
+        try
+        {
             var anyCreated = false;
 
-            // 1. mcp-servers 폴더 생성
             var mcpServersFolder = Path.Combine(workingDirectory, "mcp-servers", "claude-orchestrator-mcp");
             var distFolder = Path.Combine(mcpServersFolder, "dist");
             var servicesFolder = Path.Combine(distFolder, "services");
@@ -1326,32 +683,30 @@ npm install && npm run build
             if (!Directory.Exists(servicesFolder))
             {
                 Directory.CreateDirectory(servicesFolder);
-                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] MCP 서버 폴더 생성: {mcpServersFolder}");
                 anyCreated = true;
             }
 
-            // 2. MCP 서버 파일들 생성
             anyCreated |= CreateMCPFile(Path.Combine(mcpServersFolder, "package.json"), GetMCPPackageJson());
             anyCreated |= CreateMCPFile(Path.Combine(distFolder, "index.js"), GetMCPIndexJs());
             anyCreated |= CreateMCPFile(Path.Combine(servicesFolder, "ai-detector.js"), GetMCPAIDetectorJs());
             anyCreated |= CreateMCPFile(Path.Combine(servicesFolder, "state-manager.js"), GetMCPStateManagerJs());
 
-            // 3. settings.local.json에 MCP 서버 설정 추가
-            anyCreated |= AddMCPServerToSettings(workingDirectory);
-
-            // 4. .gitignore에 .orchestrator 폴더 추가
+            AddMCPServerToSettings(workingDirectory);
             EnsureOrchestratorGitIgnore(workingDirectory);
 
-            if (anyCreated)
+            var nodeModulesPath = Path.Combine(mcpServersFolder, "node_modules");
+            if (!Directory.Exists(nodeModulesPath))
             {
-                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] 오케스트라 MCP 서버 설치 완료: {mcpServersFolder}");
+                RunNpmInstall(mcpServersFolder);
+                anyCreated = true;
             }
 
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 폴백 설치 완료");
             return anyCreated;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] 오케스트라 MCP 설치 실패: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 폴백 설치 실패: {ex.Message}");
             return false;
         }
     }
@@ -1376,7 +731,64 @@ npm install && npm run build
     }
 
     /// <summary>
+    /// npm install 실행 (백그라운드, UI 블로킹 없음)
+    /// MCP 서버의 런타임 의존성(@modelcontextprotocol/sdk, zod, glob) 설치
+    /// </summary>
+    private static void RunNpmInstall(string mcpServersFolder)
+    {
+        try
+        {
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = "/c npm install --production",
+                WorkingDirectory = mcpServersFolder,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            var process = System.Diagnostics.Process.Start(startInfo);
+            if (process != null)
+            {
+                // 백그라운드에서 완료 대기 (UI 블로킹 방지)
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        process.WaitForExit(60000); // 60초 타임아웃
+                        if (process.ExitCode == 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine("[ClaudeHook] npm install 완료");
+                        }
+                        else
+                        {
+                            var error = process.StandardError.ReadToEnd();
+                            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] npm install 실패 (exit {process.ExitCode}): {error}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ClaudeHook] npm install 대기 중 오류: {ex.Message}");
+                    }
+                    finally
+                    {
+                        process.Dispose();
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            // npm이 설치되지 않은 경우 등
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] npm install 실행 불가: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// settings.local.json에 MCP 서버 설정 추가
+    /// 주의: EnsureSettingsJson()과 같은 파일을 다루므로 InstallMemorySystem() 내에서 순차 호출 필수
     /// </summary>
     private static bool AddMCPServerToSettings(string workingDirectory)
     {
@@ -1396,14 +808,27 @@ npm install && npm run build
                 var existingContent = File.ReadAllText(settingsPath, Encoding.UTF8);
                 settings = JsonNode.Parse(existingContent)?.AsObject() ?? new JsonObject();
 
-                // 이미 orchestrator MCP가 설정되어 있으면 스킵
+                // orchestrator MCP 설정 확인 - 경로가 현재 프로젝트와 일치하는지 검증
                 if (settings.ContainsKey("mcpServers"))
                 {
                     var mcpServers = settings["mcpServers"]?.AsObject();
                     if (mcpServers != null && mcpServers.ContainsKey("orchestrator"))
                     {
-                        System.Diagnostics.Debug.WriteLine("[ClaudeHook] MCP 서버 이미 설정됨 - 스킵");
-                        return false;
+                        // 경로 검증: 현재 프로젝트 경로와 일치하면 스킵
+                        var expectedPath = Path.Combine(workingDirectory, "mcp-servers", "claude-orchestrator-mcp", "dist", "index.js")
+                            .Replace("\\", "/");
+                        var existingArgs = mcpServers["orchestrator"]?["args"]?.AsArray();
+                        var existingPath = existingArgs?.Count > 0 ? existingArgs[0]?.ToString() : null;
+
+                        if (existingPath == expectedPath)
+                        {
+                            System.Diagnostics.Debug.WriteLine("[ClaudeHook] MCP 서버 이미 설정됨 (경로 일치) - 스킵");
+                            return false;
+                        }
+
+                        // 경로가 다르면 갱신 필요 - 기존 설정 제거
+                        System.Diagnostics.Debug.WriteLine($"[ClaudeHook] MCP 서버 경로 불일치, 갱신: {existingPath} → {expectedPath}");
+                        mcpServers.Remove("orchestrator");
                     }
                 }
             }
@@ -1462,7 +887,8 @@ npm install && npm run build
             var content = File.ReadAllText(gitignorePath, Encoding.UTF8);
             if (!content.Contains(".orchestrator"))
             {
-                var addition = "\n# Orchestrator state (auto-generated)\n.orchestrator/\n";
+                var prefix = content.EndsWith("\n") ? "" : "\n";
+                var addition = $"{prefix}\n# Orchestrator state (auto-generated)\n.orchestrator/\n";
                 File.AppendAllText(gitignorePath, addition, Encoding.UTF8);
                 System.Diagnostics.Debug.WriteLine("[ClaudeHook] .gitignore에 .orchestrator 추가");
             }
@@ -2687,6 +2113,15 @@ main().catch(console.error);
                 anyCreated = true;
             }
 
+            // wrap-up.md - 세션 정리 커맨드
+            var wrapUpPath = Path.Combine(commandsFolder, "wrap-up.md");
+            if (!File.Exists(wrapUpPath))
+            {
+                File.WriteAllText(wrapUpPath, GetWrapUpCommand(), Encoding.UTF8);
+                System.Diagnostics.Debug.WriteLine("[ClaudeHook] wrap-up 커맨드 설치됨");
+                anyCreated = true;
+            }
+
             return anyCreated;
         }
         catch (Exception ex)
@@ -2867,6 +2302,89 @@ while (태스크가_있는_동안) {
 ";
     }
 
+    /// <summary>
+    /// wrap-up (세션 정리) 커맨드 내용
+    /// 세션 종료 시 키워드 추출 + 세션 요약 + MEMORY.md 업데이트
+    /// </summary>
+    private static string GetWrapUpCommand()
+    {
+        return @"---
+description: 세션 정리 - 키워드 추출, 세션 요약, MEMORY.md 업데이트
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+---
+
+# 세션 정리 (Wrap-up)
+
+현재 세션을 깔끔하게 정리합니다.
+
+## 실행 절차
+
+### 1단계: 오늘 대화 파일 읽기
+
+`.claude/conversations/YYYY-MM-DD.md` 파일을 읽습니다.
+(오늘 날짜 기준)
+
+### 2단계: 키워드 추출
+
+대화 내용에서 키워드를 추출합니다:
+
+**추출 대상:**
+- 기술 스택: react, typescript, python, docker, mcp 등
+- 작업 유형: refactor, implement, fix, config, debug 등
+- 기능/모듈명: terminal, ssh, memory, orchestrator 등
+- 주요 결정: architecture, pattern, convention 등
+
+**규칙:**
+- 키워드는 소문자, 하이픈(-) 사용
+- 5-15개 범위로 유지
+- 응답 내 `#tags:` 라인에서도 수집
+
+### 3단계: frontmatter 업데이트
+
+대화 파일의 frontmatter를 업데이트합니다:
+
+```yaml
+---
+date: YYYY-MM-DD
+project: 프로젝트명
+keywords: [keyword1, keyword2, ...]
+summary: ""오늘 세션 요약 (1-2문장)""
+---
+```
+
+### 4단계: MEMORY.md 업데이트
+
+오늘 대화에서 중요한 결정사항이 있으면 MEMORY.md에 추가합니다:
+- architecture/ - 설계 결정, 아키텍처 선택
+- patterns/ - 작업 패턴, 워크플로우
+- tools/ - MCP 서버, 외부 도구
+- gotchas/ - 주의사항, 함정
+
+**항목 형식:**
+```markdown
+### 항목명
+`tags: keyword1, keyword2`
+`date: YYYY-MM-DD`
+
+- 핵심 내용 (간결하게)
+- **참조**: [대화](.claude/conversations/YYYY-MM-DD.md)
+```
+
+키워드 인덱스 테이블도 업데이트합니다.
+
+### 5단계: 결과 보고
+
+- 추출된 키워드 목록
+- 세션 요약
+- MEMORY.md 변경 여부
+";
+    }
+
     #endregion
 
     #endregion
@@ -2920,42 +2438,49 @@ while (태스크가_있는_동안) {
     }
 
     /// <summary>
-    /// MEMORY.md 내용 생성
+    /// MEMORY.md 내용 생성 (컨텍스트 트리 구조)
     /// </summary>
     private static string GenerateMemoryMd(string workingDirectory)
     {
         var projectName = Path.GetFileName(workingDirectory);
-        var dateStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+        var dateStr = DateTime.Now.ToString("yyyy-MM-dd");
 
-        return $@"# AI 장기기억 (MEMORY.md)
+        return $@"# MEMORY.md - 프로젝트 장기기억
 
-> 이 파일은 AI가 참조하는 장기기억입니다. CLAUDE.md에서 이 파일을 참조합니다.
-> 세션 종료 시 자동으로 업데이트되며, 직접 편집해도 됩니다.
+## 프로젝트 목표
 
-## 프로젝트
-
-- 프로젝트: {projectName}
-- 생성일: {dateStr}
-
-## 사실
-
-## 선호도
-
-## 기술 스택
-
-## 작업 패턴
-
-## 지침
-
-## 학습된 교훈
+| 목표 | 상태 |
+|------|------|
+| (목표 추가) | 🔄 진행중 |
 
 ---
-*마지막 업데이트: {dateStr}*
+
+## 키워드 인덱스
+
+| 키워드 | 섹션 |
+|--------|------|
+
+---
+
+## architecture/
+
+## patterns/
+
+## tools/
+
+## gotchas/
+
+---
+
+## meta/
+- **프로젝트**: {projectName}
+- **생성일**: {dateStr}
+- **마지막 업데이트**: {dateStr}
 ";
     }
 
     /// <summary>
-    /// CLAUDE.md 내용 생성
+    /// CLAUDE.md 내용 생성 (메모리 자동 기록 규칙 포함)
     /// </summary>
     private static string GenerateClaudeMd(string workingDirectory)
     {
@@ -2973,12 +2498,67 @@ while (태스크가_있는_동안) {
 - 프로젝트: {projectName}
 - 생성일: {dateStr}
 
-## 장기기억 시스템
+## 메모리 자동 기록 규칙
 
-이 프로젝트는 TermSnap의 장기기억 시스템을 사용합니다:
-- 매 대화는 `.claude/conversations/YYYY-MM-DD.md`에 자동 저장됩니다
-- 세션 종료 시 중요 내용이 `MEMORY.md`에 자동 정리됩니다
-- ""기억해"" 또는 ""remember"" 명령으로 즉시 저장할 수 있습니다
+MEMORY.md는 **컨텍스트 트리 구조**입니다. 중요한 내용은 적절한 섹션에 추가하세요:
+
+| 섹션 | 내용 |
+|------|------|
+| `architecture/` | 설계 결정, 아키텍처 선택 |
+| `patterns/` | 작업 패턴, 워크플로우 |
+| `tools/` | MCP 서버, 외부 도구 |
+| `gotchas/` | 주의사항, 함정 |
+
+**항목 형식:**
+```markdown
+### 항목명
+`tags: keyword1, keyword2, keyword3`
+`date: YYYY-MM-DD`
+
+- 핵심 내용 (간결하게)
+- **참조**: [대화 링크](.claude/conversations/YYYY-MM-DD.md)
+```
+
+**규칙:**
+- 새 항목 추가 시 **키워드 인덱스 테이블**도 업데이트
+- 이미 기록된 내용은 중복 추가하지 않음
+- 대화 참조 링크 포함
+
+**결정 변경 시 (Superseded 패턴):**
+- 기존 항목 삭제 금지 (이력 보존)
+- 기존 항목에 `❌ SUPERSEDED` + `superseded-by: #새항목` 추가
+- 새 항목에 `✅ CURRENT` + `supersedes: #기존항목` + 변경 이유 포함
+
+## 응답 키워드 규칙
+
+의미 있는 작업을 완료한 응답의 끝에 인라인 태그를 포함하세요:
+
+```
+#tags: keyword1, keyword2, keyword3
+```
+
+**규칙:**
+- 키워드는 소문자, 하이픈(-) 사용
+- 3-7개 범위로 유지
+- 단순 질문 답변에는 태그 불필요 (코드 작성, 설계 결정, 버그 수정 등에만)
+- 기술 스택 + 작업 유형 + 모듈명 조합
+
+## 과거 대화 검색 규칙
+
+`.claude/conversations/` 폴더에서 과거 대화를 검색할 때:
+
+1. **동의어 확장 검색**: 한↔영 양방향으로 검색 (최대 3회)
+   - 예: ""인증"" 검색 시 → ""authentication"", ""auth"", ""로그인"" 도 검색
+   - 예: ""cache"" 검색 시 → ""캐시"", ""caching"", ""redis"" 도 검색
+2. **날짜 범위**: 최근 30일 우선, 필요시 전체 검색
+3. **키워드 매칭**: frontmatter keywords 필드 + 본문 grep 병행
+
+## 세션 정리 규칙
+
+`/wrap-up` 명령으로 세션 종료 시 정리 수행:
+- 오늘 대화에서 키워드 추출 → frontmatter 업데이트
+- 세션 요약 1-2문장 생성 → frontmatter summary 업데이트
+- 중요 결정사항 → MEMORY.md 업데이트
 
 ## 코딩 스타일
 
@@ -2991,7 +2571,695 @@ while (태스크가_있는_동안) {
 - 기존 코드 스타일 유지
 - 테스트 코드 작성 권장
 - 커밋 메시지는 한국어로
+
+## 세션 핸드오프 자동 생성
+
+다음 조건 중 하나라도 해당하면 **자동으로** `/session-handoff`를 실행하세요:
+
+1. **대규모 작업 완료 시** - 파일 3개 이상 수정하거나 주요 기능 구현 완료 후
+2. **컨텍스트가 길어졌을 때** - 대화가 20회 이상 오갔을 때
+3. **아키텍처 결정 시** - 중요한 설계 결정을 내렸을 때
+
+**핸드오프 저장 위치:** `.claude/handoffs/`
+**규칙:** 사용자에게 묻지 말고 조건 충족 시 자동으로 생성. 핸드오프 생성 후 사용자에게 알림.
 ";
+    }
+
+    #endregion
+
+    #region GitHub Orchestrator Update
+
+    private const string OrchestratorGitHubBaseUrl = "https://raw.githubusercontent.com/Dannykkh/claude-code-agent-customizations/master/skills/orchestrator";
+
+    /// <summary>
+    /// GitHub에서 최신 Orchestrator 소스를 다운로드하고 설치
+    /// </summary>
+    /// <param name="workingDirectory">대상 프로젝트 경로</param>
+    /// <param name="progress">진행 상황 콜백</param>
+    /// <returns>성공 여부</returns>
+    public static async System.Threading.Tasks.Task<(bool Success, string Message)> UpdateOrchestratorFromGitHubAsync(
+        string workingDirectory,
+        Action<string>? progress = null)
+    {
+        if (string.IsNullOrEmpty(workingDirectory) || !Directory.Exists(workingDirectory))
+            return (false, "유효하지 않은 작업 디렉토리");
+
+        try
+        {
+            var mcpServerPath = Path.Combine(workingDirectory, "mcp-servers", "claude-orchestrator-mcp");
+            var srcPath = Path.Combine(mcpServerPath, "src");
+            var servicesPath = Path.Combine(srcPath, "services");
+
+            // 1. 폴더 생성
+            progress?.Invoke("[1/5] 폴더 생성 중...");
+            if (!Directory.Exists(servicesPath))
+            {
+                Directory.CreateDirectory(servicesPath);
+            }
+
+            // 2. GitHub에서 소스 파일 다운로드
+            progress?.Invoke("[2/5] GitHub에서 소스 다운로드 중...");
+            using var httpClient = new System.Net.Http.HttpClient();
+
+            // package.json
+            var packageJson = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/mcp-server/package.json");
+            await File.WriteAllTextAsync(Path.Combine(mcpServerPath, "package.json"), packageJson, Encoding.UTF8);
+
+            // tsconfig.json
+            var tsconfigJson = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/mcp-server/tsconfig.json");
+            await File.WriteAllTextAsync(Path.Combine(mcpServerPath, "tsconfig.json"), tsconfigJson, Encoding.UTF8);
+
+            // src/index.ts
+            var indexTs = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/mcp-server/src/index.ts");
+            await File.WriteAllTextAsync(Path.Combine(srcPath, "index.ts"), indexTs, Encoding.UTF8);
+
+            // src/services/state-manager.ts
+            var stateManagerTs = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/mcp-server/src/services/state-manager.ts");
+            await File.WriteAllTextAsync(Path.Combine(servicesPath, "state-manager.ts"), stateManagerTs, Encoding.UTF8);
+
+            // src/services/ai-detector.ts
+            var aiDetectorTs = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/mcp-server/src/services/ai-detector.ts");
+            await File.WriteAllTextAsync(Path.Combine(servicesPath, "ai-detector.ts"), aiDetectorTs, Encoding.UTF8);
+
+            // 3. npm install 실행
+            progress?.Invoke("[3/5] npm install 실행 중...");
+            var npmInstallResult = await RunCommandAsync("npm install", mcpServerPath);
+            if (!npmInstallResult.Success)
+            {
+                return (false, $"npm install 실패: {npmInstallResult.Error}");
+            }
+
+            // 4. npm run build 실행
+            progress?.Invoke("[4/5] TypeScript 빌드 중...");
+            var buildResult = await RunCommandAsync("npm run build", mcpServerPath);
+            if (!buildResult.Success)
+            {
+                return (false, $"빌드 실패: {buildResult.Error}");
+            }
+
+            // 5. 훅과 명령어 파일 설치
+            progress?.Invoke("[5/5] 훅 및 명령어 설치 중...");
+
+            // 훅 파일 다운로드 및 설치
+            await DownloadAndInstallHooksAsync(httpClient, workingDirectory);
+
+            // 명령어 파일 다운로드 및 설치
+            await DownloadAndInstallCommandsAsync(httpClient, workingDirectory);
+
+            // settings.local.json 업데이트
+            AddMCPServerToSettings(workingDirectory);
+
+            // .gitignore 업데이트
+            EnsureOrchestratorGitIgnore(workingDirectory);
+
+            progress?.Invoke("✓ Orchestrator 업데이트 완료!");
+            return (true, "Orchestrator가 최신 버전으로 업데이트되었습니다.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Orchestrator 업데이트 실패: {ex.Message}");
+            return (false, $"업데이트 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 훅 파일 다운로드 및 설치
+    /// </summary>
+    private static async System.Threading.Tasks.Task DownloadAndInstallHooksAsync(
+        System.Net.Http.HttpClient httpClient,
+        string workingDirectory)
+    {
+        var hooksPath = Path.Combine(workingDirectory, "hooks");
+        if (!Directory.Exists(hooksPath))
+        {
+            Directory.CreateDirectory(hooksPath);
+        }
+
+        // Windows용 PowerShell 훅
+        var workpmHook = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/hooks/workpm-hook.ps1");
+        await File.WriteAllTextAsync(Path.Combine(hooksPath, "workpm-hook.ps1"), workpmHook, Encoding.UTF8);
+
+        var pmworkerHook = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/hooks/pmworker-hook.ps1");
+        await File.WriteAllTextAsync(Path.Combine(hooksPath, "pmworker-hook.ps1"), pmworkerHook, Encoding.UTF8);
+    }
+
+    /// <summary>
+    /// 명령어 파일 다운로드 및 설치
+    /// </summary>
+    private static async System.Threading.Tasks.Task DownloadAndInstallCommandsAsync(
+        System.Net.Http.HttpClient httpClient,
+        string workingDirectory)
+    {
+        var commandsPath = Path.Combine(workingDirectory, ".claude", "commands");
+        if (!Directory.Exists(commandsPath))
+        {
+            Directory.CreateDirectory(commandsPath);
+        }
+
+        // workpm.md, pmworker.md 다운로드
+        var workpmMd = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/commands/workpm.md");
+        await File.WriteAllTextAsync(Path.Combine(commandsPath, "workpm.md"), workpmMd, Encoding.UTF8);
+
+        var pmworkerMd = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/commands/pmworker.md");
+        await File.WriteAllTextAsync(Path.Combine(commandsPath, "pmworker.md"), pmworkerMd, Encoding.UTF8);
+    }
+
+    /// <summary>
+    /// 명령어 실행 (비동기)
+    /// </summary>
+    private static async System.Threading.Tasks.Task<(bool Success, string Output, string Error)> RunCommandAsync(
+        string command,
+        string workingDirectory,
+        int timeoutMs = 120000)
+    {
+        try
+        {
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c {command}",
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            using var process = new System.Diagnostics.Process { StartInfo = startInfo };
+            process.Start();
+
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+
+            var completed = await System.Threading.Tasks.Task.Run(() => process.WaitForExit(timeoutMs));
+
+            if (!completed)
+            {
+                process.Kill();
+                return (false, "", "타임아웃");
+            }
+
+            var output = await outputTask;
+            var error = await errorTask;
+
+            return (process.ExitCode == 0, output, error);
+        }
+        catch (Exception ex)
+        {
+            return (false, "", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Orchestrator 버전 확인 (로컬 vs GitHub)
+    /// </summary>
+    public static async System.Threading.Tasks.Task<(string LocalVersion, string RemoteVersion, bool NeedsUpdate)> CheckOrchestratorVersionAsync(
+        string workingDirectory)
+    {
+        var localVersion = "not installed";
+        var remoteVersion = "unknown";
+
+        try
+        {
+            // 로컬 버전 확인
+            var localPackageJson = Path.Combine(workingDirectory, "mcp-servers", "claude-orchestrator-mcp", "package.json");
+            if (File.Exists(localPackageJson))
+            {
+                var content = await File.ReadAllTextAsync(localPackageJson);
+                var json = JsonNode.Parse(content);
+                localVersion = json?["version"]?.ToString() ?? "unknown";
+            }
+
+            // GitHub 버전 확인
+            using var httpClient = new System.Net.Http.HttpClient();
+            var remotePackageJson = await httpClient.GetStringAsync($"{OrchestratorGitHubBaseUrl}/mcp-server/package.json");
+            var remoteJson = JsonNode.Parse(remotePackageJson);
+            remoteVersion = remoteJson?["version"]?.ToString() ?? "unknown";
+
+            var needsUpdate = localVersion != remoteVersion || localVersion == "not installed";
+            return (localVersion, remoteVersion, needsUpdate);
+        }
+        catch
+        {
+            return (localVersion, remoteVersion, true);
+        }
+    }
+
+    #endregion
+
+    #region Mnemo Global Install (장기기억 시스템)
+
+    private const string MnemoGitHubBaseUrl = "https://raw.githubusercontent.com/Dannykkh/claude-code-agent-customizations/master/skills/mnemo";
+    private const string MnemoMarkerStart = "<!-- MNEMO:START -->";
+    private const string MnemoMarkerEnd = "<!-- MNEMO:END -->";
+
+    /// <summary>
+    /// Mnemo 장기기억 시스템 글로벌 설치
+    /// - 훅: save-conversation, save-response (대화 자동 저장)
+    /// - CLAUDE.md 규칙: 응답 태그, 과거 대화 검색, MEMORY.md 자동 업데이트
+    /// </summary>
+    private static bool InstallMnemoGlobal()
+    {
+        try
+        {
+            var claudeDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
+            var hooksDir = Path.Combine(claudeDir, "hooks");
+            var settingsPath = Path.Combine(claudeDir, "settings.json");
+
+            // Claude 폴더가 없으면 생성
+            if (!Directory.Exists(claudeDir))
+            {
+                Directory.CreateDirectory(claudeDir);
+            }
+
+            // 훅 폴더 확인
+            var saveConversationHook = Path.Combine(hooksDir, "save-conversation.ps1");
+            var saveResponseHook = Path.Combine(hooksDir, "save-response.ps1");
+
+            // 이미 설치되어 있는지 확인
+            if (File.Exists(saveConversationHook) && File.Exists(saveResponseHook))
+            {
+                // 백그라운드에서 업데이트 확인
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    try
+                    {
+                        await UpdateMnemoFromGitHubAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Mnemo 업데이트 확인 실패: {ex.Message}");
+                    }
+                });
+                return false;
+            }
+
+            // 새로 설치 필요 - GitHub에서 다운로드
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Mnemo 새로 설치: GitHub에서 다운로드 중...");
+
+            try
+            {
+                var task = UpdateMnemoFromGitHubAsync();
+                task.Wait(TimeSpan.FromMinutes(1));
+
+                if (task.Result.Success)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Mnemo 설치 완료");
+                    return true;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Mnemo 설치 실패: {task.Result.Message}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Mnemo GitHub 다운로드 실패: {ex.Message}");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Mnemo 글로벌 설치 실패: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// GitHub에서 최신 Mnemo 소스를 다운로드하고 설치
+    /// </summary>
+    public static async System.Threading.Tasks.Task<(bool Success, string Message)> UpdateMnemoFromGitHubAsync(
+        Action<string>? progress = null)
+    {
+        try
+        {
+            var claudeDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
+            var hooksDir = Path.Combine(claudeDir, "hooks");
+            var settingsPath = Path.Combine(claudeDir, "settings.json");
+            var claudeMdPath = Path.Combine(claudeDir, "CLAUDE.md");
+
+            // 1. 폴더 생성
+            progress?.Invoke("[1/3] 폴더 생성 중...");
+            if (!Directory.Exists(hooksDir))
+            {
+                Directory.CreateDirectory(hooksDir);
+            }
+
+            // 2. GitHub에서 훅 파일 다운로드
+            progress?.Invoke("[2/3] 훅 파일 다운로드 중...");
+            using var httpClient = new System.Net.Http.HttpClient();
+
+            // save-conversation.ps1
+            var saveConversation = await httpClient.GetStringAsync($"{MnemoGitHubBaseUrl}/hooks/save-conversation.ps1");
+            await File.WriteAllTextAsync(Path.Combine(hooksDir, "save-conversation.ps1"), saveConversation, Encoding.UTF8);
+
+            // save-response.ps1
+            var saveResponse = await httpClient.GetStringAsync($"{MnemoGitHubBaseUrl}/hooks/save-response.ps1");
+            await File.WriteAllTextAsync(Path.Combine(hooksDir, "save-response.ps1"), saveResponse, Encoding.UTF8);
+
+            // 3. settings.json에 훅 설정 추가
+            progress?.Invoke("[3/3] 훅 설정 중...");
+            AddMnemoHooksToSettings(settingsPath, hooksDir);
+
+            // 4. CLAUDE.md에 규칙 추가
+            try
+            {
+                var claudeMdRules = await httpClient.GetStringAsync($"{MnemoGitHubBaseUrl}/templates/claude-md-rules.md");
+                InstallMnemoClaudeMdRules(claudeMdPath, claudeMdRules);
+            }
+            catch
+            {
+                // 템플릿 없으면 스킵
+                System.Diagnostics.Debug.WriteLine("[ClaudeHook] Mnemo CLAUDE.md 규칙 템플릿 없음, 스킵");
+            }
+
+            progress?.Invoke("✓ Mnemo 설치 완료!");
+            return (true, "Mnemo 장기기억 시스템이 설치되었습니다.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Mnemo 업데이트 실패: {ex.Message}");
+            return (false, $"업데이트 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// settings.json에 Mnemo 훅 설정 추가
+    /// </summary>
+    private static void AddMnemoHooksToSettings(string settingsPath, string hooksDir)
+    {
+        JsonObject settings;
+        if (File.Exists(settingsPath))
+        {
+            try
+            {
+                var content = File.ReadAllText(settingsPath, Encoding.UTF8);
+                settings = JsonNode.Parse(content)?.AsObject() ?? new JsonObject();
+            }
+            catch
+            {
+                settings = new JsonObject();
+            }
+        }
+        else
+        {
+            settings = new JsonObject();
+        }
+
+        // hooks 객체 생성/가져오기
+        if (!settings.ContainsKey("hooks"))
+        {
+            settings["hooks"] = new JsonObject();
+        }
+        var hooks = settings["hooks"]!.AsObject();
+
+        var hooksDirNorm = hooksDir.Replace("\\", "/");
+
+        // UserPromptSubmit 훅 추가
+        if (!hooks.ContainsKey("UserPromptSubmit"))
+        {
+            hooks["UserPromptSubmit"] = new JsonArray();
+        }
+        var userPromptSubmit = hooks["UserPromptSubmit"]!.AsArray();
+
+        // 중복 확인
+        var hasSaveConversation = false;
+        foreach (var hook in userPromptSubmit)
+        {
+            var hookObj = hook?.AsObject();
+            var hooksArray = hookObj?["hooks"]?.AsArray();
+            if (hooksArray != null && hooksArray.Count > 0)
+            {
+                var command = hooksArray[0]?.AsObject()?["command"]?.ToString();
+                if (command != null && command.Contains("save-conversation"))
+                {
+                    hasSaveConversation = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasSaveConversation)
+        {
+            userPromptSubmit.Add(new JsonObject
+            {
+                ["matcher"] = ".*",
+                ["hooks"] = new JsonArray
+                {
+                    new JsonObject
+                    {
+                        ["type"] = "command",
+                        ["command"] = $"powershell -ExecutionPolicy Bypass -File \"{hooksDirNorm}/save-conversation.ps1\""
+                    }
+                }
+            });
+        }
+
+        // Stop 훅 추가
+        if (!hooks.ContainsKey("Stop"))
+        {
+            hooks["Stop"] = new JsonArray();
+        }
+        var stopHooks = hooks["Stop"]!.AsArray();
+
+        // 중복 확인
+        var hasSaveResponse = false;
+        foreach (var hook in stopHooks)
+        {
+            var hookObj = hook?.AsObject();
+            var hooksArray = hookObj?["hooks"]?.AsArray();
+            if (hooksArray != null && hooksArray.Count > 0)
+            {
+                var command = hooksArray[0]?.AsObject()?["command"]?.ToString();
+                if (command != null && command.Contains("save-response"))
+                {
+                    hasSaveResponse = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasSaveResponse)
+        {
+            stopHooks.Add(new JsonObject
+            {
+                ["matcher"] = "",
+                ["hooks"] = new JsonArray
+                {
+                    new JsonObject
+                    {
+                        ["type"] = "command",
+                        ["command"] = $"powershell -ExecutionPolicy Bypass -File \"{hooksDirNorm}/save-response.ps1\""
+                    }
+                }
+            });
+        }
+
+        // 저장
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        var json = settings.ToJsonString(options);
+        File.WriteAllText(settingsPath, json, Encoding.UTF8);
+
+        System.Diagnostics.Debug.WriteLine("[ClaudeHook] Mnemo 훅 설정 추가됨");
+    }
+
+    /// <summary>
+    /// CLAUDE.md에 Mnemo 규칙 추가
+    /// </summary>
+    private static void InstallMnemoClaudeMdRules(string claudeMdPath, string rules)
+    {
+        string content = "";
+        if (File.Exists(claudeMdPath))
+        {
+            content = File.ReadAllText(claudeMdPath, Encoding.UTF8);
+        }
+
+        // 기존 Mnemo 규칙 제거
+        var regex = new System.Text.RegularExpressions.Regex(
+            $@"\n?{System.Text.RegularExpressions.Regex.Escape(MnemoMarkerStart)}[\s\S]*?{System.Text.RegularExpressions.Regex.Escape(MnemoMarkerEnd)}\n?");
+        content = regex.Replace(content, "").Trim();
+
+        // 새 규칙 추가
+        var rulesBlock = $"\n\n{MnemoMarkerStart}\n{rules}\n{MnemoMarkerEnd}";
+        content = content + rulesBlock + "\n";
+
+        var dir = Path.GetDirectoryName(claudeMdPath);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        File.WriteAllText(claudeMdPath, content, Encoding.UTF8);
+        System.Diagnostics.Debug.WriteLine("[ClaudeHook] Mnemo CLAUDE.md 규칙 추가됨");
+    }
+
+    #endregion
+
+    #region Gepetto Skill Install (GitHub)
+
+    private const string GepettoGitHubBaseUrl = "https://raw.githubusercontent.com/Dannykkh/claude-code-agent-customizations/master/skills/gepetto";
+
+    /// <summary>
+    /// Gepetto 스킬 설치 (GitHub에서 다운로드)
+    /// </summary>
+    private static bool InstallGepettoSkill(string workingDirectory)
+    {
+        try
+        {
+            var gepettoSkillFolder = Path.Combine(workingDirectory, ClaudeFolderName, "skills", "gepetto");
+            var gepettoSkillPath = Path.Combine(gepettoSkillFolder, "SKILL.md");
+
+            // 이미 설치되어 있는지 확인
+            if (File.Exists(gepettoSkillPath))
+            {
+                // 백그라운드에서 업데이트 확인
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    try
+                    {
+                        await UpdateGepettoFromGitHubAsync(workingDirectory);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 업데이트 확인 실패: {ex.Message}");
+                    }
+                });
+                return false;
+            }
+
+            // 새로 설치 필요 - GitHub에서 다운로드
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 새로 설치: GitHub에서 다운로드 중...");
+
+            try
+            {
+                var task = UpdateGepettoFromGitHubAsync(workingDirectory);
+                task.Wait(TimeSpan.FromSeconds(30));
+
+                if (task.Result.Success)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 설치 완료");
+                    return true;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 설치 실패: {task.Result.Message}");
+                    // 실패 시 하드코딩 폴백
+                    return InstallGepettoFallback(workingDirectory);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto GitHub 다운로드 실패, 폴백: {ex.Message}");
+                return InstallGepettoFallback(workingDirectory);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 설치 실패: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gepetto 스킬 설치 (비동기 버전)
+    /// </summary>
+    private static async Task<bool> InstallGepettoSkillAsync(string workingDirectory)
+    {
+        try
+        {
+            var gepettoSkillFolder = Path.Combine(workingDirectory, ClaudeFolderName, "skills", "gepetto");
+            var gepettoSkillPath = Path.Combine(gepettoSkillFolder, "SKILL.md");
+
+            // 이미 설치되어 있으면 백그라운드에서 업데이트 확인
+            if (File.Exists(gepettoSkillPath))
+            {
+                _ = Task.Run(async () =>
+                {
+                    try { await UpdateGepettoFromGitHubAsync(workingDirectory); }
+                    catch { /* 무시 */ }
+                });
+                return false;
+            }
+
+            // 새로 설치 - GitHub에서 다운로드
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 새로 설치: GitHub에서 다운로드 중...");
+
+            var result = await UpdateGepettoFromGitHubAsync(workingDirectory);
+            if (result.Success)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 설치 완료");
+                return true;
+            }
+
+            // 실패 시 하드코딩 폴백
+            return await Task.Run(() => InstallGepettoFallback(workingDirectory));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 설치 실패: {ex.Message}");
+            return await Task.Run(() => InstallGepettoFallback(workingDirectory));
+        }
+    }
+
+    /// <summary>
+    /// Gepetto 폴백 설치 (GitHub 실패 시 하드코딩 버전 사용)
+    /// </summary>
+    private static bool InstallGepettoFallback(string workingDirectory)
+    {
+        try
+        {
+            var gepettoSkillFolder = Path.Combine(workingDirectory, ClaudeFolderName, "skills", "gepetto");
+            if (!Directory.Exists(gepettoSkillFolder))
+            {
+                Directory.CreateDirectory(gepettoSkillFolder);
+            }
+
+            var gepettoSkillPath = Path.Combine(gepettoSkillFolder, "SKILL.md");
+            File.WriteAllText(gepettoSkillPath, GetGepettoSkill(), Encoding.UTF8);
+            System.Diagnostics.Debug.WriteLine("[ClaudeHook] Gepetto 폴백 설치 완료");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 폴백 설치 실패: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// GitHub에서 최신 Gepetto 스킬 다운로드
+    /// </summary>
+    public static async System.Threading.Tasks.Task<(bool Success, string Message)> UpdateGepettoFromGitHubAsync(
+        string workingDirectory,
+        Action<string>? progress = null)
+    {
+        try
+        {
+            var gepettoSkillFolder = Path.Combine(workingDirectory, ClaudeFolderName, "skills", "gepetto");
+
+            // 폴더 생성
+            progress?.Invoke("[1/2] 폴더 생성 중...");
+            if (!Directory.Exists(gepettoSkillFolder))
+            {
+                Directory.CreateDirectory(gepettoSkillFolder);
+            }
+
+            // GitHub에서 SKILL.md 다운로드
+            progress?.Invoke("[2/2] SKILL.md 다운로드 중...");
+            using var httpClient = new System.Net.Http.HttpClient();
+
+            var skillMd = await httpClient.GetStringAsync($"{GepettoGitHubBaseUrl}/SKILL.md");
+            await File.WriteAllTextAsync(Path.Combine(gepettoSkillFolder, "SKILL.md"), skillMd, Encoding.UTF8);
+
+            progress?.Invoke("✓ Gepetto 설치 완료!");
+            return (true, "Gepetto 스킬이 설치되었습니다.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudeHook] Gepetto 업데이트 실패: {ex.Message}");
+            return (false, $"업데이트 실패: {ex.Message}");
+        }
     }
 
     #endregion

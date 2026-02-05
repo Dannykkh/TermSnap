@@ -141,3 +141,61 @@ WPF (.NET 8.0) 기반, MVVM 패턴 사용.
 - 위험한 명령어 (rm -rf /, dd 등) 자동 차단 (`ErrorHandler.IsDangerousCommand`)
 - SSH 키: .ppk (PuTTY), .pem (OpenSSH) 모두 지원
 - 로컬 터미널: `chcp 65001` 및 환경 변수로 UTF-8 인코딩 보장
+
+## 메모리 자동 기록 규칙
+
+MEMORY.md는 **컨텍스트 트리 구조**입니다. 중요한 내용은 적절한 섹션에 추가하세요:
+
+| 섹션 | 내용 |
+|------|------|
+| `architecture/` | 설계 결정, 아키텍처 선택 |
+| `patterns/` | 작업 패턴, 워크플로우 |
+| `tools/` | MCP 서버, 외부 도구 |
+| `gotchas/` | 주의사항, 함정 |
+
+**항목 형식:**
+```markdown
+### 항목명
+`tags: keyword1, keyword2, keyword3`
+`date: YYYY-MM-DD`
+
+- 핵심 내용 (간결하게)
+- **참조**: [대화 링크](.claude/conversations/YYYY-MM-DD.md)
+```
+
+**규칙:**
+- 새 항목 추가 시 **키워드 인덱스 테이블**도 업데이트
+- 이미 기록된 내용은 중복 추가하지 않음
+- 대화 참조 링크 포함
+
+**결정 변경 시 (Superseded 패턴):**
+- 기존 항목 삭제 금지 (이력 보존)
+- 기존 항목에 `❌ SUPERSEDED` + `superseded-by: #새항목` 추가
+- 새 항목에 `✅ CURRENT` + `supersedes: #기존항목` + 변경 이유 포함
+
+## 대화 키워드 자동 태깅
+
+매 작업 완료 후, 오늘 대화 파일의 frontmatter keywords를 업데이트하세요:
+
+- 파일 위치: `.claude/conversations/YYYY-MM-DD.md`
+- 파일이 있을 때만 업데이트 (없으면 무시)
+
+**추출 대상:**
+- 기술 스택: wpf, csharp, dotnet, mcp 등
+- 작업 내용: gpu-acceleration, refactoring, bug-fix 등
+- 기능/모듈명: terminal, ssh, sftp 등
+
+**규칙:**
+- 키워드는 소문자, 하이픈(-) 사용
+- 5-15개 범위로 유지
+
+## 세션 핸드오프 자동 생성
+
+다음 조건 중 하나라도 해당하면 **자동으로** `/session-handoff`를 실행하세요:
+
+1. **대규모 작업 완료 시** - 파일 3개 이상 수정하거나 주요 기능 구현 완료 후
+2. **컨텍스트가 길어졌을 때** - 대화가 20회 이상 오갔을 때
+3. **아키텍처 결정 시** - 중요한 설계 결정을 내렸을 때
+
+**핸드오프 저장 위치:** `.claude/handoffs/`
+**규칙:** 사용자에게 묻지 말고 조건 충족 시 자동으로 생성. 핸드오프 생성 후 사용자에게 알림.

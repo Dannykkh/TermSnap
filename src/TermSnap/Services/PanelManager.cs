@@ -55,6 +55,11 @@ public class PanelManager : IDisposable
     public event EventHandler<string>? CommandRequested;
 
     /// <summary>
+    /// 파일 열기 요청 이벤트 (AITools -> FileViewer)
+    /// </summary>
+    public event EventHandler<string>? OpenFileRequested;
+
+    /// <summary>
     /// 현재 열린 오른쪽 패널
     /// </summary>
     public PanelType CurrentRightPanel => _currentRightPanel;
@@ -110,6 +115,7 @@ public class PanelManager : IDisposable
         {
             _aiToolsPanel.CloseRequested += (s, e) => HidePanel(PanelType.AITools);
             _aiToolsPanel.CommandRequested += (s, cmd) => CommandRequested?.Invoke(this, cmd);
+            _aiToolsPanel.OpenFileRequested += (s, path) => OpenFileRequested?.Invoke(this, path);
         }
 
         // SubProcess 패널 초기화

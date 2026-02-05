@@ -3,10 +3,28 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              Background="{DynamicResource SurfaceBrush}"
-             MinWidth="400">
+             Focusable="False"
+             MinWidth="400"
+             PreviewMouseWheel="UserControl_PreviewMouseWheel">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- claude-mem 스타일 색상 (카테고리별) -->
+        <SolidColorBrush x:Key="MemoryArchitectureBrush" Color="#0969da"/>    <!-- 파란색 - 아키텍처 -->
+        <SolidColorBrush x:Key="MemoryArchitectureBgBrush" Color="#f0f6fb"/>
+        <SolidColorBrush x:Key="MemoryPatternBrush" Color="#8250df"/>         <!-- 보라색 - 패턴 -->
+        <SolidColorBrush x:Key="MemoryPatternBgBrush" Color="#f5f0ff"/>
+        <SolidColorBrush x:Key="MemoryToolBrush" Color="#1a7f37"/>            <!-- 초록색 - 도구 -->
+        <SolidColorBrush x:Key="MemoryToolBgBrush" Color="#f0fff4"/>
+        <SolidColorBrush x:Key="MemoryGotchaBrush" Color="#cf222e"/>          <!-- 빨간색 - 주의사항 -->
+        <SolidColorBrush x:Key="MemoryGotchaBgBrush" Color="#fff5f5"/>
+        <SolidColorBrush x:Key="MemoryGoalBrush" Color="#d4a72c"/>            <!-- 금색 - 목표 -->
+        <SolidColorBrush x:Key="MemoryGoalBgBrush" Color="#fffbf0"/>
+        <SolidColorBrush x:Key="MemoryMetaBrush" Color="#6e7781"/>            <!-- 회색 - 메타 -->
+        <SolidColorBrush x:Key="MemoryMetaBgBrush" Color="#f6f8fa"/>
+        <SolidColorBrush x:Key="ConversationBrush" Color="#0969da"/>          <!-- 파란색 - 대화 -->
+        <SolidColorBrush x:Key="ConversationBgBrush" Color="#f0f6fb"/>
 
         <!-- 탭 버튼 스타일 -->
         <Style x:Key="TabButtonStyle" TargetType="RadioButton">
@@ -201,12 +219,12 @@
                                           Background="{DynamicResource CardBrush}"
                                           FontSize="11">
                                     <ComboBoxItem Content="전체" Tag="" IsSelected="True"/>
-                                    <ComboBoxItem Content="📌 사실" Tag="Fact"/>
-                                    <ComboBoxItem Content="💡 선호도" Tag="Preference"/>
-                                    <ComboBoxItem Content="🔧 기술 스택" Tag="TechStack"/>
-                                    <ComboBoxItem Content="📁 프로젝트" Tag="Project"/>
-                                    <ComboBoxItem Content="⚠️ 지침" Tag="Instruction"/>
-                                    <ComboBoxItem Content="📚 학습된 교훈" Tag="Lesson"/>
+                                    <ComboBoxItem Content="🏗️ 아키텍처" Tag="Architecture"/>
+                                    <ComboBoxItem Content="🔄 패턴" Tag="Pattern"/>
+                                    <ComboBoxItem Content="🔧 도구" Tag="Tool"/>
+                                    <ComboBoxItem Content="⚠️ 주의사항" Tag="Gotcha"/>
+                                    <ComboBoxItem Content="🎯 목표" Tag="Goal"/>
+                                    <ComboBoxItem Content="📁 메타" Tag="Meta"/>
                                 </ComboBox>
 
                                 <Button Style="{StaticResource MaterialDesignFlatButton}"
@@ -236,49 +254,91 @@
                                     </ListBox.ItemContainerStyle>
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Padding="10" Margin="0,3"
+                                            <!-- claude-mem 스타일 카드: 왼쪽 색상 바 + 카드 -->
+                                            <Border Margin="0,4" CornerRadius="6"
                                                     Background="{DynamicResource CardBrush}"
-                                                    CornerRadius="6"
-                                                    BorderBrush="{DynamicResource BorderBrush}"
-                                                    BorderThickness="1">
+                                                    BorderBrush="{Binding TypeBorderBrush}"
+                                                    BorderThickness="0,0,0,0">
                                                 <Grid>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                    </Grid.RowDefinitions>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="4"/>
                                                         <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
-                                                        <TextBlock Text="{Binding TypeIcon}" FontSize="14"
-                                                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                        <TextBlock Text="{Binding Content}"
-                                                                   TextWrapping="Wrap"
-                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                                                   FontWeight="Medium" FontSize="12"/>
-                                                    </StackPanel>
+                                                    <!-- 왼쪽 색상 바 (타입별) -->
+                                                    <Border Grid.Column="0"
+                                                            Background="{Binding TypeBorderBrush}"
+                                                            CornerRadius="6,0,0,6"/>
 
-                                                    <Button Grid.Row="0" Grid.Column="1"
-                                                            Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                            Width="22" Height="22"
-                                                            Click="DeleteMemory_Click"
-                                                            Tag="{Binding Id}"
-                                                            ToolTip="삭제">
-                                                        <materialDesign:PackIcon Kind="Delete" Width="14" Height="14"/>
-                                                    </Button>
+                                                    <!-- 카드 내용 -->
+                                                    <Border Grid.Column="1" Padding="12,10"
+                                                            Background="{DynamicResource CardBrush}"
+                                                            CornerRadius="0,6,6,0">
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                            </Grid.RowDefinitions>
 
-                                                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2"
-                                                                Orientation="Horizontal" Margin="0,4,0,0">
-                                                        <TextBlock Text="{Binding TypeName}"
-                                                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                                                   FontSize="10"/>
-                                                        <TextBlock Text=" · " Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10"/>
-                                                        <TextBlock Text="{Binding ImportanceText}"
-                                                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                                                   FontSize="10"/>
-                                                    </StackPanel>
+                                                            <!-- 헤더: 아이콘 + 타입 뱃지 -->
+                                                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                                    <TextBlock Text="{Binding TypeIcon}" FontSize="16"
+                                                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                    <Border Background="{Binding TypeBorderBrush}"
+                                                                            CornerRadius="3" Padding="6,2">
+                                                                        <TextBlock Text="{Binding TypeName}"
+                                                                                   FontSize="10" FontWeight="SemiBold"
+                                                                                   Foreground="White"/>
+                                                                    </Border>
+                                                                </StackPanel>
+
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding CreatedAtDisplay}"
+                                                                           FontSize="10"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                           HorizontalAlignment="Right"
+                                                                           VerticalAlignment="Center"/>
+
+                                                                <Button Grid.Column="2"
+                                                                        Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                                        Width="20" Height="20"
+                                                                        Margin="8,0,0,0"
+                                                                        Click="DeleteMemory_Click"
+                                                                        Tag="{Binding Id}"
+                                                                        ToolTip="삭제">
+                                                                    <materialDesign:PackIcon Kind="Close" Width="12" Height="12"/>
+                                                                </Button>
+                                                            </Grid>
+
+                                                            <!-- 내용 -->
+                                                            <TextBlock Grid.Row="1"
+                                                                       Text="{Binding Content}"
+                                                                       TextWrapping="Wrap"
+                                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                       FontSize="12"
+                                                                       LineHeight="18"/>
+
+                                                            <!-- 태그 -->
+                                                            <StackPanel Grid.Row="2" Orientation="Horizontal"
+                                                                        Margin="0,8,0,0"
+                                                                        Visibility="{Binding HasContext, Converter={StaticResource BoolToVis}}">
+                                                                <Border Background="{DynamicResource BackgroundBrush}"
+                                                                        CornerRadius="3" Padding="6,2">
+                                                                    <TextBlock Text="{Binding Context}"
+                                                                               FontSize="10"
+                                                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                                </Border>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
@@ -330,42 +390,92 @@
                                     </ListBox.ItemContainerStyle>
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Padding="10" Margin="0,3"
-                                                    Background="{DynamicResource CardBrush}"
-                                                    CornerRadius="6"
-                                                    BorderBrush="{DynamicResource BorderBrush}"
-                                                    BorderThickness="1">
+                                            <!-- claude-mem 스타일 대화 카드 -->
+                                            <Border Margin="0,4" CornerRadius="6"
+                                                    Background="{DynamicResource CardBrush}">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="4"/>
                                                         <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <TextBlock Grid.Column="0" Text="📅"
-                                                               VerticalAlignment="Center" Margin="0,0,8,0" FontSize="16"/>
-                                                    <StackPanel Grid.Column="1">
-                                                        <TextBlock Text="{Binding DateDisplay}"
-                                                                   FontWeight="Medium" FontSize="12"
-                                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                        <TextBlock Text="{Binding Summary}"
-                                                                   FontSize="10" TextTrimming="CharacterEllipsis"
-                                                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                                                   Margin="0,2,0,0"/>
-                                                    </StackPanel>
-                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding KeywordCount}"
-                                                                   FontSize="10"
-                                                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                                                   HorizontalAlignment="Right"/>
-                                                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                                Width="22" Height="22" Margin="0,2,0,0"
-                                                                Click="OpenConversationFile_Click"
-                                                                Tag="{Binding FilePath}"
-                                                                ToolTip="파일 열기">
-                                                            <materialDesign:PackIcon Kind="OpenInNew" Width="12" Height="12"/>
-                                                        </Button>
-                                                    </StackPanel>
+                                                    <!-- 왼쪽 색상 바 (파란색) -->
+                                                    <Border Grid.Column="0"
+                                                            Background="{StaticResource ConversationBrush}"
+                                                            CornerRadius="6,0,0,6"/>
+
+                                                    <!-- 카드 내용 -->
+                                                    <Border Grid.Column="1" Padding="12,10"
+                                                            Background="{DynamicResource CardBrush}"
+                                                            CornerRadius="0,6,6,0">
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                            </Grid.RowDefinitions>
+
+                                                            <!-- 헤더 -->
+                                                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                                    <materialDesign:PackIcon Kind="MessageText"
+                                                                                             Width="16" Height="16"
+                                                                                             Foreground="{StaticResource ConversationBrush}"
+                                                                                             VerticalAlignment="Center"
+                                                                                             Margin="0,0,8,0"/>
+                                                                    <TextBlock Text="{Binding DateDisplay}"
+                                                                               FontWeight="SemiBold" FontSize="13"
+                                                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                                </StackPanel>
+
+                                                                <Button Grid.Column="2"
+                                                                        Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                                        Width="24" Height="24"
+                                                                        Click="OpenConversationFile_Click"
+                                                                        Tag="{Binding FilePath}"
+                                                                        ToolTip="파일 열기">
+                                                                    <materialDesign:PackIcon Kind="OpenInNew" Width="14" Height="14"/>
+                                                                </Button>
+                                                            </Grid>
+
+                                                            <!-- 요약 -->
+                                                            <TextBlock Grid.Row="1"
+                                                                       Text="{Binding Summary}"
+                                                                       FontSize="11"
+                                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Visibility="{Binding HasSummary, Converter={StaticResource BoolToVis}}"/>
+
+                                                            <!-- 태그들 -->
+                                                            <ItemsControl Grid.Row="2"
+                                                                          ItemsSource="{Binding Keywords}"
+                                                                          Margin="0,6,0,0"
+                                                                          Visibility="{Binding HasKeywords, Converter={StaticResource BoolToVis}}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate>
+                                                                        <WrapPanel Orientation="Horizontal"/>
+                                                                    </ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <Border Background="{DynamicResource BackgroundBrush}"
+                                                                                CornerRadius="3" Padding="6,2"
+                                                                                Margin="0,0,4,2">
+                                                                            <TextBlock Text="{Binding}"
+                                                                                       FontSize="9"
+                                                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                                        </Border>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </Grid>
+                                                    </Border>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
@@ -391,7 +501,8 @@
                                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
                                     </StackPanel>
                                     <ScrollViewer Grid.Row="1" MaxHeight="100"
-                                                  VerticalScrollBarVisibility="Auto">
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
                                         <TextBlock x:Name="ConversationPreviewText"
                                                    Text="" TextWrapping="Wrap" FontSize="10"
                                                    Foreground="{DynamicResource TextSecondaryBrush}"/>
@@ -470,18 +581,36 @@
                                                 </ListBox.ItemContainerStyle>
                                                 <ListBox.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border Padding="8" Margin="0,2"
-                                                                Background="{DynamicResource CardBrush}"
-                                                                CornerRadius="4"
-                                                                BorderBrush="{DynamicResource BorderBrush}"
-                                                                BorderThickness="1">
-                                                            <StackPanel Orientation="Horizontal">
-                                                                <TextBlock Text="{Binding TypeIcon}" FontSize="12"
-                                                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                                <TextBlock Text="{Binding Content}"
-                                                                           TextWrapping="Wrap" FontSize="11"
-                                                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                            </StackPanel>
+                                                        <!-- claude-mem 스타일 검색 결과 카드 -->
+                                                        <Border Margin="0,3" CornerRadius="6"
+                                                                Background="{DynamicResource CardBrush}">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="4"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <Border Grid.Column="0"
+                                                                        Background="{Binding TypeBorderBrush}"
+                                                                        CornerRadius="6,0,0,6"/>
+                                                                <Border Grid.Column="1" Padding="10,8"
+                                                                        Background="{DynamicResource CardBrush}"
+                                                                        CornerRadius="0,6,6,0">
+                                                                    <StackPanel>
+                                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                            <TextBlock Text="{Binding TypeIcon}" FontSize="12"
+                                                                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                                            <Border Background="{Binding TypeBorderBrush}"
+                                                                                    CornerRadius="3" Padding="5,1">
+                                                                                <TextBlock Text="{Binding TypeName}"
+                                                                                           FontSize="9" Foreground="White"/>
+                                                                            </Border>
+                                                                        </StackPanel>
+                                                                        <TextBlock Text="{Binding Content}"
+                                                                                   TextWrapping="Wrap" FontSize="11"
+                                                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </Grid>
                                                         </Border>
                                                     </DataTemplate>
                                                 </ListBox.ItemTemplate>
@@ -499,6 +628,7 @@
                                             <ListBox x:Name="SearchConversationResultsList"
                                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                                     SelectionChanged="SearchConversationResultsList_SelectionChanged"
                                                      Background="Transparent" BorderThickness="0">
                                                 <ListBox.ItemContainerStyle>
                                                     <Style TargetType="ListBoxItem">
@@ -509,20 +639,43 @@
                                                 </ListBox.ItemContainerStyle>
                                                 <ListBox.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border Padding="8" Margin="0,2"
-                                                                Background="{DynamicResource CardBrush}"
-                                                                CornerRadius="4"
-                                                                BorderBrush="{DynamicResource BorderBrush}"
-                                                                BorderThickness="1">
-                                                            <StackPanel>
-                                                                <TextBlock Text="{Binding DateDisplay}"
-                                                                           FontWeight="Medium" FontSize="11"
-                                                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                                <TextBlock Text="{Binding Summary}"
-                                                                           FontSize="10" TextTrimming="CharacterEllipsis"
-                                                                           Foreground="{DynamicResource TextSecondaryBrush}"
-                                                                           Margin="0,2,0,0"/>
-                                                            </StackPanel>
+                                                        <!-- claude-mem 스타일 대화 검색 결과 카드 -->
+                                                        <Border Margin="0,3" CornerRadius="6"
+                                                                Background="{DynamicResource CardBrush}">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="4"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <Border Grid.Column="0"
+                                                                        Background="{StaticResource ConversationBrush}"
+                                                                        CornerRadius="6,0,0,6"/>
+                                                                <Border Grid.Column="1" Padding="10,8"
+                                                                        Background="{DynamicResource CardBrush}"
+                                                                        CornerRadius="0,6,6,0">
+                                                                    <StackPanel>
+                                                                        <Grid Margin="0,0,0,4">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Grid.Column="0"
+                                                                                       Text="{Binding DateDisplay}"
+                                                                                       FontWeight="SemiBold" FontSize="11"
+                                                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                                            <TextBlock Grid.Column="2"
+                                                                                       Text="{Binding LineNumber, StringFormat='줄 {0}'}"
+                                                                                       FontSize="9"
+                                                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                                        </Grid>
+                                                                        <TextBlock Text="{Binding MatchedLine}"
+                                                                                   FontSize="10"
+                                                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                                   TextTrimming="CharacterEllipsis"/>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </Grid>
                                                         </Border>
                                                     </DataTemplate>
                                                 </ListBox.ItemTemplate>
@@ -683,6 +836,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0" Text="플랜 파일"
@@ -691,6 +845,13 @@
                                        VerticalAlignment="Center"/>
 
                             <Button Grid.Column="1"
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    Click="BrowsePlanFileButton_Click"
+                                    ToolTip="플랜 파일 직접 선택 (프로젝트 폴더 내)">
+                                <materialDesign:PackIcon Kind="FolderOpen" Width="16" Height="16"/>
+                            </Button>
+
+                            <Button Grid.Column="2"
                                     Style="{StaticResource MaterialDesignFlatButton}"
                                     Click="OrchestratorLoadPlanButton_Click"
                                     ToolTip="플랜 파일 새로고침">
@@ -704,68 +865,122 @@
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" MaxHeight="120"/>
+                                    <RowDefinition Height="Auto" MaxHeight="150"/>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <!-- 플랜 파일 리스트 -->
                                 <ListBox x:Name="PlanFileList" Grid.Row="0"
-                                         MaxHeight="100"
+                                         MaxHeight="120"
                                          SelectionChanged="PlanFileList_SelectionChanged"
                                          Background="Transparent" BorderThickness="0">
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem">
                                             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="Padding" Value="4,2"/>
+                                            <Setter Property="Margin" Value="0,1"/>
                                         </Style>
                                     </ListBox.ItemContainerStyle>
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="📄" Margin="0,0,8,0"/>
-                                                <TextBlock Grid.Column="1" Text="{Binding FileName}"
-                                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                <TextBlock Grid.Column="2" Text="{Binding ModifiedTime}"
-                                                           FontSize="10"
-                                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                            </Grid>
+                                            <Border Background="{DynamicResource BackgroundBrush}"
+                                                    CornerRadius="4" Padding="8,6">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="📄" Margin="0,0,8,0"
+                                                               VerticalAlignment="Center"/>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding FileName}"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                   FontSize="12"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2" Text="{Binding ModifiedTime}"
+                                                               FontSize="10"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="8,0"/>
+                                                    <!-- 삭제 버튼 -->
+                                                    <Button Grid.Column="3"
+                                                            Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                            Width="22" Height="22"
+                                                            Click="RemovePlanFile_Click"
+                                                            Tag="{Binding}"
+                                                            ToolTip="목록에서 제거">
+                                                        <materialDesign:PackIcon Kind="Close" Width="14" Height="14"/>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
 
-                                <!-- 플랜 미리보기 -->
+                                <!-- 플랜 파일 없음 -->
+                                <TextBlock x:Name="NoPlanFilesText"
+                                           Grid.Row="0"
+                                           Text="플랜 파일 없음 (/gepetto로 계획 생성)"
+                                           Visibility="Collapsed"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontSize="11" Margin="0,16"/>
+
+                                <!-- 플랜 미리보기 (마크다운 렌더링) -->
                                 <Expander Grid.Row="1" Header="플랜 미리보기" Margin="0,8,0,0"
                                           IsExpanded="False"
                                           Foreground="{DynamicResource TextPrimaryBrush}">
-                                    <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
-                                        <TextBlock x:Name="PlanPreviewText"
-                                                   Text="플랜 파일을 선택하세요"
-                                                   TextWrapping="Wrap"
-                                                   FontFamily="Consolas"
-                                                   FontSize="11"
-                                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                                   Margin="0,8,0,0"/>
+                                    <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto"
+                                                  PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+                                        <RichTextBox x:Name="PlanPreviewRichText"
+                                                     IsReadOnly="True"
+                                                     BorderThickness="0"
+                                                     Background="Transparent"
+                                                     FontFamily="Segoe UI"
+                                                     FontSize="12"
+                                                     Foreground="{DynamicResource TextPrimaryBrush}"
+                                                     Margin="0,8,0,0"
+                                                     IsDocumentEnabled="True"/>
                                     </ScrollViewer>
                                 </Expander>
 
-                                <!-- 플랜 파일 없음 -->
-                                <TextBlock x:Name="NoPlanFilesText"
-                                           Text="플랜 파일 없음 (Claude Code에서 plan mode 실행 필요)"
-                                           Visibility="Collapsed"
-                                           HorizontalAlignment="Center"
-                                           Foreground="{DynamicResource TextSecondaryBrush}"
-                                           FontSize="11" Margin="0,8,0,8"/>
+                                <!-- 선택된 파일 정보 -->
+                                <Border Grid.Row="2" Margin="0,8,0,0"
+                                        Background="{DynamicResource BackgroundBrush}"
+                                        CornerRadius="4" Padding="8,6"
+                                        Visibility="{Binding ElementName=PlanFileList, Path=SelectedItem, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="SelectedPlanFileText"
+                                                   Text="선택된 파일 없음"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <Button Grid.Column="1"
+                                                Style="{StaticResource MaterialDesignFlatButton}"
+                                                Click="OpenPlanFileInViewer_Click"
+                                                ToolTip="파일 뷰어에서 열기"
+                                                Height="24" Width="24">
+                                            <materialDesign:PackIcon Kind="OpenInNew" Width="14" Height="14"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
                             </Grid>
                         </Border>
 
                         <!-- 버튼 영역 -->
                         <Grid Grid.Row="4" Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -781,8 +996,21 @@
                                 <materialDesign:PackIcon Kind="Refresh"/>
                             </Button>
 
-                            <Button x:Name="OrchestratorViewTasksButton"
+                            <Button x:Name="OrchestratorUpdateButton"
                                     Grid.Column="1"
+                                    HorizontalAlignment="Left"
+                                    Click="OrchestratorUpdateButton_Click"
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    ToolTip="GitHub에서 최신 버전 업데이트"
+                                    Margin="8,0,0,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="CloudDownload" VerticalAlignment="Center"/>
+                                    <TextBlock Text="업데이트" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="OrchestratorViewTasksButton"
+                                    Grid.Column="2"
                                     Content="태스크 보기"
                                     Click="OrchestratorViewTasksButton_Click"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
@@ -790,7 +1018,7 @@
                                     Margin="0,0,8,0"/>
 
                             <Button x:Name="OrchestratorStartButton"
-                                    Grid.Column="2"
+                                    Grid.Column="3"
                                     Content="PM 시작"
                                     Click="OrchestratorStartButton_Click"
                                     Background="{DynamicResource SuccessBrush}"
@@ -799,7 +1027,7 @@
                                     Margin="0,0,8,0"/>
 
                             <Button x:Name="OrchestratorResetButton"
-                                    Grid.Column="3"
+                                    Grid.Column="4"
                                     Content="리셋"
                                     Click="OrchestratorResetButton_Click"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
@@ -932,6 +1160,20 @@
                                              GroupName="InstallFilter"
                                              Margin="0,0,8,0"
                                              Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <RadioButton x:Name="SkillsInstallFilterGlobal"
+                                             Content="🌐 글로벌"
+                                             Checked="SkillsInstallFilter_Checked"
+                                             Tag="Global"
+                                             GroupName="InstallFilter"
+                                             Margin="0,0,8,0"
+                                             Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <RadioButton x:Name="SkillsInstallFilterLocal"
+                                             Content="📁 로컬"
+                                             Checked="SkillsInstallFilter_Checked"
+                                             Tag="Local"
+                                             GroupName="InstallFilter"
+                                             Margin="0,0,8,0"
+                                             Foreground="{DynamicResource TextPrimaryBrush}"/>
                                 <RadioButton x:Name="SkillsInstallFilterNotInstalled"
                                              Content="미설치"
                                              Checked="SkillsInstallFilter_Checked"
@@ -989,8 +1231,8 @@
                                                             CornerRadius="3"
                                                             Padding="6,1"
                                                             Margin="8,0,0,0"
-                                                            Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}">
-                                                        <TextBlock Text="설치됨" FontSize="10" Foreground="White"/>
+                                                            Visibility="{Binding ShowInstallLocation, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="{Binding InstallLocation}" FontSize="10" Foreground="White"/>
                                                     </Border>
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding Description}"

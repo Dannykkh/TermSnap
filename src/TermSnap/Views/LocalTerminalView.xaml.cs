@@ -432,13 +432,28 @@ public partial class LocalTerminalView : UserControl
                     aiOptions.WorkingFolder = path;
 
                     // Claude Code인 경우 장기기억 시스템 전체 설치
-                    // (hooks, settings.local.json, MEMORY.md, CLAUDE.md, agents, skills, docs, MCP 서버)
+                    // (settings.local.json, MEMORY.md, CLAUDE.md, Gepetto, Orchestrator MCP, Mnemo)
                     var programName = aiOptions.Command.Split(' ')[0];
                     if (programName.Contains("claude", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (ClaudeHookService.InstallMemorySystem(path))
+                        vm.AddMessage("⏳ Claude 시스템 설치 중...", Models.MessageType.Info);
+
+                        var anyCreated = await ClaudeHookService.InstallMemorySystemAsync(path, (step, current, total) =>
                         {
+                            Dispatcher.Invoke(() =>
+                            {
+                                vm.AddMessage($"⏳ [{current}/{total}] {step}", Models.MessageType.Info);
+                            });
+                        });
+
+                        if (anyCreated)
+                        {
+                            vm.AddMessage("✅ Claude 시스템 설치 완료", Models.MessageType.Success);
                             Debug.WriteLine($"[FolderSelected] Claude 장기기억 시스템 설치 완료: {path}");
+                        }
+                        else
+                        {
+                            vm.AddMessage("✅ Claude 시스템 준비 완료 (이미 설치됨)", Models.MessageType.Success);
                         }
                     }
 
@@ -741,6 +756,29 @@ public partial class LocalTerminalView : UserControl
 
         // 파일 워처 활성화
         ActivateFileWatcher();
+
+        // 입력 컨트롤에 포커스 설정 (탭 전환 후 바로 입력 가능하도록)
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (vm.IsInteractiveMode)
+            {
+                // 인터랙티브 모드: TerminalCtrl에 포커스
+                if (TerminalCtrl != null)
+                {
+                    TerminalCtrl.Focus();
+                    Debug.WriteLine("[LocalTerminalView] TerminalCtrl 포커스 설정됨");
+                }
+            }
+            else
+            {
+                // 비인터랙티브 모드: InputTextBox에 포커스
+                if (InputTextBox != null && InputTextBox.IsEnabled)
+                {
+                    InputTextBox.Focus();
+                    Debug.WriteLine("[LocalTerminalView] InputTextBox 포커스 설정됨");
+                }
+            }
+        }, System.Windows.Threading.DispatcherPriority.Input);
     }
 
     /// <summary>
@@ -793,10 +831,15 @@ public partial class LocalTerminalView : UserControl
     /// </summary>
     private void OnRawOutputReceived(string rawData)
     {
+        // 버퍼에 데이터 추가 (스레드 안전)
         lock (_outputLock)
         {
             _outputBuffer.Append(rawData);
+        }
 
+        // 타이머 생성 및 시작은 UI 쓰레드에서 수행 (DispatcherTimer는 UI 쓰레드 전용)
+        Dispatcher.BeginInvoke(() =>
+        {
             // 타이머가 없으면 생성 (16ms = 60fps)
             if (_outputBatchTimer == null)
             {
@@ -812,7 +855,7 @@ public partial class LocalTerminalView : UserControl
             {
                 _outputBatchTimer.Start();
             }
-        }
+        }, System.Windows.Threading.DispatcherPriority.Send);
 
         // 인터랙티브 모드 로드 완료 감지 (출력이 들어올 때마다 타이머 리셋)
         if (_interactiveResizePending)
@@ -863,6 +906,10 @@ public partial class LocalTerminalView : UserControl
                     TerminalCtrl?.Focus();
                 }, System.Windows.Threading.DispatcherPriority.Input);
 
+                // 커서 오버레이 활성화 (인터랙티브 모드에서 커서 위치 표시)
+                if (TerminalCtrl != null)
+                    TerminalCtrl.ShowCursorOverlay = true;
+
                 // 서브 프로세스 관리자 시작
                 StartSubProcessManager(vm.ProcessId);
 
@@ -878,6 +925,10 @@ public partial class LocalTerminalView : UserControl
                 StopInteractiveLoadTimer();
                 HideSubProcessPanel();
                 StopSubProcessManager();
+
+                // 커서 오버레이 비활성화
+                if (TerminalCtrl != null)
+                    TerminalCtrl.ShowCursorOverlay = false;
             }
         }
         else if (e.PropertyName == nameof(LocalTerminalViewModel.IsConnected))
@@ -1148,9 +1199,30 @@ public partial class LocalTerminalView : UserControl
     {
         string? keyToSend = null;
 
+        // 한영 전환키는 무시 (OutputArea_PreviewKeyDown에서 처리)
+        if (e.Key == Key.HangulMode || e.Key == Key.HanjaMode ||
+            e.Key == Key.ImeProcessed)
+        {
+            return;
+        }
+
         // Ctrl 조합 키
         if (Keyboard.Modifiers == ModifierKeys.Control)
         {
+            // Ctrl+V: 클립보드 텍스트를 프로세스에 전송
+            if (e.Key == Key.V)
+            {
+                if (Clipboard.ContainsText())
+                {
+                    var clipText = Clipboard.GetText();
+                    if (!string.IsNullOrEmpty(clipText))
+                    {
+                        await vm.SendSpecialKeyAsync(clipText);
+                    }
+                }
+                return;
+            }
+
             keyToSend = e.Key switch
             {
                 Key.C => "\x03",  // Ctrl+C (ETX) - 프로세스에 전송 (종료는 버튼으로)
@@ -1356,6 +1428,23 @@ public partial class LocalTerminalView : UserControl
 
         // 인터랙티브 모드에서만 키 입력 처리
         if (!vm.IsInteractiveMode) return;
+
+        // 한영 전환키 처리 - 프로세스에 전송하지 않고 IME 토글
+        if (e.Key == Key.HangulMode || e.Key == Key.HanjaMode ||
+            (e.Key == Key.RightAlt && e.SystemKey == Key.None))
+        {
+            e.Handled = true;
+            ToggleIme(InteractiveInputTextBox);
+            InteractiveInputTextBox.Focus();
+            return;
+        }
+
+        // IME 관련 키는 기본 동작 허용
+        if (e.Key == Key.ImeProcessed || e.Key == Key.JunjaMode ||
+            e.Key == Key.KanaMode || e.Key == Key.KanjiMode)
+        {
+            return;
+        }
 
         e.Handled = true;
         _ = HandleInteractiveKeyAsync(vm, e);
@@ -1812,6 +1901,12 @@ public partial class LocalTerminalView : UserControl
     {
         InitializeFileViewer();
 
+        // AITools 패널이 열려있으면 닫기 (상호 배타적)
+        if (AIToolsBorder.Visibility == Visibility.Visible)
+        {
+            AIToolsBorder.Visibility = Visibility.Collapsed;
+        }
+
         // 인터랙티브 모드 확인
         var isInteractive = DataContext is LocalTerminalViewModel vm && vm.IsInteractiveMode;
 
@@ -1836,6 +1931,9 @@ public partial class LocalTerminalView : UserControl
 
         // 파일 열기
         await FileViewerPanelControl.OpenFileAsync(filePath);
+
+        // 터미널에 포커스 복원 (오버레이 패널이 포커스를 빼앗지 않도록)
+        RestoreFocusToTerminal();
     }
 
     /// <summary>
@@ -1883,8 +1981,18 @@ public partial class LocalTerminalView : UserControl
     [DllImport("user32.dll")]
     private static extern IntPtr GetFocus();
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetKeyboardLayout(uint idThread);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
     private const byte VK_HANGUL = 0x15;  // 한영 전환 키
     private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const int LANG_KOREAN = 0x12;  // 한국어 언어 ID
 
     /// <summary>
     /// 클립보드에 텍스트 설정 (재시도 로직 포함)
@@ -2031,7 +2139,7 @@ public partial class LocalTerminalView : UserControl
 
         _imeMonitorTimer = new System.Windows.Threading.DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(200)
+            Interval = TimeSpan.FromMilliseconds(100)  // 100ms로 더 빠르게 감지
         };
         _imeMonitorTimer.Tick += (s, e) =>
         {
@@ -2054,15 +2162,42 @@ public partial class LocalTerminalView : UserControl
     {
         try
         {
-            var hwnd = new System.Windows.Interop.WindowInteropHelper(Window.GetWindow(this)).Handle;
-            if (hwnd != IntPtr.Zero)
+            // 방법 1: GetKeyboardLayout으로 현재 키보드 레이아웃 확인 (가장 안정적)
+            IntPtr foregroundWindow = GetForegroundWindow();
+            if (foregroundWindow != IntPtr.Zero)
             {
-                IntPtr hIMC = ImmGetContext(hwnd);
-                if (hIMC != IntPtr.Zero)
+                uint threadId = GetWindowThreadProcessId(foregroundWindow, IntPtr.Zero);
+                IntPtr hkl = GetKeyboardLayout(threadId);
+                int langId = (int)hkl & 0xFFFF;
+
+                // 한국어 키보드인 경우
+                if (langId == LANG_KOREAN)
                 {
-                    bool isKorean = ImmGetOpenStatus(hIMC);
-                    ImmReleaseContext(hwnd, hIMC);
-                    return isKorean;
+                    // IME 상태 확인 (한글 모드인지)
+                    IntPtr hwndFocus = GetFocus();
+                    if (hwndFocus != IntPtr.Zero)
+                    {
+                        IntPtr hIMC = ImmGetContext(hwndFocus);
+                        if (hIMC != IntPtr.Zero)
+                        {
+                            bool isOpen = ImmGetOpenStatus(hIMC);
+                            ImmReleaseContext(hwndFocus, hIMC);
+                            return isOpen;
+                        }
+                    }
+
+                    // 포커스 핸들 없으면 윈도우 핸들 사용
+                    var hwnd = new System.Windows.Interop.WindowInteropHelper(Window.GetWindow(this)).Handle;
+                    if (hwnd != IntPtr.Zero)
+                    {
+                        IntPtr hIMC = ImmGetContext(hwnd);
+                        if (hIMC != IntPtr.Zero)
+                        {
+                            bool isOpen = ImmGetOpenStatus(hIMC);
+                            ImmReleaseContext(hwnd, hIMC);
+                            return isOpen;
+                        }
+                    }
                 }
             }
         }
@@ -2446,7 +2581,39 @@ public partial class LocalTerminalView : UserControl
     /// </summary>
     private void AIToolsToggle_Click(object sender, RoutedEventArgs e)
     {
+        // AITools가 열리려는 경우 FileViewer 닫기 (상호 배타적)
+        if (AIToolsBorder.Visibility != Visibility.Visible)
+        {
+            // FileViewer가 열려있으면 닫기
+            if (FileViewerBorder.Visibility == Visibility.Visible)
+            {
+                HideFileViewer();
+                if (DataContext is LocalTerminalViewModel vm)
+                {
+                    vm.IsFileViewerVisible = false;
+                }
+            }
+        }
+
         _panelManager?.TogglePanel(PanelType.AITools);
+
+        // 패널 토글 후 터미널에 포커스 유지 (인터랙티브 모드)
+        RestoreFocusToTerminal();
+    }
+
+    /// <summary>
+    /// 터미널에 포커스 복원 (오버레이 패널이 포커스를 빼앗지 않도록)
+    /// </summary>
+    private void RestoreFocusToTerminal()
+    {
+        if (DataContext is LocalTerminalViewModel vm && vm.IsInteractiveMode)
+        {
+            // Dispatcher로 지연 실행하여 패널 렌더링 완료 후 포커스 이동
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+            {
+                TerminalCtrl?.Focus();
+            });
+        }
     }
 
     /// <summary>
@@ -2468,6 +2635,12 @@ public partial class LocalTerminalView : UserControl
         _panelManager.CommandRequested += async (s, command) =>
         {
             await SendPromptToTerminal(command);
+        };
+
+        // 파일 열기 요청 이벤트 (AIToolsPanel -> FileViewer)
+        _panelManager.OpenFileRequested += async (s, filePath) =>
+        {
+            await OpenFileInViewerAsync(filePath);
         };
 
         // 작업 디렉토리 설정
@@ -2649,6 +2822,9 @@ public partial class LocalTerminalView : UserControl
         {
             ShowSubProcessPanel();
         }
+
+        // 터미널에 포커스 복원
+        RestoreFocusToTerminal();
     }
 
     /// <summary>

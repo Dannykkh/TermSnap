@@ -18,7 +18,7 @@ public partial class AddMemoryDialog : Window
     /// <summary>
     /// 선택된 타입
     /// </summary>
-    public MemoryType SelectedType { get; private set; } = MemoryType.Fact;
+    public MemoryType SelectedType { get; private set; } = MemoryType.Architecture;
 
     /// <summary>
     /// 중요도 (0.0 ~ 1.0)

@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -479,9 +480,9 @@ public class TerminalControl : FrameworkElement
     }
 
     /// <summary>
-    /// 디바운스 타이머 만료 시 실제 리사이즈 수행
+    /// 디바운스 타이머 만료 시 실제 리사이즈 수행 (비동기)
     /// </summary>
-    private void OnResizeDebounceTimerTick(object? sender, EventArgs e)
+    private async void OnResizeDebounceTimerTick(object? sender, EventArgs e)
     {
         _resizeDebounceTimer.Stop();
 
@@ -506,10 +507,13 @@ public class TerminalControl : FrameworkElement
             $"NewBuffer: {_pendingResizeCols}x{_pendingResizeRows}, " +
             $"ActualSize: {ActualWidth:F0}x{ActualHeight:F0}");
 
-        // 버퍼 리사이즈
-        _buffer.Resize(_pendingResizeCols, _pendingResizeRows);
+        int newRows = _pendingResizeRows;
+        int newCols = _pendingResizeCols;
 
-        // DrawingVisual 배열 재생성
+        // 버퍼 리사이즈 (백그라운드에서 수행)
+        await Task.Run(() => _buffer.Resize(newCols, newRows));
+
+        // DrawingVisual 배열 재생성 (UI 스레드에서 동기 수행 - Visual 작업은 UI 스레드 필수)
         RecreateLineVisuals();
 
         // 리사이즈 완료 - 렌더링 재개
@@ -520,7 +524,7 @@ public class TerminalControl : FrameworkElement
         RequestRender();
 
         // 이벤트 발생
-        TerminalSizeChanged?.Invoke(_pendingResizeCols, _pendingResizeRows);
+        TerminalSizeChanged?.Invoke(newCols, newRows);
     }
 
     /// <summary>
@@ -576,10 +580,10 @@ public class TerminalControl : FrameworkElement
     }
 
     /// <summary>
-    /// 즉시 리사이즈 (디바운스 없이)
+    /// 즉시 리사이즈 (디바운스 없이, 비동기)
     /// 단계별 크기를 사용하여 작은 윈도우 크기 변경 시 리사이즈 방지
     /// </summary>
-    public void ResizeToFitImmediate()
+    public async void ResizeToFitImmediate()
     {
         _resizeDebounceTimer.Stop();
 
@@ -617,9 +621,12 @@ public class TerminalControl : FrameworkElement
             $"ActualSize: {ActualWidth:F0}x{ActualHeight:F0}, " +
             $"CellSize: {_cellWidth:F2}x{_cellHeight:F2}");
 
-        _buffer.Resize(cols, rows);
+        _isResizing = true;
 
-        // DrawingVisual 배열 재생성
+        // 버퍼 리사이즈 (백그라운드)
+        await Task.Run(() => _buffer.Resize(cols, rows));
+
+        // DrawingVisual 배열 재생성 (UI 스레드에서 동기 수행)
         RecreateLineVisuals();
 
         // 리사이즈 완료 - 렌더링 재개
@@ -731,9 +738,13 @@ public class TerminalControl : FrameworkElement
                 double cellRenderWidth = cell.IsWideChar ? _cellWidth * 2 : _cellWidth;
 
                 // 배경색 렌더링 (기본 배경색이 아닌 경우)
-                // 공백 문자에도 배경색 적용 (diff 출력 등에서 줄 전체 배경색 필요)
+                // - diff 출력 등에서 줄 전체 배경색 필요 → 공백에도 배경색 적용
+                // - 단, 역상(Inverse) 상태의 공백은 커서 표시 잔상이므로 스킵
+                //   (Claude Code 등이 SGR 7로 커서 위치를 표시하고 이동 후 잔상 남는 문제 방지)
+                bool isInverseSpace = cell.Inverse && (cell.Character == ' ' || cell.Character == '\0');
                 if (cell.Background != TerminalColors.DefaultBackground &&
-                    cell.Background != Colors.Transparent)
+                    cell.Background != Colors.Transparent &&
+                    !isInverseSpace)
                 {
                     var cellBackgroundBrush = GetOrCreateBrush(cell.Background);
                     dc.DrawRectangle(
@@ -778,7 +789,12 @@ public class TerminalControl : FrameworkElement
     }
 
     /// <summary>
-    /// 오버레이 렌더링 (선택 영역, 스크롤 인디케이터, 버튼)
+    /// 인터랙티브 모드에서 커서 오버레이 표시 여부
+    /// </summary>
+    public bool ShowCursorOverlay { get; set; } = false;
+
+    /// <summary>
+    /// 오버레이 렌더링 (선택 영역, 스크롤 인디케이터, 커서, 버튼)
     /// </summary>
     private void UpdateOverlay()
     {
@@ -788,6 +804,27 @@ public class TerminalControl : FrameworkElement
         {
             var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
             int scrollOffset = _buffer.ScrollOffset;
+
+            // 인터랙티브 모드 커서 오버레이
+            if (ShowCursorOverlay && _cellWidth > 0 && _cellHeight > 0 && scrollOffset == 0)
+            {
+                int cursorRow = _buffer.CursorY;
+                int cursorCol = _buffer.CursorX;
+
+                if (cursorRow >= 0 && cursorRow < _buffer.Rows &&
+                    cursorCol >= 0 && cursorCol < _buffer.Columns)
+                {
+                    double cx = cursorCol * _cellWidth;
+                    double cy = cursorRow * _cellHeight;
+
+                    // 반투명 블록 커서 (셀 위에 오버레이)
+                    var cursorBrush = GetOrCreateBrush(Color.FromArgb(128, 200, 200, 200));
+                    dc.DrawRectangle(
+                        cursorBrush,
+                        null,
+                        new Rect(cx, cy, _cellWidth, _cellHeight));
+                }
+            }
 
             // 스크롤백 인디케이터
             if (scrollOffset > 0)

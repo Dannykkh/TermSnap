@@ -4,6 +4,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
              Background="{DynamicResource SurfaceBrush}"
+             Focusable="False"
              Opacity="0.95">
 
     <Grid>
