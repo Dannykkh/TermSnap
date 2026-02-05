@@ -23,18 +23,16 @@
                    FontSize="20" FontWeight="Bold"
                    Margin="0,0,0,20"/>
 
-        <!-- 타입 선택 -->
+        <!-- 타입 선택 (컨텍스트 트리 구조) -->
         <StackPanel Grid.Row="1" Margin="0,0,0,16">
-            <TextBlock Text="타입" FontWeight="Medium" Margin="0,0,0,8"/>
+            <TextBlock Text="섹션" FontWeight="Medium" Margin="0,0,0,8"/>
             <ComboBox x:Name="TypeCombo" Width="220" HorizontalAlignment="Left">
-                <ComboBoxItem Content="📌 사실 (이름, 직업 등)" Tag="Fact" IsSelected="True"/>
-                <ComboBoxItem Content="💡 선호도 (좋아하는 것)" Tag="Preference"/>
-                <ComboBoxItem Content="🔧 기술 스택" Tag="TechStack"/>
-                <ComboBoxItem Content="📁 프로젝트" Tag="Project"/>
-                <ComboBoxItem Content="🎯 경험" Tag="Experience"/>
-                <ComboBoxItem Content="⏰ 작업 패턴" Tag="WorkPattern"/>
-                <ComboBoxItem Content="⚠️ 지침 (항상 적용)" Tag="Instruction"/>
-                <ComboBoxItem Content="📚 학습된 교훈 (오류/실수)" Tag="Lesson"/>
+                <ComboBoxItem Content="🏗️ 아키텍처 (설계 결정)" Tag="Architecture" IsSelected="True"/>
+                <ComboBoxItem Content="🔄 패턴 (작업 워크플로우)" Tag="Pattern"/>
+                <ComboBoxItem Content="🔧 도구 (MCP, 외부 도구)" Tag="Tool"/>
+                <ComboBoxItem Content="⚠️ 주의사항 (함정, gotchas)" Tag="Gotcha"/>
+                <ComboBoxItem Content="🎯 목표 (프로젝트 목표)" Tag="Goal"/>
+                <ComboBoxItem Content="📁 메타 (프로젝트 정보)" Tag="Meta"/>
             </ComboBox>
         </StackPanel>
 

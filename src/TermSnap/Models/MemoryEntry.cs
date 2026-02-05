@@ -1,9 +1,10 @@
 using System;
+using System.Windows.Media;
 
 namespace TermSnap.Models;
 
 /// <summary>
-/// AI 장기기억 항목 (Mem0 스타일)
+/// AI 장기기억 항목 (claude-mem 스타일)
 /// </summary>
 public class MemoryEntry
 {
@@ -20,7 +21,7 @@ public class MemoryEntry
     /// <summary>
     /// 메모리 타입
     /// </summary>
-    public MemoryType Type { get; set; } = MemoryType.Fact;
+    public MemoryType Type { get; set; } = MemoryType.Architecture;
 
     /// <summary>
     /// 메모리 소스 (대화에서 추출된 원문)
@@ -75,34 +76,30 @@ public class MemoryEntry
     #region Display Properties
 
     /// <summary>
-    /// 타입 아이콘 (UI 표시용)
+    /// 타입 아이콘 (UI 표시용) - 컨텍스트 트리 구조
     /// </summary>
     public string TypeIcon => Type switch
     {
-        MemoryType.Fact => "📌",
-        MemoryType.Preference => "💡",
-        MemoryType.TechStack => "🔧",
-        MemoryType.Project => "📁",
-        MemoryType.Instruction => "⚠️",
-        MemoryType.Lesson => "📚",
-        MemoryType.Experience => "🎯",
-        MemoryType.WorkPattern => "🔄",
+        MemoryType.Architecture => "🏗️",
+        MemoryType.Pattern => "🔄",
+        MemoryType.Tool => "🔧",
+        MemoryType.Gotcha => "⚠️",
+        MemoryType.Goal => "🎯",
+        MemoryType.Meta => "📁",
         _ => "📝"
     };
 
     /// <summary>
-    /// 타입 이름 (UI 표시용)
+    /// 타입 이름 (UI 표시용) - 컨텍스트 트리 구조
     /// </summary>
     public string TypeName => Type switch
     {
-        MemoryType.Fact => "사실",
-        MemoryType.Preference => "선호도",
-        MemoryType.TechStack => "기술 스택",
-        MemoryType.Project => "프로젝트",
-        MemoryType.Instruction => "지침",
-        MemoryType.Lesson => "학습된 교훈",
-        MemoryType.Experience => "경험",
-        MemoryType.WorkPattern => "작업 패턴",
+        MemoryType.Architecture => "아키텍처",
+        MemoryType.Pattern => "패턴",
+        MemoryType.Tool => "도구",
+        MemoryType.Gotcha => "주의사항",
+        MemoryType.Goal => "목표",
+        MemoryType.Meta => "메타",
         _ => "기타"
     };
 
@@ -122,55 +119,83 @@ public class MemoryEntry
     public bool HasSource => !string.IsNullOrEmpty(Source);
 
     /// <summary>
+    /// 컨텍스트 존재 여부
+    /// </summary>
+    public bool HasContext => !string.IsNullOrEmpty(Context);
+
+    /// <summary>
     /// 접근 정보 (UI 표시용)
     /// </summary>
     public string AccessInfo => $"접근 {AccessCount}회";
+
+    /// <summary>
+    /// 생성일 표시 (UI용)
+    /// </summary>
+    public string CreatedAtDisplay => CreatedAt.ToString("yyyy-MM-dd");
+
+    /// <summary>
+    /// 타입별 테두리 색상 (claude-mem 스타일)
+    /// </summary>
+    public Brush TypeBorderBrush => Type switch
+    {
+        MemoryType.Architecture => new SolidColorBrush(Color.FromRgb(0x09, 0x69, 0xda)), // 파란색
+        MemoryType.Pattern => new SolidColorBrush(Color.FromRgb(0x82, 0x50, 0xdf)),      // 보라색
+        MemoryType.Tool => new SolidColorBrush(Color.FromRgb(0x1a, 0x7f, 0x37)),         // 초록색
+        MemoryType.Gotcha => new SolidColorBrush(Color.FromRgb(0xcf, 0x22, 0x2e)),       // 빨간색
+        MemoryType.Goal => new SolidColorBrush(Color.FromRgb(0xd4, 0xa7, 0x2c)),         // 금색
+        MemoryType.Meta => new SolidColorBrush(Color.FromRgb(0x6e, 0x77, 0x81)),         // 회색
+        _ => new SolidColorBrush(Color.FromRgb(0x6e, 0x77, 0x81))
+    };
+
+    /// <summary>
+    /// 타입별 배경 색상 (claude-mem 스타일)
+    /// </summary>
+    public Brush TypeBackgroundBrush => Type switch
+    {
+        MemoryType.Architecture => new SolidColorBrush(Color.FromRgb(0xf0, 0xf6, 0xfb)), // 연한 파란
+        MemoryType.Pattern => new SolidColorBrush(Color.FromRgb(0xf5, 0xf0, 0xff)),      // 연한 보라
+        MemoryType.Tool => new SolidColorBrush(Color.FromRgb(0xf0, 0xff, 0xf4)),         // 연한 초록
+        MemoryType.Gotcha => new SolidColorBrush(Color.FromRgb(0xff, 0xf5, 0xf5)),       // 연한 빨강
+        MemoryType.Goal => new SolidColorBrush(Color.FromRgb(0xff, 0xfb, 0xf0)),         // 연한 금색
+        MemoryType.Meta => new SolidColorBrush(Color.FromRgb(0xf6, 0xf8, 0xfa)),         // 연한 회색
+        _ => new SolidColorBrush(Color.FromRgb(0xf6, 0xf8, 0xfa))
+    };
 
     #endregion
 }
 
 /// <summary>
-/// 메모리 타입
+/// 메모리 타입 (컨텍스트 트리 구조)
 /// </summary>
 public enum MemoryType
 {
     /// <summary>
-    /// 사실 (이름, 직업, 위치 등)
+    /// 아키텍처 - 설계 결정, 아키텍처 선택
     /// </summary>
-    Fact,
+    Architecture,
 
     /// <summary>
-    /// 선호도 (좋아하는 것, 싫어하는 것)
+    /// 패턴 - 작업 패턴, 워크플로우
     /// </summary>
-    Preference,
+    Pattern,
 
     /// <summary>
-    /// 경험 (이전에 했던 것)
+    /// 도구 - MCP 서버, 외부 도구
     /// </summary>
-    Experience,
+    Tool,
 
     /// <summary>
-    /// 프로젝트 정보
+    /// 주의사항 - 함정, gotchas
     /// </summary>
-    Project,
+    Gotcha,
 
     /// <summary>
-    /// 기술 스택
+    /// 목표 - 프로젝트 목표
     /// </summary>
-    TechStack,
+    Goal,
 
     /// <summary>
-    /// 작업 패턴
+    /// 메타 - 프로젝트 정보
     /// </summary>
-    WorkPattern,
-
-    /// <summary>
-    /// 커스텀 지침
-    /// </summary>
-    Instruction,
-
-    /// <summary>
-    /// 학습된 교훈 (오류/실수 패턴)
-    /// </summary>
-    Lesson
+    Meta
 }

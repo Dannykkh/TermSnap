@@ -135,27 +135,23 @@ public partial class MemoryPanel : UserControl
 
     private static string GetTypeIcon(MemoryType type) => type switch
     {
-        MemoryType.Fact => "📌",
-        MemoryType.Preference => "💡",
-        MemoryType.TechStack => "🔧",
-        MemoryType.Project => "📁",
-        MemoryType.Experience => "🎯",
-        MemoryType.WorkPattern => "⏰",
-        MemoryType.Instruction => "⚠️",
-        MemoryType.Lesson => "📚",
+        MemoryType.Architecture => "🏗️",
+        MemoryType.Pattern => "🔄",
+        MemoryType.Tool => "🔧",
+        MemoryType.Gotcha => "⚠️",
+        MemoryType.Goal => "🎯",
+        MemoryType.Meta => "📁",
         _ => "•"
     };
 
     private static string GetTypeName(MemoryType type) => type switch
     {
-        MemoryType.Fact => "사실",
-        MemoryType.Preference => "선호도",
-        MemoryType.TechStack => "기술 스택",
-        MemoryType.Project => "프로젝트",
-        MemoryType.Experience => "경험",
-        MemoryType.WorkPattern => "작업 패턴",
-        MemoryType.Instruction => "지침",
-        MemoryType.Lesson => "학습된 교훈",
+        MemoryType.Architecture => "아키텍처",
+        MemoryType.Pattern => "패턴",
+        MemoryType.Tool => "도구",
+        MemoryType.Gotcha => "주의사항",
+        MemoryType.Goal => "목표",
+        MemoryType.Meta => "메타",
         _ => "기타"
     };
 

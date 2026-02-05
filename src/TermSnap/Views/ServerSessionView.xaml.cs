@@ -280,6 +280,16 @@ public partial class ServerSessionView : UserControl
 
         // 파일 워처 활성화
         ActivateFileWatcher();
+
+        // 입력창에 포커스 설정 (탭 전환 후 바로 입력 가능하도록)
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (InputTextBox != null && InputTextBox.IsEnabled)
+            {
+                InputTextBox.Focus();
+                System.Diagnostics.Debug.WriteLine("[ServerSessionView] InputTextBox 포커스 설정됨");
+            }
+        }, System.Windows.Threading.DispatcherPriority.Input);
     }
 
     /// <summary>

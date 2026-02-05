@@ -98,52 +98,144 @@ public class MemoryService : IDisposable
     }
 
     /// <summary>
-    /// MEMORY.md 내용 생성
+    /// MEMORY.md 내용 생성 (컨텍스트 트리 구조)
     /// </summary>
     private string GenerateMemoryFile()
     {
         var sb = new StringBuilder();
-        sb.AppendLine("# AI 장기기억 (MEMORY.md)");
-        sb.AppendLine();
-        sb.AppendLine("> 이 파일은 AI가 참조하는 장기기억입니다. CLAUDE.md에서 이 파일을 참조합니다.");
-        sb.AppendLine("> TermSnap에서 자동 관리되며, 직접 편집해도 됩니다.");
+        var dateStr = DateTime.Now.ToString("yyyy-MM-dd");
+        var projectName = _currentDirectory != null ? Path.GetFileName(_currentDirectory) : "Unknown";
+
+        sb.AppendLine("# MEMORY.md - 프로젝트 장기기억");
         sb.AppendLine();
 
-        // 타입별로 그룹화
-        var groups = _memories
-            .Where(m => m.IsActive)
-            .GroupBy(m => m.Type)
-            .OrderBy(g => (int)g.Key);
-
-        foreach (var group in groups)
+        // 프로젝트 목표
+        sb.AppendLine("## 프로젝트 목표");
+        sb.AppendLine();
+        sb.AppendLine("| 목표 | 상태 |");
+        sb.AppendLine("|------|------|");
+        var goals = _memories.Where(m => m.IsActive && m.Type == MemoryType.Goal).ToList();
+        if (goals.Any())
         {
-            var typeName = GetTypeSectionName(group.Key);
-            sb.AppendLine($"## {typeName}");
-            sb.AppendLine();
-
-            foreach (var memory in group.OrderByDescending(m => m.Importance))
+            foreach (var goal in goals)
             {
-                sb.AppendLine($"- {memory.Content}");
+                sb.AppendLine($"| {goal.Content} | 🔄 진행중 |");
             }
+        }
+        else
+        {
+            sb.AppendLine("| (목표 추가) | 🔄 진행중 |");
+        }
+        sb.AppendLine();
+        sb.AppendLine("---");
+        sb.AppendLine();
+
+        // 키워드 인덱스
+        sb.AppendLine("## 키워드 인덱스");
+        sb.AppendLine();
+        sb.AppendLine("| 키워드 | 섹션 |");
+        sb.AppendLine("|--------|------|");
+        // 각 메모리의 Context에서 키워드 추출하여 인덱스 생성
+        var keywordIndex = _memories
+            .Where(m => m.IsActive && !string.IsNullOrEmpty(m.Context))
+            .GroupBy(m => m.Context)
+            .Take(10);
+        foreach (var kw in keywordIndex)
+        {
+            var section = kw.First().Type switch
+            {
+                MemoryType.Architecture => "#architecture",
+                MemoryType.Pattern => "#patterns",
+                MemoryType.Tool => "#tools",
+                MemoryType.Gotcha => "#gotchas",
+                _ => "#meta"
+            };
+            sb.AppendLine($"| {kw.Key} | {section} |");
+        }
+        sb.AppendLine();
+        sb.AppendLine("---");
+        sb.AppendLine();
+
+        // architecture/
+        sb.AppendLine("## architecture/");
+        sb.AppendLine();
+        var archItems = _memories.Where(m => m.IsActive && m.Type == MemoryType.Architecture).ToList();
+        foreach (var item in archItems)
+        {
+            sb.AppendLine($"### {item.Context ?? "항목"}");
+            sb.AppendLine($"`tags: {item.Context ?? "architecture"}`");
+            sb.AppendLine($"`date: {item.CreatedAt:yyyy-MM-dd}`");
+            sb.AppendLine();
+            sb.AppendLine($"- {item.Content}");
             sb.AppendLine();
         }
 
-        // 마지막 업데이트 시간
+        // patterns/
+        sb.AppendLine("## patterns/");
+        sb.AppendLine();
+        var patternItems = _memories.Where(m => m.IsActive && m.Type == MemoryType.Pattern).ToList();
+        foreach (var item in patternItems)
+        {
+            sb.AppendLine($"### {item.Context ?? "항목"}");
+            sb.AppendLine($"`tags: {item.Context ?? "pattern"}`");
+            sb.AppendLine($"`date: {item.CreatedAt:yyyy-MM-dd}`");
+            sb.AppendLine();
+            sb.AppendLine($"- {item.Content}");
+            sb.AppendLine();
+        }
+
+        // tools/
+        sb.AppendLine("## tools/");
+        sb.AppendLine();
+        var toolItems = _memories.Where(m => m.IsActive && m.Type == MemoryType.Tool).ToList();
+        foreach (var item in toolItems)
+        {
+            sb.AppendLine($"### {item.Context ?? "항목"}");
+            sb.AppendLine($"`tags: {item.Context ?? "tool"}`");
+            sb.AppendLine($"`date: {item.CreatedAt:yyyy-MM-dd}`");
+            sb.AppendLine();
+            sb.AppendLine($"- {item.Content}");
+            sb.AppendLine();
+        }
+
+        // gotchas/
+        sb.AppendLine("## gotchas/");
+        sb.AppendLine();
+        var gotchaItems = _memories.Where(m => m.IsActive && m.Type == MemoryType.Gotcha).ToList();
+        foreach (var item in gotchaItems)
+        {
+            sb.AppendLine($"### {item.Context ?? "항목"}");
+            sb.AppendLine($"`tags: {item.Context ?? "gotcha"}`");
+            sb.AppendLine($"`date: {item.CreatedAt:yyyy-MM-dd}`");
+            sb.AppendLine();
+            sb.AppendLine($"- {item.Content}");
+            sb.AppendLine();
+        }
+
         sb.AppendLine("---");
-        sb.AppendLine($"*마지막 업데이트: {DateTime.Now:yyyy-MM-dd HH:mm}*");
+        sb.AppendLine();
+
+        // meta/
+        sb.AppendLine("## meta/");
+        sb.AppendLine($"- **프로젝트**: {projectName}");
+        sb.AppendLine($"- **생성일**: {dateStr}");
+        sb.AppendLine($"- **마지막 업데이트**: {dateStr}");
 
         return sb.ToString();
     }
 
     /// <summary>
-    /// MEMORY.md 파일 파싱
+    /// MEMORY.md 파일 파싱 (컨텍스트 트리 구조)
     /// </summary>
     private List<MemoryEntry> ParseMemoryFile(string content)
     {
         var memories = new List<MemoryEntry>();
         var lines = content.Split('\n');
 
-        MemoryType currentType = MemoryType.Fact;
+        MemoryType currentType = MemoryType.Architecture;
+        string? currentContext = null;
+        string? currentTags = null;
+        string? currentDate = null;
         int id = 1;
 
         foreach (var rawLine in lines)
@@ -154,11 +246,47 @@ public class MemoryService : IDisposable
             if (string.IsNullOrWhiteSpace(line) || line.StartsWith("---") || line.StartsWith("*"))
                 continue;
 
-            // 섹션 헤더 (## 또는 ### 타입명)
-            if (line.StartsWith("## ") || line.StartsWith("### "))
+            // 테이블 헤더/구분선 무시
+            if (line.StartsWith("|") && (line.Contains("---") || line.Contains("목표") || line.Contains("키워드") || line.Contains("섹션")))
+                continue;
+
+            // 프로젝트 목표 테이블 행 파싱
+            if (line.StartsWith("|") && currentType == MemoryType.Goal)
+            {
+                var parts = line.Split('|', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 1)
+                {
+                    var goalContent = parts[0].Trim();
+                    if (!string.IsNullOrWhiteSpace(goalContent) && goalContent != "(목표 추가)")
+                    {
+                        memories.Add(new MemoryEntry
+                        {
+                            Id = id++,
+                            Content = goalContent,
+                            Type = MemoryType.Goal,
+                            IsActive = true,
+                            CreatedAt = DateTime.Now
+                        });
+                    }
+                }
+                continue;
+            }
+
+            // 섹션 헤더 (## 섹션명)
+            if (line.StartsWith("## "))
             {
                 var sectionName = line.TrimStart('#', ' ').Trim();
                 currentType = ParseSectionName(sectionName);
+                currentContext = null;
+                currentTags = null;
+                currentDate = null;
+                continue;
+            }
+
+            // 항목 헤더 (### 항목명)
+            if (line.StartsWith("### "))
+            {
+                currentContext = line.TrimStart('#', ' ').Trim();
                 continue;
             }
 
@@ -166,14 +294,47 @@ public class MemoryService : IDisposable
             if (line.StartsWith("#"))
                 continue;
 
+            // 태그 줄 (`tags: ...`)
+            if (line.StartsWith("`tags:"))
+            {
+                currentTags = line.Trim('`').Replace("tags:", "").Trim();
+                continue;
+            }
+
+            // 날짜 줄 (`date: ...`)
+            if (line.StartsWith("`date:"))
+            {
+                currentDate = line.Trim('`').Replace("date:", "").Trim();
+                continue;
+            }
+
+            // meta/ 섹션의 **키**: 값 형식
+            if (line.StartsWith("- **") && currentType == MemoryType.Meta)
+            {
+                var match = Regex.Match(line, @"\*\*(.+?)\*\*:\s*(.+)");
+                if (match.Success)
+                {
+                    memories.Add(new MemoryEntry
+                    {
+                        Id = id++,
+                        Content = $"{match.Groups[1].Value}: {match.Groups[2].Value}",
+                        Type = MemoryType.Meta,
+                        Context = match.Groups[1].Value,
+                        IsActive = true,
+                        CreatedAt = DateTime.Now
+                    });
+                }
+                continue;
+            }
+
             // 메모리 항목 (- 또는 * 로 시작하는 리스트)
             if (line.StartsWith("- ") || line.StartsWith("* "))
             {
                 var itemContent = line.Substring(2).Trim();
                 if (!string.IsNullOrWhiteSpace(itemContent) && itemContent.Length > 2)
                 {
-                    // 템플릿 플레이스홀더 무시 (예: "- (없음)", "- ...")
-                    if (itemContent == "(없음)" || itemContent == "..." || itemContent == "(none)")
+                    // 템플릿 플레이스홀더 무시
+                    if (itemContent == "(없음)" || itemContent == "..." || itemContent == "(none)" || itemContent == "(목표 추가)")
                         continue;
 
                     memories.Add(new MemoryEntry
@@ -181,8 +342,9 @@ public class MemoryService : IDisposable
                         Id = id++,
                         Content = itemContent,
                         Type = currentType,
+                        Context = currentTags ?? currentContext,
                         IsActive = true,
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTime.TryParse(currentDate, out var dt) ? dt : DateTime.Now
                     });
                 }
             }
@@ -193,14 +355,12 @@ public class MemoryService : IDisposable
 
     private static string GetTypeSectionName(MemoryType type) => type switch
     {
-        MemoryType.Fact => "사실",
-        MemoryType.Preference => "선호도",
-        MemoryType.TechStack => "기술 스택",
-        MemoryType.Project => "프로젝트",
-        MemoryType.Experience => "경험",
-        MemoryType.WorkPattern => "작업 패턴",
-        MemoryType.Instruction => "지침",
-        MemoryType.Lesson => "학습된 교훈",
+        MemoryType.Architecture => "architecture/",
+        MemoryType.Pattern => "patterns/",
+        MemoryType.Tool => "tools/",
+        MemoryType.Gotcha => "gotchas/",
+        MemoryType.Goal => "프로젝트 목표",
+        MemoryType.Meta => "meta/",
         _ => "기타"
     };
 
@@ -208,27 +368,25 @@ public class MemoryService : IDisposable
     {
         var lowerName = name.ToLowerInvariant();
 
-        // 한국어 매칭
-        if (name.Contains("사실") || lowerName.Contains("fact"))
-            return MemoryType.Fact;
-        if (name.Contains("선호") || lowerName.Contains("preference"))
-            return MemoryType.Preference;
-        if (name.Contains("기술") || lowerName.Contains("tech") || lowerName.Contains("stack"))
-            return MemoryType.TechStack;
-        if (name.Contains("프로젝트") || lowerName.Contains("project") || lowerName.Contains("context"))
-            return MemoryType.Project;
-        if (name.Contains("경험") || lowerName.Contains("experience"))
-            return MemoryType.Experience;
-        if (name.Contains("패턴") || lowerName.Contains("pattern") || lowerName.Contains("work"))
-            return MemoryType.WorkPattern;
-        if (name.Contains("지침") || lowerName.Contains("instruction") || lowerName.Contains("caution") || lowerName.Contains("주의"))
-            return MemoryType.Instruction;
-        if (name.Contains("교훈") || lowerName.Contains("lesson") || lowerName.Contains("learn"))
-            return MemoryType.Lesson;
-        if (name.Contains("결정") || lowerName.Contains("decision"))
-            return MemoryType.Project;
+        // 컨텍스트 트리 섹션 매칭
+        if (lowerName.Contains("architecture") || name.Contains("아키텍처") || name.Contains("설계"))
+            return MemoryType.Architecture;
+        if (lowerName.Contains("pattern") || name.Contains("패턴") || name.Contains("워크플로우"))
+            return MemoryType.Pattern;
+        if (lowerName.Contains("tool") || name.Contains("도구") || name.Contains("mcp"))
+            return MemoryType.Tool;
+        if (lowerName.Contains("gotcha") || name.Contains("주의") || name.Contains("함정"))
+            return MemoryType.Gotcha;
+        if (lowerName.Contains("goal") || name.Contains("목표"))
+            return MemoryType.Goal;
+        if (lowerName.Contains("meta") || name.Contains("메타") || name.Contains("프로젝트"))
+            return MemoryType.Meta;
 
-        return MemoryType.Fact;
+        // 키워드 인덱스는 건너뛰기
+        if (lowerName.Contains("키워드") || lowerName.Contains("keyword") || lowerName.Contains("index"))
+            return MemoryType.Meta;
+
+        return MemoryType.Architecture;
     }
 
     #region CRUD Operations
@@ -307,21 +465,22 @@ public class MemoryService : IDisposable
 
     #region Auto Extraction
 
-    // 메모리 추출 패턴
+    // 메모리 추출 패턴 (컨텍스트 트리 구조)
     private static readonly (Regex Pattern, MemoryType Type, double Importance)[] ExtractionPatterns = new[]
     {
-        // 사실
-        (new Regex(@"제\s*이름은?\s*(.+?)(?:입니다|이에요|예요|야|임)", RegexOptions.IgnoreCase), MemoryType.Fact, 0.9),
-        (new Regex(@"나는?\s*(.+?)(?:입니다|이에요|예요|야|임)", RegexOptions.IgnoreCase), MemoryType.Fact, 0.7),
+        // 아키텍처 결정
+        (new Regex(@"(?:선택|결정|도입)(?:했|함|하기로).*?(.+?)(?:을|를)?", RegexOptions.IgnoreCase), MemoryType.Architecture, 0.9),
+        (new Regex(@"(.+?)(?:패턴|아키텍처|구조)(?:을|를)?\s*(?:사용|적용)", RegexOptions.IgnoreCase), MemoryType.Architecture, 0.8),
 
-        // 기술 스택
-        (new Regex(@"(?:주로|주언어|메인)\s*(.+?)(?:을|를)?\s*(?:씀|사용|이용)", RegexOptions.IgnoreCase), MemoryType.TechStack, 0.8),
+        // 작업 패턴
+        (new Regex(@"(?:주로|항상|매번)\s*(.+?)(?:을|를)?\s*(?:함|해|사용)", RegexOptions.IgnoreCase), MemoryType.Pattern, 0.7),
 
-        // 선호도
-        (new Regex(@"(.+?)(?:을|를)\s*(?:선호|좋아)", RegexOptions.IgnoreCase), MemoryType.Preference, 0.7),
+        // 도구
+        (new Regex(@"(.+?)(?:도구|툴|서버)(?:을|를)?\s*(?:사용|설치)", RegexOptions.IgnoreCase), MemoryType.Tool, 0.8),
 
-        // 지침
-        (new Regex(@"(?:항상|반드시|꼭)\s*(.+?)(?:해줘|하세요|해)", RegexOptions.IgnoreCase), MemoryType.Instruction, 0.9),
+        // 주의사항 (gotchas)
+        (new Regex(@"(?:주의|조심|피해야|안됨).*?(.+?)(?:을|를)?", RegexOptions.IgnoreCase), MemoryType.Gotcha, 0.9),
+        (new Regex(@"(.+?)(?:문제|버그|오류).*?(?:발생|생김|있음)", RegexOptions.IgnoreCase), MemoryType.Gotcha, 0.8),
     };
 
     /// <summary>

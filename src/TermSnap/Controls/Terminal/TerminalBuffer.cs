@@ -136,15 +136,17 @@ public class TerminalBuffer
     }
 
     /// <summary>
-    /// 현재 스타일로 빈 셀 생성
+    /// 빈 셀 생성 (Erase 용도)
+    /// ECMA-48: Erase 명령은 항상 기본 배경색으로 지움
+    /// 현재 스타일(역상 등)과 관계없이 기본 배경색 사용
     /// </summary>
     private TerminalCell CreateEmptyCell()
     {
         return new TerminalCell
         {
             Character = ' ',
-            Foreground = CurrentForeground,
-            Background = CurrentBackground,
+            Foreground = TerminalColors.DefaultForeground,
+            Background = TerminalColors.DefaultBackground,
             Bold = false,
             Underline = false,
             Inverse = false,

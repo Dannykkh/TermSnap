@@ -102,6 +102,7 @@ public class SkillRecommendationService
         public string SourceUrl { get; set; } = "";
         public string InstallPath { get; set; } = ""; // 설치될 경로
         public bool IsInstalled { get; set; }
+        public bool IsGlobalInstall { get; set; } // 글로벌(~/.claude/) 설치 여부
     }
 
     /// <summary>
@@ -406,6 +407,55 @@ public class SkillRecommendationService
         }
     }
 
+    /// <summary>
+    /// Mnemo 장기기억 시스템이 글로벌 settings.json에 설치되어 있는지 확인
+    /// Mnemo는 save-conversation, save-response 훅으로 설치됨
+    /// </summary>
+    private bool IsMnemoInstalled()
+    {
+        try
+        {
+            // 글로벌 settings.json 경로
+            var globalSettingsPath = Path.Combine(GlobalClaudePath, "settings.json");
+            if (!File.Exists(globalSettingsPath)) return false;
+
+            var content = File.ReadAllText(globalSettingsPath);
+            var settings = System.Text.Json.Nodes.JsonNode.Parse(content)?.AsObject();
+            if (settings == null) return false;
+
+            // hooks 섹션에서 save-conversation 또는 save-response 확인
+            if (!settings.TryGetPropertyValue("hooks", out var hooksNode) || hooksNode == null)
+                return false;
+
+            var hooks = hooksNode.AsObject();
+
+            // Mnemo 훅 패턴 확인 (save-conversation.ps1 또는 save-response.ps1)
+            foreach (var hookEntry in hooks)
+            {
+                var hookArray = hookEntry.Value?.AsArray();
+                if (hookArray == null) continue;
+
+                foreach (var hook in hookArray)
+                {
+                    var hookObj = hook?.AsObject();
+                    if (hookObj == null) continue;
+
+                    var command = hookObj["command"]?.ToString() ?? "";
+                    if (command.Contains("save-conversation") || command.Contains("save-response"))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     #endregion
 
     /// <summary>
@@ -611,6 +661,12 @@ public class SkillRecommendationService
     /// </summary>
     private static readonly (string Name, string Desc, string[] RelatedTech, int Priority)[] SkillDefinitions =
     {
+        // 기본 설치 (ClaudeHookService가 설치)
+        ("gepetto", "19단계 구현 계획 생성 워크플로우", new[] { "*" }, 1),
+        ("mnemo", "장기기억 + 세션 핸드오프 통합 시스템", new[] { "*" }, 1),
+        ("long-term-memory", "세션 간 장기기억 관리 (MEMORY.md + 대화 로그)", new[] { "*" }, 1),
+        ("session-handoff", "세션 핸드오프 (작업 상태 전달)", new[] { "*" }, 1),
+
         // 공통 필수
         ("code-reviewer", "코드 리뷰 자동화 (500줄 제한, 보안 검사)", new[] { "*" }, 1),
         ("humanizer", "AI 생성 텍스트를 자연스럽게 변환", new[] { "*" }, 2),
@@ -658,6 +714,12 @@ public class SkillRecommendationService
             var matches = relatedTech.Contains("*") || relatedTech.Any(t => allTech.Contains(t));
             if (matches)
             {
+                // ClaudeHookService가 폴더 구조로 설치하는 스킬은 폴더 경로로 설정
+                // gepetto: .claude/skills/gepetto/ (SKILL.md 파일 포함)
+                // mnemo: 글로벌 설치 (~/.claude/settings.json 훅에 등록)
+                var isFolderBased = name is "long-term-memory" or "session-handoff" or "gepetto";
+                var isMnemo = name == "mnemo";
+
                 result.Add(new RecommendedResource
                 {
                     Name = name,
@@ -665,8 +727,9 @@ public class SkillRecommendationService
                     Type = ResourceType.Skill,
                     Category = GetSkillCategory(name),
                     Priority = priority,
-                    SourceUrl = $"{RawBase}/skills/{name}/skill.md",
-                    InstallPath = $".claude/skills/{name}.md"
+                    SourceUrl = (isFolderBased || isMnemo) ? "" : $"{RawBase}/skills/{name}/skill.md",
+                    InstallPath = isFolderBased ? $".claude/skills/{name}" : (isMnemo ? "hooks" : $".claude/skills/{name}.md"),
+                    IsGlobalInstall = isMnemo // Mnemo는 글로벌 설치
                 });
             }
         }
@@ -677,6 +740,8 @@ public class SkillRecommendationService
 
     private string GetSkillCategory(string name)
     {
+        if (name is "long-term-memory" or "session-handoff" or "gepetto" or "mnemo")
+            return "기본";
         if (name.Contains("react") || name.Contains("mui") || name.Contains("web-design"))
             return "프론트엔드";
         if (name.Contains("api") || name.Contains("backend") || name.Contains("fastapi"))
@@ -902,7 +967,8 @@ public class SkillRecommendationService
     /// </summary>
     private static readonly (string Name, string Desc, string[] RelatedTech, int Priority)[] MCPDefinitions =
     {
-        ("claude-orchestrator-mcp", "Claude 오케스트레이터 MCP (에이전트 관리)", new[] { "*" }, 2),
+        // ClaudeHookService에서 "orchestrator" 키로 settings.local.json에 등록함
+        ("orchestrator", "Claude 오케스트레이터 MCP (에이전트 관리)", new[] { "*" }, 2),
     };
 
     private List<RecommendedResource> GetRecommendedMCPs(ProjectStack stack)
@@ -1389,16 +1455,68 @@ public class SkillRecommendationService
     }
 
     /// <summary>
-    /// 설치 여부 확인
+    /// 글로벌 Claude 설정 경로 (~/.claude/)
+    /// </summary>
+    private static readonly string GlobalClaudePath =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
+
+    /// <summary>
+    /// 설치 여부 확인 (프로젝트 + 글로벌 경로 모두 확인)
     /// </summary>
     private Task CheckInstalledStatus(RecommendationResult result, string projectPath)
     {
-        void CheckList(List<RecommendedResource> resources)
+        // 프로젝트 경로만 확인 (Hooks 등 글로벌 경로가 없는 리소스)
+        void CheckProjectOnly(List<RecommendedResource> resources)
         {
             foreach (var r in resources)
             {
                 var path = GetInstallPath(r, projectPath);
                 r.IsInstalled = File.Exists(path) || Directory.Exists(path);
+            }
+        }
+
+        // 프로젝트 + 글로벌 경로 모두 확인 (Skills, Agents, Commands)
+        void CheckWithGlobal(List<RecommendedResource> resources)
+        {
+            foreach (var r in resources)
+            {
+                // Mnemo는 글로벌 settings.json 훅으로 설치 확인
+                if (r.Name == "mnemo")
+                {
+                    r.IsInstalled = IsMnemoInstalled();
+                    r.IsGlobalInstall = true;
+                    continue;
+                }
+
+                // 1. 프로젝트 경로 확인
+                var projectInstallPath = GetInstallPath(r, projectPath);
+                if (File.Exists(projectInstallPath) || Directory.Exists(projectInstallPath))
+                {
+                    r.IsInstalled = true;
+                    r.IsGlobalInstall = false;
+                    continue;
+                }
+
+                // 2. 글로벌 경로 확인 (~/.claude/skills/, ~/.claude/agents/, ~/.claude/commands/)
+                // InstallPath가 ".claude/skills/name.md"이므로 ".claude/" 접두사를 제거하여
+                // ~/.claude/ + skills/name.md 로 올바르게 결합
+                var installPath = r.InstallPath.Replace('/', Path.DirectorySeparatorChar);
+                var claudePrefix = $".claude{Path.DirectorySeparatorChar}";
+                if (installPath.StartsWith(claudePrefix))
+                {
+                    installPath = installPath.Substring(claudePrefix.Length);
+                }
+                var globalPath = Path.Combine(GlobalClaudePath, installPath);
+
+                if (File.Exists(globalPath) || Directory.Exists(globalPath))
+                {
+                    r.IsInstalled = true;
+                    r.IsGlobalInstall = true;
+                    continue;
+                }
+
+                r.IsInstalled = false;
+                r.IsGlobalInstall = false;
             }
         }
 
@@ -1411,11 +1529,11 @@ public class SkillRecommendationService
             }
         }
 
-        CheckList(result.Skills);
-        CheckList(result.Agents);
-        CheckList(result.Commands);
-        CheckList(result.Hooks);
-        CheckMcpList(result.MCPs);  // MCP는 별도 체크
+        CheckWithGlobal(result.Skills);    // 글로벌 + 프로젝트
+        CheckWithGlobal(result.Agents);    // 글로벌 + 프로젝트
+        CheckWithGlobal(result.Commands);  // 글로벌 + 프로젝트
+        CheckProjectOnly(result.Hooks);    // 프로젝트만 (hooks는 로컬)
+        CheckMcpList(result.MCPs);         // settings.local.json 기반
 
         return Task.CompletedTask;
     }

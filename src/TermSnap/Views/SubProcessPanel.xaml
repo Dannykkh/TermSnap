@@ -6,6 +6,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
              d:DesignHeight="200" d:DesignWidth="600"
+             Focusable="False"
              Background="{DynamicResource CardBrush}">
 
     <UserControl.Resources>
