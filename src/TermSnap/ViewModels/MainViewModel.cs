@@ -697,6 +697,42 @@ private void CloseTab(ISessionViewModel? session)
     }
 
     /// <summary>
+    /// 외부에서 폴더 경로로 프로젝트 열기 (컨텍스트 메뉴 등)
+    /// </summary>
+    public void OpenProjectFromPath(string folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            return;
+
+        // 빈 Selector 탭 찾기 → 교체
+        var selectorSession = Sessions.OfType<NewSessionSelectorViewModel>().FirstOrDefault();
+
+        var projectVm = new ProjectSessionViewModel
+        {
+            ProjectPath = folderPath,
+            ProjectName = Path.GetFileName(folderPath),
+            IsFileTreeVisible = true,
+            FileTreeCurrentPath = folderPath,
+        };
+
+        // 서브탭 선택기 표시 (쉘/AI 선택 화면)
+        projectVm.ShowSubTabSelector();
+
+        if (selectorSession != null)
+        {
+            var index = Sessions.IndexOf(selectorSession);
+            Sessions[index] = projectVm;
+            selectorSession.Dispose();
+        }
+        else
+        {
+            Sessions.Add(projectVm);
+        }
+
+        SelectedSession = projectVm;
+    }
+
+    /// <summary>
     /// 다음 탭으로 이동
     /// </summary>
     private void NavigateToNextTab()

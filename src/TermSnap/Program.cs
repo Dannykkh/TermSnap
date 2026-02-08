@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,12 @@ public static class Program
         // 일반 WPF 앱 실행 (STA 스레드에서)
         var app = new App();
         app.InitializeComponent();
+
+        // 폴더 경로 인수 감지 (- 로 시작하지 않는 실존 디렉토리)
+        var folderArg = args.FirstOrDefault(a => !a.StartsWith("-") && Directory.Exists(a));
+        if (folderArg != null)
+            app.StartupFolderPath = Path.GetFullPath(folderArg);
+
         return app.Run();
     }
 

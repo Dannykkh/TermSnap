@@ -12,6 +12,11 @@ namespace TermSnap;
 /// </summary>
 public partial class App : Application
 {
+    /// <summary>
+    /// 시작 시 열 폴더 경로 (컨텍스트 메뉴에서 전달)
+    /// </summary>
+    public string? StartupFolderPath { get; set; }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);

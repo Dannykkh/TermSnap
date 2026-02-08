@@ -221,7 +221,7 @@ public class ProjectSessionViewModel : ISessionViewModel, INotifyPropertyChanged
     /// <summary>
     /// 서브탭 선택기 표시
     /// </summary>
-    private void ShowSubTabSelector()
+    public void ShowSubTabSelector()
     {
         IsShowingSubTabSelector = true;
     }
