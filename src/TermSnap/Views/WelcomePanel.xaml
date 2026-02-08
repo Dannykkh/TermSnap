@@ -75,8 +75,27 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="40,30" MaxWidth="600" HorizontalAlignment="Center">
                 
+                <!-- 서브탭 모드 타이틀 (서브탭 추가 시만 표시) -->
+                <StackPanel x:Name="SubTabTitleSection" Visibility="Collapsed"
+                            HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <materialDesign:PackIcon Kind="TabPlus"
+                                             Width="40" Height="40"
+                                             Foreground="{DynamicResource PrimaryBrush}"
+                                             HorizontalAlignment="Center"/>
+                    <TextBlock Text="{DynamicResource Welcome.AddSubTab}"
+                               FontSize="20"
+                               FontWeight="Light"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,8,0,0"/>
+                    <TextBlock Text="{DynamicResource Welcome.SelectShellAndCLI}"
+                               FontSize="13"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+
                 <!-- 로고 및 타이틀 -->
-                <StackPanel HorizontalAlignment="Center" Margin="0,0,0,24">
+                <StackPanel x:Name="LogoSection" HorizontalAlignment="Center" Margin="0,0,0,24">
                     <materialDesign:PackIcon Kind="Console"
                                              Width="64" Height="64"
                                              Foreground="{DynamicResource PrimaryBrush}"
@@ -315,61 +334,63 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 시작하기 섹션 -->
-                <TextBlock Text="{DynamicResource Welcome.GetStarted}"
-                           FontSize="12"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextSecondaryBrush}"
-                           Margin="0,20,0,12"/>
+                <!-- 시작하기 섹션 (폴더 선택 - 서브탭 모드에서 숨김) -->
+                <StackPanel x:Name="FolderActionsSection">
+                    <TextBlock Text="{DynamicResource Welcome.GetStarted}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="0,20,0,12"/>
 
-                <!-- 액션 버튼들 -->
-                <Button x:Name="OpenFolderButton"
-                        Style="{StaticResource ActionButtonStyle}"
-                        Click="OpenFolderButton_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="FolderOpen"
-                                                 Width="20" Height="20"
-                                                 Foreground="{DynamicResource PrimaryBrush}"
-                                                 VerticalAlignment="Center"/>
-                        <StackPanel Margin="12,0,0,0">
-                            <TextBlock Text="{DynamicResource Welcome.OpenFolder}" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                            <TextBlock Text="{DynamicResource Welcome.OpenFolder.Description}"
-                                       FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <!-- 액션 버튼들 -->
+                    <Button x:Name="OpenFolderButton"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Click="OpenFolderButton_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FolderOpen"
+                                                     Width="20" Height="20"
+                                                     Foreground="{DynamicResource PrimaryBrush}"
+                                                     VerticalAlignment="Center"/>
+                            <StackPanel Margin="12,0,0,0">
+                                <TextBlock Text="{DynamicResource Welcome.OpenFolder}" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{DynamicResource Welcome.OpenFolder.Description}"
+                                           FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Button>
+                    </Button>
 
-                <Button x:Name="CloneRepositoryButton"
-                        Style="{StaticResource ActionButtonStyle}"
-                        Click="CloneRepositoryButton_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="Git"
-                                                 Width="20" Height="20"
-                                                 Foreground="{DynamicResource ErrorBrush}"
-                                                 VerticalAlignment="Center"/>
-                        <StackPanel Margin="12,0,0,0">
-                            <TextBlock Text="{DynamicResource Welcome.CloneRepository}" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                            <TextBlock Text="{DynamicResource Welcome.CloneRepository.Description}"
-                                       FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <Button x:Name="CloneRepositoryButton"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Click="CloneRepositoryButton_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Git"
+                                                     Width="20" Height="20"
+                                                     Foreground="{DynamicResource ErrorBrush}"
+                                                     VerticalAlignment="Center"/>
+                            <StackPanel Margin="12,0,0,0">
+                                <TextBlock Text="{DynamicResource Welcome.CloneRepository}" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{DynamicResource Welcome.CloneRepository.Description}"
+                                           FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Button>
+                    </Button>
 
-                <Button x:Name="NewProjectButton"
-                        Style="{StaticResource ActionButtonStyle}"
-                        Click="NewProjectButton_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="FolderPlus"
-                                                 Width="20" Height="20"
-                                                 Foreground="{DynamicResource SuccessBrush}"
-                                                 VerticalAlignment="Center"/>
-                        <StackPanel Margin="12,0,0,0">
-                            <TextBlock Text="{DynamicResource Welcome.NewProject}" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                            <TextBlock Text="{DynamicResource Welcome.NewProject.Description}"
-                                       FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <Button x:Name="NewProjectButton"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Click="NewProjectButton_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FolderPlus"
+                                                     Width="20" Height="20"
+                                                     Foreground="{DynamicResource SuccessBrush}"
+                                                     VerticalAlignment="Center"/>
+                            <StackPanel Margin="12,0,0,0">
+                                <TextBlock Text="{DynamicResource Welcome.NewProject}" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{DynamicResource Welcome.NewProject.Description}"
+                                           FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Button>
+                    </Button>
+                </StackPanel>
 
                 <!-- 최근 폴더 섹션 -->
                 <StackPanel x:Name="RecentFoldersSection" Margin="0,24,0,0">
@@ -467,8 +488,55 @@
                                Visibility="Collapsed"/>
                 </StackPanel>
 
+                <!-- 서브탭 모드: 시작/취소 버튼 -->
+                <StackPanel x:Name="SubTabButtonsPanel" Visibility="Collapsed"
+                            Margin="0,24,0,0">
+                    <Button x:Name="StartSubTabButton"
+                            Click="StartSubTabButton_Click"
+                            Background="{DynamicResource PrimaryBrush}"
+                            Foreground="White"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Height="42"
+                            BorderThickness="0"
+                            Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="6"
+                                        Padding="16,8">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Play"
+                                                     Width="18" Height="18"
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,8,0"/>
+                            <TextBlock Text="{DynamicResource Welcome.StartSubTab}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button x:Name="CancelSubTabButton"
+                            Click="CancelSubTabButton_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Foreground="{DynamicResource TextSecondaryBrush}"
+                            FontSize="13"
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Center"
+                            Content="{DynamicResource Common.Cancel}"/>
+                </StackPanel>
+
                 <!-- 팁 섹션 -->
-                <Border Background="{DynamicResource CardBrush}"
+                <Border x:Name="TipsSection"
+                        Background="{DynamicResource CardBrush}"
                         CornerRadius="6"
                         Padding="16"
                         Margin="0,24,0,0">

@@ -22,6 +22,8 @@
             <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
             <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
             <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <local:StringContainsToVisibilityConverter x:Key="StringContainsToVisibilityConverter"/>
+            <local:StringNotEmptyToCollapsedConverter x:Key="StringNotEmptyToCollapsedConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

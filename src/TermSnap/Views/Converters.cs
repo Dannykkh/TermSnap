@@ -137,6 +137,46 @@ public class NullToVisibilityConverter : IValueConverter
 }
 
 /// <summary>
+/// 문자열에 ConverterParameter 값이 포함되면 Visible, 아니면 Collapsed
+/// AI 아이콘 표시/숨김에 사용
+/// </summary>
+public class StringContainsToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is string str && parameter is string param)
+            return str.Contains(param, StringComparison.OrdinalIgnoreCase) ? Visibility.Visible : Visibility.Collapsed;
+
+        return Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// 문자열이 비어있지 않으면 Collapsed, 비어있으면 Visible
+/// AI 실행 시 기본 쉘 아이콘 숨김용
+/// </summary>
+public class StringNotEmptyToCollapsedConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is string str)
+            return string.IsNullOrEmpty(str) ? Visibility.Visible : Visibility.Collapsed;
+
+        return Visibility.Visible;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
 /// 객체의 타입이 parameter와 일치하면 true, 아니면 false 반환
 /// </summary>
 public class TypeToBoolConverter : IValueConverter

@@ -94,6 +94,10 @@ public partial class FileTreePanel : UserControl, INotifyPropertyChanged
     /// </summary>
     public event EventHandler<string>? OpenInTerminalRequested;
 
+    // 에디터 설치 감지
+    private bool _isVSCodeInstalled;
+    private bool _isCursorInstalled;
+
     public FileTreePanel()
     {
         InitializeComponent();
@@ -109,6 +113,95 @@ public partial class FileTreePanel : UserControl, INotifyPropertyChanged
 
         // Unloaded 시 정리
         Unloaded += FileTreePanel_Unloaded;
+
+        // 에디터 설치 감지 (비동기)
+        Loaded += async (s, e) => await DetectEditorsAsync();
+    }
+
+    /// <summary>
+    /// 설치된 에디터 감지
+    /// </summary>
+    private async Task DetectEditorsAsync()
+    {
+        await Task.Run(() =>
+        {
+            _isVSCodeInstalled = IsCommandAvailable("code");
+            _isCursorInstalled = IsCommandAvailable("cursor");
+        });
+
+        // UI 스레드에서 버튼 가시성 업데이트
+        OpenVSCodeButton.Visibility = _isVSCodeInstalled && _isLocal ? Visibility.Visible : Visibility.Collapsed;
+        OpenCursorButton.Visibility = _isCursorInstalled && _isLocal ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// 명령어가 PATH에 있는지 확인
+    /// </summary>
+    private static bool IsCommandAvailable(string command)
+    {
+        try
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "where",
+                    Arguments = command,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+            process.Start();
+            process.WaitForExit(3000);
+            return process.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// VS Code에서 열기
+    /// </summary>
+    private void OpenVSCode_Click(object sender, RoutedEventArgs e)
+    {
+        OpenInEditor("code");
+    }
+
+    /// <summary>
+    /// Cursor에서 열기
+    /// </summary>
+    private void OpenCursor_Click(object sender, RoutedEventArgs e)
+    {
+        OpenInEditor("cursor");
+    }
+
+    /// <summary>
+    /// 에디터에서 현재 경로 열기
+    /// </summary>
+    private void OpenInEditor(string editorCommand)
+    {
+        if (string.IsNullOrEmpty(_currentPath)) return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = editorCommand,
+                Arguments = $"\"{_currentPath}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FileTreePanel] 에디터 실행 실패 ({editorCommand}): {ex.Message}");
+            MessageBox.Show($"{editorCommand} 실행 실패: {ex.Message}", "오류",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void FileTreePanel_Unloaded(object sender, RoutedEventArgs e)
@@ -126,6 +219,10 @@ public partial class FileTreePanel : UserControl, INotifyPropertyChanged
         _sftpClient = null;
         _fileTreeService = new FileTreeService();
 
+        // 로컬 모드: 에디터 버튼 표시
+        OpenVSCodeButton.Visibility = _isVSCodeInstalled ? Visibility.Visible : Visibility.Collapsed;
+        OpenCursorButton.Visibility = _isCursorInstalled ? Visibility.Visible : Visibility.Collapsed;
+
         var path = startPath ?? _fileTreeService.GetHomeDirectory();
         await NavigateToAsync(path);
     }
@@ -142,6 +239,10 @@ public partial class FileTreePanel : UserControl, INotifyPropertyChanged
         _sftpClient = sftpClient;
         _sftpService = sftpService;
         _fileTreeService = new FileTreeService(sftpClient);
+
+        // SSH 모드: 에디터 버튼 숨김
+        OpenVSCodeButton.Visibility = Visibility.Collapsed;
+        OpenCursorButton.Visibility = Visibility.Collapsed;
 
         var path = startPath ?? _fileTreeService.GetHomeDirectory();
         await NavigateToAsync(path);

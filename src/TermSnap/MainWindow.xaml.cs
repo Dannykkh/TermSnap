@@ -100,7 +100,7 @@ public partial class MainWindow : Window
         }
         else if (e.PropertyName == nameof(MainViewModel.SecondarySession))
         {
-            // 분할 모드에서 보조 세션 변경 시에도 View 업데이트
+            // 분할 모드에서 세션 변경 시 View 업데이트
             UpdateSessionView();
         }
     }
@@ -175,7 +175,17 @@ public partial class MainWindow : Window
         }
 
         // 파일 트리 가시성 설정
-        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
+        if (_viewModel.CurrentSession is ProjectSessionViewModel projectVm)
+        {
+            FileTreePanelControl.Visibility = projectVm.IsFileTreeVisible ? Visibility.Visible : Visibility.Collapsed;
+
+            if (projectVm.IsFileTreeVisible)
+            {
+                // 프로젝트 경로로 로컬 모드 초기화
+                await FileTreePanelControl.InitializeLocalAsync(projectVm.FileTreeCurrentPath ?? projectVm.ProjectPath);
+            }
+        }
+        else if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
         {
             FileTreePanelControl.Visibility = localVm.IsFileTreeVisible ? Visibility.Visible : Visibility.Collapsed;
 
@@ -223,7 +233,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void FileTreePanelCloseRequested(object? sender, EventArgs e)
     {
-        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
+        if (_viewModel.CurrentSession is ProjectSessionViewModel projectVm)
+        {
+            projectVm.IsFileTreeVisible = false;
+        }
+        else if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
         {
             localVm.IsFileTreeVisible = false;
         }
@@ -238,7 +252,13 @@ public partial class MainWindow : Window
     /// </summary>
     private void FileTreePanelOpenInTerminalRequested(object? sender, string path)
     {
-        if (path != null && _viewModel.CurrentSession != null)
+        if (path == null) return;
+
+        if (_viewModel.CurrentSession is ProjectSessionViewModel projectVm && projectVm.SelectedSubSession != null)
+        {
+            projectVm.SelectedSubSession.UserInput = $"cd \"{path}\"";
+        }
+        else if (_viewModel.CurrentSession != null)
         {
             _viewModel.CurrentSession.UserInput = $"cd \"{path}\"";
         }
@@ -254,8 +274,19 @@ public partial class MainWindow : Window
 
         var extension = System.IO.Path.GetExtension(item.FullPath).ToLowerInvariant();
 
+        // 프로젝트 세션의 경우 선택된 서브세션으로 위임
+        LocalTerminalViewModel? activeLocalVm = null;
+        if (_viewModel.CurrentSession is ProjectSessionViewModel projectVm)
+        {
+            activeLocalVm = projectVm.SelectedSubSession as LocalTerminalViewModel;
+        }
+        else if (_viewModel.CurrentSession is LocalTerminalViewModel directLocalVm)
+        {
+            activeLocalVm = directLocalVm;
+        }
+
         // 로컬 세션: 뷰어에서 볼 수 있는 파일은 FileViewerPanel에 표시, 나머지는 기본 애플리케이션으로 열기
-        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
+        if (activeLocalVm is LocalTerminalViewModel localVm)
         {
             // FileViewerPanel에서 지원하는 파일 타입 확인
             if (FileViewerPanel.IsViewableFile(extension))
@@ -268,9 +299,19 @@ public partial class MainWindow : Window
                     localVm.IsFileViewerVisible = true;
                     System.Diagnostics.Debug.WriteLine($"[MainWindow] IsFileViewerVisible set to true");
 
-                    // MainContentControl에서 LocalTerminalView 가져오기
-                    // (TabControl.ContentTemplate이 비어있으므로 ContentControl 사용)
-                    LocalTerminalView? currentView = MainContentControl.Content as LocalTerminalView;
+                    // LocalTerminalView 가져오기
+                    // ProjectSession일 때는 SubSessionContentControl에서, 아니면 MainContentControl에서
+                    LocalTerminalView? currentView = null;
+                    if (MainContentControl.Content is ProjectSessionView projectView)
+                    {
+                        currentView = projectView.FindName("SubSessionContentControl") is ContentControl subContent
+                            ? subContent.Content as LocalTerminalView
+                            : null;
+                    }
+                    else
+                    {
+                        currentView = MainContentControl.Content as LocalTerminalView;
+                    }
 
                     System.Diagnostics.Debug.WriteLine($"[MainWindow] IsSplitMode: {_viewModel.IsSplitMode}");
                     System.Diagnostics.Debug.WriteLine($"[MainWindow] currentView: {(currentView != null ? "found" : "null")}");
@@ -338,7 +379,11 @@ public partial class MainWindow : Window
             return;
 
         // ViewModel에 경로 저장 (각 탭마다 독립적으로 유지)
-        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
+        if (_viewModel.CurrentSession is ProjectSessionViewModel projectVm)
+        {
+            projectVm.FileTreeCurrentPath = path;
+        }
+        else if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
         {
             localVm.FileTreeCurrentPath = path;
         }
@@ -354,7 +399,6 @@ public partial class MainWindow : Window
         MainContentControl.Visibility = Visibility.Collapsed;
         HorizontalSplitGrid.Visibility = Visibility.Collapsed;
         VerticalSplitGrid.Visibility = Visibility.Collapsed;
-
         if (!_viewModel.IsSplitMode)
         {
             // 단일 모드
@@ -460,6 +504,7 @@ public partial class MainWindow : Window
         // 없으면 새로 생성하고 캐싱
         UIElement newView = session switch
         {
+            ProjectSessionViewModel projectVm => new ProjectSessionView { DataContext = projectVm },
             ServerSessionViewModel serverVm => new ServerSessionView { DataContext = serverVm },
             LocalTerminalViewModel localVm => new LocalTerminalView { DataContext = localVm },
             NewSessionSelectorViewModel selectorVm => new NewSessionSelectorView { DataContext = selectorVm },
@@ -499,7 +544,20 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateSnippetPanelVisibility()
     {
-        if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
+        if (_viewModel.CurrentSession is ProjectSessionViewModel projectVm)
+        {
+            // 프로젝트 세션: 서브세션이 LocalTerminalVM이면 스니펫 패널 표시
+            if (projectVm.SelectedSubSession is LocalTerminalViewModel subLocalVm)
+            {
+                SnippetPanel.Visibility = subLocalVm.ShowSnippetPanel ? Visibility.Visible : Visibility.Collapsed;
+            }
+            else
+            {
+                SnippetPanel.Visibility = Visibility.Collapsed;
+            }
+            FrequentCommandsPanel.Visibility = Visibility.Collapsed;
+        }
+        else if (_viewModel.CurrentSession is LocalTerminalViewModel localVm)
         {
             // 로컬 터미널: 스니펫 패널 표시
             SnippetPanel.Visibility = localVm.ShowSnippetPanel ? Visibility.Visible : Visibility.Collapsed;
@@ -845,7 +903,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 창 닫기 이벤트 - UI 설정 저장
+    /// 창 닫기 이벤트 - UI 설정 저장 + 세션 상태 저장
     /// </summary>
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
@@ -858,7 +916,19 @@ public partial class MainWindow : Window
                 {
                     localVm.SaveUISettings();
                 }
+                else if (session is ProjectSessionViewModel projectVm)
+                {
+                    // 프로젝트 내 서브세션의 UI 설정도 저장
+                    foreach (var subSession in projectVm.SubSessions)
+                    {
+                        if (subSession is LocalTerminalViewModel subLocalVm)
+                            subLocalVm.SaveUISettings();
+                    }
+                }
             }
+
+            // 세션 상태 저장 (다음 시작 시 복원용)
+            _viewModel.SaveSessionStates();
 
             // 창 상태 저장
             SaveWindowSettings();

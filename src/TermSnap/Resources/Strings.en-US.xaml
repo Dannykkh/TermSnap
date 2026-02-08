@@ -72,6 +72,9 @@
     <system:String x:Key="Welcome.NoRecentFolders">No recent folders</system:String>
     <system:String x:Key="Welcome.Tip">Tip</system:String>
     <system:String x:Key="Welcome.TipMessage">Press Ctrl+` to open a new local terminal anytime. Click the file explorer icon to view the folder structure like an IDE.</system:String>
+    <system:String x:Key="Welcome.AddSubTab">Add Sub-Tab</system:String>
+    <system:String x:Key="Welcome.SelectShellAndCLI">Select a shell and AI CLI</system:String>
+    <system:String x:Key="Welcome.StartSubTab">Start</system:String>
 
     <!-- Settings (General) -->
     <system:String x:Key="Settings.Title">Settings</system:String>

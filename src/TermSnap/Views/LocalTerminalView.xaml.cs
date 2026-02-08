@@ -276,30 +276,195 @@ public partial class LocalTerminalView : UserControl
     /// <summary>
     /// Ctrl+Click 링크 클릭 시
     /// </summary>
+    // 현재 클릭된 링크 정보 (팝업 메뉴에서 사용)
+    private string? _currentLinkValue;
+    private LinkType? _currentLinkType;
+    private string? _currentLinkFullPath; // 파일 경로용 절대 경로
+
     private void OnTerminalLinkClicked(LinkClickedEventArgs args)
     {
         try
         {
-            switch (args.LinkType)
+            // Ctrl+Click: 기존처럼 바로 열기 (기존 워크플로우 유지)
+            if (args.IsCtrlHeld)
             {
-                case LinkType.Url:
-                    // 기본 브라우저로 URL 열기
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = args.Value,
-                        UseShellExecute = true
-                    });
-                    break;
+                switch (args.LinkType)
+                {
+                    case LinkType.Url:
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = args.Value,
+                            UseShellExecute = true
+                        });
+                        break;
 
-                case LinkType.FilePath:
-                    HandleFilePathClick(args.Value);
-                    break;
+                    case LinkType.FilePath:
+                        HandleFilePathClick(args.Value);
+                        break;
+                }
+                return;
             }
+
+            // 일반 클릭: 팝업 메뉴 표시
+            _currentLinkValue = args.Value;
+            _currentLinkType = args.LinkType;
+
+            // 팝업 메뉴 항목 가시성 설정
+            if (args.LinkType == LinkType.Url)
+            {
+                LinkOpenInBrowser.Visibility = Visibility.Visible;
+                LinkCopyUrl.Visibility = Visibility.Visible;
+                LinkSeparator1.Visibility = Visibility.Collapsed;
+                LinkOpenInViewer.Visibility = Visibility.Collapsed;
+                LinkOpenInVSCode.Visibility = Visibility.Collapsed;
+                LinkOpenInExplorer.Visibility = Visibility.Collapsed;
+                LinkCopyPath.Visibility = Visibility.Collapsed;
+
+                LinkCopyUrl.Header = "URL 복사";
+            }
+            else // FilePath
+            {
+                _currentLinkFullPath = ResolveLinkPath(args.Value);
+
+                LinkOpenInBrowser.Visibility = Visibility.Collapsed;
+                LinkCopyUrl.Visibility = Visibility.Collapsed;
+                LinkSeparator1.Visibility = Visibility.Collapsed;
+                LinkOpenInViewer.Visibility = Visibility.Visible;
+                LinkOpenInVSCode.Visibility = Visibility.Visible;
+                LinkOpenInExplorer.Visibility = Visibility.Visible;
+                LinkCopyPath.Visibility = Visibility.Visible;
+            }
+
+            // ContextMenu 표시
+            LinkPopupMenu.Visibility = Visibility.Visible;
+            LinkPopupMenu.IsOpen = true;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"링크 열기 실패: {ex.Message}");
+            Debug.WriteLine($"링크 팝업 표시 실패: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 링크 경로를 절대 경로로 변환
+    /// </summary>
+    private string ResolveLinkPath(string path)
+    {
+        if (DataContext is not LocalTerminalViewModel vm) return path;
+
+        string fullPath = path;
+        if (!Path.IsPathRooted(path))
+        {
+            string? workingDir = vm.CurrentDirectory;
+            if (!string.IsNullOrEmpty(workingDir))
+            {
+                if (path.StartsWith("~/"))
+                {
+                    var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                    fullPath = Path.Combine(homeDir, path.Substring(2));
+                }
+                else if (path.StartsWith("./"))
+                {
+                    fullPath = Path.Combine(workingDir, path.Substring(2));
+                }
+                else
+                {
+                    fullPath = Path.Combine(workingDir, path);
+                }
+            }
+        }
+
+        try { fullPath = Path.GetFullPath(fullPath); } catch { }
+        return fullPath;
+    }
+
+    /// <summary>
+    /// 팝업: 브라우저에서 열기
+    /// </summary>
+    private void LinkPopup_OpenInBrowser(object sender, RoutedEventArgs e)
+    {
+        if (_currentLinkValue == null) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = _currentLinkValue,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex) { Debug.WriteLine($"URL 열기 실패: {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// 팝업: 클립보드 복사
+    /// </summary>
+    private void LinkPopup_CopyToClipboard(object sender, RoutedEventArgs e)
+    {
+        var textToCopy = _currentLinkType == LinkType.FilePath ? _currentLinkFullPath : _currentLinkValue;
+        if (textToCopy != null)
+        {
+            try { Clipboard.SetText(textToCopy); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// 팝업: 파일 뷰어에서 열기
+    /// </summary>
+    private void LinkPopup_OpenInViewer(object sender, RoutedEventArgs e)
+    {
+        if (_currentLinkFullPath == null) return;
+        if (File.Exists(_currentLinkFullPath))
+        {
+            ShowFileInViewer(_currentLinkFullPath);
+        }
+    }
+
+    /// <summary>
+    /// 팝업: VS Code에서 열기
+    /// </summary>
+    private void LinkPopup_OpenInVSCode(object sender, RoutedEventArgs e)
+    {
+        if (_currentLinkFullPath == null) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "code",
+                Arguments = $"\"{_currentLinkFullPath}\"",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex) { Debug.WriteLine($"VS Code 열기 실패: {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// 팝업: 탐색기에서 열기
+    /// </summary>
+    private void LinkPopup_OpenInExplorer(object sender, RoutedEventArgs e)
+    {
+        if (_currentLinkFullPath == null) return;
+        try
+        {
+            if (File.Exists(_currentLinkFullPath))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{_currentLinkFullPath}\"",
+                    UseShellExecute = true
+                });
+            }
+            else if (Directory.Exists(_currentLinkFullPath))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = _currentLinkFullPath,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex) { Debug.WriteLine($"탐색기 열기 실패: {ex.Message}"); }
     }
 
     /// <summary>
@@ -906,9 +1071,11 @@ public partial class LocalTerminalView : UserControl
                     TerminalCtrl?.Focus();
                 }, System.Windows.Threading.DispatcherPriority.Input);
 
-                // 커서 오버레이 활성화 (인터랙티브 모드에서 커서 위치 표시)
-                if (TerminalCtrl != null)
-                    TerminalCtrl.ShowCursorOverlay = true;
+                // 커서 오버레이 비활성화
+                // 인터랙티브 프로그램(vim, Claude Code 등)은 자체 커서를 표시하므로
+                // 추가 오버레이가 불필요하고 오히려 두 개의 커서가 보이는 문제 발생
+                // if (TerminalCtrl != null)
+                //     TerminalCtrl.ShowCursorOverlay = true;
 
                 // 서브 프로세스 관리자 시작
                 StartSubProcessManager(vm.ProcessId);
@@ -958,53 +1125,10 @@ public partial class LocalTerminalView : UserControl
         }
         else if (e.PropertyName == nameof(LocalTerminalViewModel.AICLIProgramName))
         {
-            // AI CLI 프로그램 변경 시 아이콘 업데이트
-            UpdateAIModelIcon(vm.AICLIProgramName);
+            // AI 아이콘은 서브탭 헤더 + 상태바에서 바인딩으로 자동 처리
         }
     }
 
-    /// <summary>
-    /// AI 모델 아이콘 업데이트 (프로그램 이름에 따라)
-    /// </summary>
-    private void UpdateAIModelIcon(string? programName)
-    {
-        // 모든 아이콘 숨기기
-        ClaudeIcon.Visibility = Visibility.Collapsed;
-        GeminiIcon.Visibility = Visibility.Collapsed;
-        OpenAIIcon.Visibility = Visibility.Collapsed;
-        AiderIcon.Visibility = Visibility.Collapsed;
-        DefaultTerminalIcon.Visibility = Visibility.Collapsed;
-
-        if (string.IsNullOrEmpty(programName))
-        {
-            DefaultTerminalIcon.Visibility = Visibility.Visible;
-            return;
-        }
-
-        var lowerName = programName.ToLowerInvariant();
-
-        // 프로그램 이름에 따라 아이콘 표시
-        if (lowerName.Contains("claude"))
-        {
-            ClaudeIcon.Visibility = Visibility.Visible;
-        }
-        else if (lowerName.Contains("gemini"))
-        {
-            GeminiIcon.Visibility = Visibility.Visible;
-        }
-        else if (lowerName.Contains("codex") || lowerName.Contains("openai") || lowerName.Contains("gpt"))
-        {
-            OpenAIIcon.Visibility = Visibility.Visible;
-        }
-        else if (lowerName.Contains("aider"))
-        {
-            AiderIcon.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            DefaultTerminalIcon.Visibility = Visibility.Visible;
-        }
-    }
 
     /// <summary>
     /// CommandBlocks 변경 시 자동 스크롤
