@@ -2,7 +2,7 @@
 ; Inno Setup 6.0 or higher required
 
 #define MyAppName "TermSnap"
-#define MyAppVersion "1.9.0"
+#define MyAppVersion "1.9.1"
 #define MyAppPublisher "Dannykkh"
 #define MyAppURL "https://github.com/Dannykkh/TermSnap"
 #define MyAppExeName "TermSnap.exe"
@@ -58,6 +58,16 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 [Registry]
 Root: HKCU; Subkey: "Software\{#MyAppPublisher}\{#MyAppName}"; Flags: uninsdeletekeyifempty
 Root: HKCU; Subkey: "Software\{#MyAppPublisher}\{#MyAppName}\Settings"; Flags: uninsdeletekey
+
+; 폴더 오른쪽 클릭 → "TermSnap에서 열기"
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\TermSnap"; ValueType: string; ValueName: ""; ValueData: "TermSnap에서 열기"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\TermSnap"; ValueType: string; ValueName: "Icon"; ValueData: """{app}\TermSnap.exe"",0"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\TermSnap\command"; ValueType: string; ValueName: ""; ValueData: """{app}\TermSnap.exe"" ""%1"""; Flags: uninsdeletekey
+
+; 폴더 빈 공간 오른쪽 클릭 → "TermSnap에서 열기"
+Root: HKCU; Subkey: "Software\Classes\Directory\Background\shell\TermSnap"; ValueType: string; ValueName: ""; ValueData: "TermSnap에서 열기"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Directory\Background\shell\TermSnap"; ValueType: string; ValueName: "Icon"; ValueData: """{app}\TermSnap.exe"",0"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Directory\Background\shell\TermSnap\command"; ValueType: string; ValueName: ""; ValueData: """{app}\TermSnap.exe"" ""%V"""; Flags: uninsdeletekey
 
 [Code]
 function InitializeSetup(): Boolean;

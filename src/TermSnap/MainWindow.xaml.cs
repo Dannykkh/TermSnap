@@ -66,6 +66,12 @@ public partial class MainWindow : Window
 
             // FileTreePanel 이벤트 연결
             ConnectFileTreePanelEvents();
+
+            // 컨텍스트 메뉴에서 폴더 경로가 전달된 경우 프로젝트 열기
+            if (Application.Current is App app && !string.IsNullOrEmpty(app.StartupFolderPath))
+            {
+                _viewModel.OpenProjectFromPath(app.StartupFolderPath);
+            }
         };
     }
 
