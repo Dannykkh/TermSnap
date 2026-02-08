@@ -17,6 +17,16 @@ namespace TermSnap.Views;
 public partial class WelcomePanel : UserControl
 {
     /// <summary>
+    /// 서브탭 시작 요청 시 발생 (서브탭 모드에서만)
+    /// </summary>
+    public event EventHandler<SubTabStartEventArgs>? SubTabStartRequested;
+
+    /// <summary>
+    /// 서브탭 선택 취소 시 발생
+    /// </summary>
+    public event EventHandler? SubTabCancelled;
+
+    /// <summary>
     /// 폴더가 선택되었을 때 발생
     /// </summary>
     public event EventHandler<string>? FolderSelected;
@@ -40,6 +50,11 @@ public partial class WelcomePanel : UserControl
     /// Claude 명령어 실행 요청
     /// </summary>
     public event EventHandler<ClaudeRunOptions>? ClaudeRunRequested;
+
+    /// <summary>
+    /// 서브탭 모드 여부
+    /// </summary>
+    private bool _isSubTabMode;
 
     /// <summary>
     /// 현재 선택된 쉘
@@ -666,6 +681,50 @@ public partial class WelcomePanel : UserControl
     }
 
     /// <summary>
+    /// 서브탭 모드 설정 (폴더 선택 없이 쉘/CLI만 선택)
+    /// </summary>
+    public void SetSubTabMode(bool isSubTabMode)
+    {
+        _isSubTabMode = isSubTabMode;
+
+        // 로고 → 서브탭 타이틀로 교체
+        LogoSection.Visibility = isSubTabMode ? Visibility.Collapsed : Visibility.Visible;
+        SubTabTitleSection.Visibility = isSubTabMode ? Visibility.Visible : Visibility.Collapsed;
+
+        // 폴더 선택 섹션 숨김
+        FolderActionsSection.Visibility = isSubTabMode ? Visibility.Collapsed : Visibility.Visible;
+
+        // 최근 폴더 숨김
+        RecentFoldersSection.Visibility = isSubTabMode ? Visibility.Collapsed : Visibility.Visible;
+
+        // 팁 섹션 숨김
+        TipsSection.Visibility = isSubTabMode ? Visibility.Collapsed : Visibility.Visible;
+
+        // 서브탭 시작/취소 버튼 표시
+        SubTabButtonsPanel.Visibility = isSubTabMode ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// 서브탭 시작 버튼 클릭
+    /// </summary>
+    private void StartSubTabButton_Click(object sender, RoutedEventArgs e)
+    {
+        SubTabStartRequested?.Invoke(this, new SubTabStartEventArgs
+        {
+            Shell = SelectedShell,
+            CLIOptions = GetAICLIOptions()
+        });
+    }
+
+    /// <summary>
+    /// 서브탭 취소 버튼 클릭
+    /// </summary>
+    private void CancelSubTabButton_Click(object sender, RoutedEventArgs e)
+    {
+        SubTabCancelled?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
     /// AI CLI 고급 옵션 다이얼로그 열기
     /// </summary>
     private void RunAICLIAdvancedButton_Click(object sender, RoutedEventArgs e)
@@ -694,6 +753,22 @@ public partial class WelcomePanel : UserControl
         }
     }
 
+}
+
+/// <summary>
+/// 서브탭 시작 이벤트 인자
+/// </summary>
+public class SubTabStartEventArgs : EventArgs
+{
+    /// <summary>
+    /// 선택된 쉘 (null이면 기본 쉘 사용)
+    /// </summary>
+    public ShellDetectionService.DetectedShell? Shell { get; set; }
+
+    /// <summary>
+    /// AI CLI 옵션 (null이면 CLI 없이 터미널만)
+    /// </summary>
+    public ClaudeRunOptions? CLIOptions { get; set; }
 }
 
 /// <summary>

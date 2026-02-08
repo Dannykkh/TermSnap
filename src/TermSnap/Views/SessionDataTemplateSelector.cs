@@ -24,11 +24,20 @@ public class SessionDataTemplateSelector : DataTemplateSelector
     /// </summary>
     public DataTemplate? LocalSessionTemplate { get; set; }
 
+    /// <summary>
+    /// 프로젝트 세션용 DataTemplate
+    /// </summary>
+    public DataTemplate? ProjectSessionTemplate { get; set; }
+
     public override DataTemplate? SelectTemplate(object item, DependencyObject container)
     {
         if (item is NewSessionSelectorViewModel)
         {
             return SelectorTemplate;
+        }
+        else if (item is ProjectSessionViewModel)
+        {
+            return ProjectSessionTemplate;
         }
         else if (item is ServerSessionViewModel)
         {

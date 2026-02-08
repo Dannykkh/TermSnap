@@ -78,6 +78,12 @@ public class AppConfig
     // 로컬 터미널 UI 설정
     public LocalTerminalUISettings LocalTerminalUI { get; set; } = new();
 
+    // 세션 자동 복원 설정
+    public bool RestoreSessionsOnStart { get; set; } = false;
+
+    // 저장된 세션 상태 목록 (종료 시 저장, 시작 시 복원)
+    public List<SessionState> SessionStates { get; set; } = new();
+
     // 메인 창 상태 설정
     public WindowSettings MainWindowSettings { get; set; } = new();
 

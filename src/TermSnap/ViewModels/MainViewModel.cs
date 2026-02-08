@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
@@ -76,6 +77,8 @@ public class MainViewModel : INotifyPropertyChanged
     {
         get
         {
+            if (CurrentSession is ProjectSessionViewModel projectVm)
+                return projectVm.ProjectPath;
             if (CurrentSession is LocalTerminalViewModel localVm)
                 return localVm.CurrentDirectory;
             if (CurrentSession is ServerSessionViewModel serverVm)
@@ -91,6 +94,8 @@ public class MainViewModel : INotifyPropertyChanged
     {
         get
         {
+            if (CurrentSession is ProjectSessionViewModel projectVm)
+                return projectVm.IsConnected;
             if (CurrentSession is LocalTerminalViewModel localVm)
                 return localVm.IsConnected;
             if (CurrentSession is ServerSessionViewModel serverVm)
@@ -106,6 +111,8 @@ public class MainViewModel : INotifyPropertyChanged
     {
         get
         {
+            if (CurrentSession is ProjectSessionViewModel projectVm)
+                return projectVm.IsBusy;
             if (CurrentSession is LocalTerminalViewModel localVm)
                 return localVm.IsBusy;
             if (CurrentSession is ServerSessionViewModel serverVm)
@@ -215,6 +222,11 @@ public class MainViewModel : INotifyPropertyChanged
     /// 출력 지우기 (공용)
     /// </summary>
     public ICommand ClearOutputCommand { get; }
+
+    /// <summary>
+    /// 서브탭 추가 (프로젝트 세션에서만 동작)
+    /// </summary>
+    public ICommand AddSubTabCommand { get; }
 
     private bool _isSplitMode;
     private ISessionViewModel? _secondarySession;
@@ -331,7 +343,9 @@ public class MainViewModel : INotifyPropertyChanged
         // 공용 하단 바 커맨드
         ToggleFileTreeCommand = new RelayCommand(() =>
         {
-            if (CurrentSession is LocalTerminalViewModel localVm)
+            if (CurrentSession is ProjectSessionViewModel projectVm)
+                projectVm.IsFileTreeVisible = !projectVm.IsFileTreeVisible;
+            else if (CurrentSession is LocalTerminalViewModel localVm)
                 localVm.IsFileTreeVisible = !localVm.IsFileTreeVisible;
             else if (CurrentSession is ServerSessionViewModel serverVm)
                 serverVm.IsFileTreeVisible = !serverVm.IsFileTreeVisible;
@@ -360,7 +374,13 @@ public class MainViewModel : INotifyPropertyChanged
             }
         });
 
-        // 첫 번째 탭 생성 (세션 선택 화면 표시)
+        AddSubTabCommand = new RelayCommand(() =>
+        {
+            if (CurrentSession is ProjectSessionViewModel projectVm)
+                projectVm.AddSubTabCommand.Execute(null);
+        });
+
+        // 항상 빈 상태(새 탭)로 시작
         CreateNewTab();
 
         // 리소스 모니터링 시작 (전체 프로그램 공통)
@@ -457,25 +477,42 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// 세션 선택 화면을 로컬 터미널로 교체
+    /// 세션 선택 화면을 프로젝트 세션(서브탭 포함)으로 교체
     /// </summary>
     private void ReplaceWithLocalTerminal(NewSessionSelectorViewModel selectorSession)
     {
         var index = Sessions.IndexOf(selectorSession);
         if (index < 0) return;
 
-        // 로컬 터미널 세션 생성
-        var localSession = new LocalTerminalViewModel(LocalSession.LocalShellType.PowerShell);
-        
+        // 프로젝트 세션 생성 (서브탭 1개: 터미널)
+        var projectSession = new ProjectSessionViewModel();
+
+        // 첫 번째 서브탭으로 로컬 터미널 추가
+        var localVm = new LocalTerminalViewModel(LocalSession.LocalShellType.PowerShell);
+        projectSession.SubSessions.Add(localVm);
+        projectSession.SelectedSubSession = localVm;
+
+        // WelcomePanel에서 폴더 선택 시 프로젝트 경로 설정
+        // LocalTerminalVM의 FolderOpened 이벤트로 연결
+        localVm.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(LocalTerminalViewModel.CurrentDirectory) && localVm.IsConnected)
+            {
+                if (string.IsNullOrEmpty(projectSession.ProjectPath) && !string.IsNullOrEmpty(localVm.CurrentDirectory))
+                {
+                    projectSession.ProjectPath = localVm.CurrentDirectory;
+                    projectSession.ProjectName = System.IO.Path.GetFileName(localVm.CurrentDirectory);
+                    projectSession.FileTreeCurrentPath = localVm.CurrentDirectory;
+                }
+            }
+        };
+
         // 교체
-        Sessions[index] = localSession;
-        SelectedSession = localSession;
-        
+        Sessions[index] = projectSession;
+        SelectedSession = projectSession;
+
         // 기존 선택 세션 정리
         selectorSession.Dispose();
-
-        // 자동 연결하지 않음 - WelcomePanel에서 쉘 선택 후 폴더 선택 시 연결됨
-        // _ = localSession.ConnectAsync();
     }
 
     /// <summary>
@@ -501,16 +538,32 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// 로컬 터미널 탭 생성 (특정 셸 타입)
+    /// 로컬 터미널 탭 생성 (특정 셸 타입) - 프로젝트 세션으로 감싸기
     /// </summary>
     private void CreateLocalTerminalTab(LocalSession.LocalShellType shellType)
     {
-        var localSession = new LocalTerminalViewModel(shellType);
-        Sessions.Add(localSession);
-        SelectedSession = localSession;
+        var projectSession = new ProjectSessionViewModel();
 
-        // 자동 연결하지 않음 - WelcomePanel에서 쉘 선택 후 폴더 선택 시 연결됨
-        // _ = localSession.ConnectAsync();
+        var localVm = new LocalTerminalViewModel(shellType);
+        projectSession.SubSessions.Add(localVm);
+        projectSession.SelectedSubSession = localVm;
+
+        // WelcomePanel에서 폴더 선택 시 프로젝트 경로 설정
+        localVm.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(LocalTerminalViewModel.CurrentDirectory) && localVm.IsConnected)
+            {
+                if (string.IsNullOrEmpty(projectSession.ProjectPath) && !string.IsNullOrEmpty(localVm.CurrentDirectory))
+                {
+                    projectSession.ProjectPath = localVm.CurrentDirectory;
+                    projectSession.ProjectName = System.IO.Path.GetFileName(localVm.CurrentDirectory);
+                    projectSession.FileTreeCurrentPath = localVm.CurrentDirectory;
+                }
+            }
+        };
+
+        Sessions.Add(projectSession);
+        SelectedSession = projectSession;
     }
 
     private static string GetShellDisplayName(LocalSession.LocalShellType shellType)
@@ -712,6 +765,240 @@ private void CloseTab(ISessionViewModel? session)
         SecondarySession = null;
         SplitOrientation = Views.SplitPaneContainer.SplitOrientation.None;
         IsSplitMode = false;
+    }
+
+    /// <summary>
+    /// 현재 열린 세션 상태 저장 (앱 종료 시 호출)
+    /// </summary>
+    public void SaveSessionStates()
+    {
+        try
+        {
+            var config = ConfigService.Load();
+            if (!config.RestoreSessionsOnStart)
+            {
+                config.SessionStates.Clear();
+                ConfigService.Save(config);
+                return;
+            }
+
+            var states = new List<SessionState>();
+            for (int i = 0; i < Sessions.Count; i++)
+            {
+                var session = Sessions[i];
+                var state = new SessionState
+                {
+                    TabIndex = i,
+                    IsSelected = session == SelectedSession,
+                    TabHeader = session.TabHeader
+                };
+
+                if (session is ProjectSessionViewModel projectVm)
+                {
+                    state.Type = SessionType.Project;
+                    state.ProjectPath = projectVm.ProjectPath;
+                    state.ProjectName = projectVm.ProjectName;
+
+                    // 서브세션 상태 저장
+                    state.SubSessions = new List<SubSessionState>();
+                    for (int j = 0; j < projectVm.SubSessions.Count; j++)
+                    {
+                        var subSession = projectVm.SubSessions[j];
+                        if (subSession is LocalTerminalViewModel subLocalVm)
+                        {
+                            state.SubSessions.Add(new SubSessionState
+                            {
+                                Type = SessionType.Local,
+                                TabHeader = subLocalVm.TabHeader,
+                                ShellType = subLocalVm.ShellType.ToString(),
+                                WorkingDirectory = subLocalVm.CurrentDirectory,
+                                UseBlockUI = subLocalVm.UseBlockUI
+                            });
+                        }
+
+                        if (subSession == projectVm.SelectedSubSession)
+                        {
+                            state.SelectedSubSessionIndex = j;
+                        }
+                    }
+                }
+                else if (session is LocalTerminalViewModel localVm)
+                {
+                    state.Type = SessionType.Local;
+                    state.ShellType = localVm.ShellType.ToString();
+                    state.WorkingDirectory = localVm.CurrentDirectory;
+                    state.UseBlockUI = localVm.UseBlockUI;
+                }
+                else if (session is ServerSessionViewModel serverVm)
+                {
+                    state.Type = SessionType.SSH;
+                    state.ServerProfileName = serverVm.ServerProfile?.ProfileName;
+                    state.UseBlockUI = serverVm.UseBlockUI;
+                }
+                else
+                {
+                    // Selector 세션은 저장하지 않음
+                    continue;
+                }
+
+                states.Add(state);
+            }
+
+            config.SessionStates = states;
+            ConfigService.Save(config);
+            System.Diagnostics.Debug.WriteLine($"[SessionRestore] {states.Count}개 세션 상태 저장됨");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SessionRestore] 세션 저장 실패: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 저장된 세션 상태 복원 (앱 시작 시 호출)
+    /// </summary>
+    /// <returns>복원 성공 여부</returns>
+    private bool RestoreSessionStates()
+    {
+        try
+        {
+            if (!_config.RestoreSessionsOnStart || _config.SessionStates == null || _config.SessionStates.Count == 0)
+            {
+                return false;
+            }
+
+            int selectedIndex = -1;
+
+            foreach (var state in _config.SessionStates.OrderBy(s => s.TabIndex))
+            {
+                ISessionViewModel? session = null;
+
+                switch (state.Type)
+                {
+                    case SessionType.Project:
+                        var projectVm = new ProjectSessionViewModel
+                        {
+                            ProjectPath = state.ProjectPath ?? string.Empty,
+                            ProjectName = state.ProjectName ?? string.Empty,
+                        };
+
+                        // 서브세션 복원
+                        if (state.SubSessions != null && state.SubSessions.Count > 0)
+                        {
+                            foreach (var subState in state.SubSessions)
+                            {
+                                if (Enum.TryParse<LocalSession.LocalShellType>(subState.ShellType, out var subShellType))
+                                {
+                                    var subLocalVm = new LocalTerminalViewModel(subShellType);
+                                    subLocalVm.TabHeader = subState.TabHeader;
+                                    subLocalVm.UseBlockUI = subState.UseBlockUI;
+
+                                    projectVm.SubSessions.Add(subLocalVm);
+
+                                    // 작업 디렉토리가 있으면 자동 연결
+                                    if (!string.IsNullOrEmpty(subState.WorkingDirectory) &&
+                                        Directory.Exists(subState.WorkingDirectory))
+                                    {
+                                        var subWorkDir = subState.WorkingDirectory;
+                                        _ = Application.Current.Dispatcher.InvokeAsync(async () =>
+                                        {
+                                            await subLocalVm.OpenFolderAsync(subWorkDir);
+                                        });
+                                    }
+                                }
+                            }
+
+                            // 선택된 서브세션 복원
+                            if (state.SelectedSubSessionIndex >= 0 && state.SelectedSubSessionIndex < projectVm.SubSessions.Count)
+                            {
+                                projectVm.SelectedSubSession = projectVm.SubSessions[state.SelectedSubSessionIndex];
+                            }
+                            else if (projectVm.SubSessions.Count > 0)
+                            {
+                                projectVm.SelectedSubSession = projectVm.SubSessions[0];
+                            }
+                        }
+
+                        // 프로젝트 경로가 있으면 파일 트리 활성화
+                        if (!string.IsNullOrEmpty(projectVm.ProjectPath) && Directory.Exists(projectVm.ProjectPath))
+                        {
+                            projectVm.IsFileTreeVisible = true;
+                            projectVm.FileTreeCurrentPath = projectVm.ProjectPath;
+                        }
+
+                        session = projectVm;
+                        break;
+
+                    case SessionType.Local:
+                    case SessionType.WSL:
+                        // 셸 타입 파싱
+                        if (Enum.TryParse<LocalSession.LocalShellType>(state.ShellType, out var shellType))
+                        {
+                            // 기존 로컬 탭도 프로젝트 세션으로 감싸서 복원
+                            var restoreProjectVm = new ProjectSessionViewModel();
+                            var localVm = new LocalTerminalViewModel(shellType);
+                            localVm.UseBlockUI = state.UseBlockUI;
+
+                            restoreProjectVm.SubSessions.Add(localVm);
+                            restoreProjectVm.SelectedSubSession = localVm;
+
+                            // 작업 디렉토리가 있으면 자동 연결
+                            if (!string.IsNullOrEmpty(state.WorkingDirectory) &&
+                                Directory.Exists(state.WorkingDirectory))
+                            {
+                                var workDir = state.WorkingDirectory;
+                                restoreProjectVm.ProjectPath = workDir;
+                                restoreProjectVm.ProjectName = Path.GetFileName(workDir);
+                                _ = Application.Current.Dispatcher.InvokeAsync(async () =>
+                                {
+                                    await localVm.OpenFolderAsync(workDir);
+                                });
+                            }
+
+                            session = restoreProjectVm;
+                        }
+                        break;
+
+                    case SessionType.SSH:
+                        // SSH 세션은 프로필 정보만 복원 (자동 연결 안 함)
+                        var sshVm = new ServerSessionViewModel(_config);
+                        sshVm.UseBlockUI = state.UseBlockUI;
+                        session = sshVm;
+                        break;
+                }
+
+                if (session != null)
+                {
+                    Sessions.Add(session);
+                    if (state.IsSelected)
+                    {
+                        selectedIndex = Sessions.Count - 1;
+                    }
+                }
+            }
+
+            if (Sessions.Count > 0)
+            {
+                SelectedSession = selectedIndex >= 0 && selectedIndex < Sessions.Count
+                    ? Sessions[selectedIndex]
+                    : Sessions[0];
+
+                System.Diagnostics.Debug.WriteLine($"[SessionRestore] {Sessions.Count}개 세션 복원됨");
+
+                // 복원 후 저장된 상태 초기화
+                _config.SessionStates.Clear();
+                ConfigService.Save(_config);
+
+                return true;
+            }
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SessionRestore] 세션 복원 실패: {ex.Message}");
+            return false;
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

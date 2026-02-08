@@ -52,6 +52,7 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     private DispatcherTimer? _elapsedTimer;
     private string _aicliElapsedTime = string.Empty;
     private string _aicliProgramName = string.Empty;
+    private string _originalTabHeader = string.Empty; // AI 실행 전 원본 TabHeader
 
     // 데이터 수신 스피너 (탭 헤더에 표시)
     private DispatcherTimer? _spinnerTimer;
@@ -237,8 +238,33 @@ public class LocalTerminalViewModel : INotifyPropertyChanged, ISessionViewModel
     public string AICLIProgramName
     {
         get => _aicliProgramName;
-        private set { _aicliProgramName = value; OnPropertyChanged(); }
+        private set
+        {
+            _aicliProgramName = value;
+            OnPropertyChanged();
+
+            // AI CLI 실행 시 TabHeader 자동 변경
+            if (!string.IsNullOrEmpty(value) && IsKnownAICLI(value))
+            {
+                if (string.IsNullOrEmpty(_originalTabHeader))
+                    _originalTabHeader = TabHeader;
+                TabHeader = value;
+            }
+            else if (string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(_originalTabHeader))
+            {
+                TabHeader = _originalTabHeader;
+                _originalTabHeader = string.Empty;
+            }
+        }
     }
+
+    private static readonly HashSet<string> KnownAICLIs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "claude", "gemini", "codex", "aider"
+    };
+
+    private static bool IsKnownAICLI(string name)
+        => KnownAICLIs.Contains(name);
 
     /// <summary>
     /// 데이터 수신 중 스피너 텍스트 (/, -, \, |)

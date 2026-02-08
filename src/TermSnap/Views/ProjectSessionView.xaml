@@ -1,0 +1,247 @@
+<UserControl x:Class="TermSnap.Views.ProjectSessionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:local="clr-namespace:TermSnap.Views"
+             xmlns:vm="clr-namespace:TermSnap.ViewModels">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- 서브탭 바 -->
+            <RowDefinition Height="*"/>      <!-- 서브탭 콘텐츠 -->
+        </Grid.RowDefinitions>
+
+        <!-- 서브탭 바: [터미널] [Claude] [백엔드] [+] -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="4,2">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 서브탭 목록 -->
+                <ItemsControl Grid.Column="0"
+                              ItemsSource="{Binding SubSessions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border x:Name="SubTabBorder"
+                                    Margin="0,0,2,0"
+                                    Padding="8,4"
+                                    CornerRadius="4,4,0,0"
+                                    Cursor="Hand"
+                                    MouseLeftButtonDown="SubTab_Click">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 아이콘 영역: 쉘 아이콘 + AI 로고 -->
+                                    <Grid Grid.Column="0" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0">
+                                        <!-- 기본 쉘 아이콘 (AI 미실행시 표시) -->
+                                        <materialDesign:PackIcon Width="14" Height="14"
+                                                                 Visibility="{Binding AICLIProgramName, FallbackValue='', Converter={StaticResource StringNotEmptyToCollapsedConverter}}">
+                                            <materialDesign:PackIcon.Style>
+                                                <Style TargetType="materialDesign:PackIcon">
+                                                    <Setter Property="Kind" Value="Console"/>
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Type}" Value="Local">
+                                                            <Setter Property="Kind" Value="Powershell"/>
+                                                            <Setter Property="Foreground" Value="#0088FF"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Type}" Value="WSL">
+                                                            <Setter Property="Kind" Value="Linux"/>
+                                                            <Setter Property="Foreground" Value="#FFA500"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </materialDesign:PackIcon.Style>
+                                        </materialDesign:PackIcon>
+
+                                        <!-- AI 로고: Claude -->
+                                        <Image Width="14" Height="14"
+                                               Source="/Resources/AILogos/claude-color.png"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               Visibility="{Binding AICLIProgramName, FallbackValue='', Converter={StaticResource StringContainsToVisibilityConverter}, ConverterParameter=claude}"/>
+                                        <!-- AI 로고: Gemini -->
+                                        <Image Width="14" Height="14"
+                                               Source="/Resources/AILogos/gemini-color.png"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               Visibility="{Binding AICLIProgramName, FallbackValue='', Converter={StaticResource StringContainsToVisibilityConverter}, ConverterParameter=gemini}"/>
+                                        <!-- AI 로고: OpenAI (Codex) -->
+                                        <Image Width="14" Height="14"
+                                               Source="/Resources/AILogos/openai-color.png"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               Visibility="{Binding AICLIProgramName, FallbackValue='', Converter={StaticResource StringContainsToVisibilityConverter}, ConverterParameter=codex}"/>
+                                    </Grid>
+
+                                    <!-- 스피너 (데이터 수신 중 표시) -->
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding SpinnerText}"
+                                               FontFamily="Consolas"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource SuccessBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,2,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SpinnerText}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SpinnerText}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <!-- 서브탭 이름 -->
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding TabHeader}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="120"/>
+
+                                    <!-- 닫기 버튼 -->
+                                    <Button Grid.Column="3"
+                                            x:Name="SubTabCloseButton"
+                                            Content="✕"
+                                            Width="14" Height="14"
+                                            Padding="0"
+                                            FontSize="8"
+                                            Background="Transparent"
+                                            Foreground="{DynamicResource TextSecondaryBrush}"
+                                            BorderThickness="0"
+                                            VerticalAlignment="Center"
+                                            Margin="6,0,0,0"
+                                            Opacity="0"
+                                            Click="SubTabClose_Click"
+                                            Tag="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}"
+                                                                    CornerRadius="2"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource ErrorBrush}"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <!-- 서브탭에 마우스 오버 시 닫기 버튼 표시 -->
+                                <Trigger SourceName="SubTabBorder" Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="SubTabCloseButton" Property="Opacity" Value="1"/>
+                                </Trigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 서브탭 추가 버튼 -->
+                <Button Grid.Column="1"
+                        Command="{Binding AddSubTabCommand}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="6,4"
+                        Cursor="Hand"
+                        ToolTip="서브탭 추가 (Ctrl+Shift+N)">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                CornerRadius="4"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <materialDesign:PackIcon Kind="Plus"
+                                             Width="14" Height="14"
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- 서브탭 콘텐츠 영역 -->
+        <ContentControl Grid.Row="1"
+                        x:Name="SubSessionContentControl"/>
+
+        <!-- 서브탭 추가 선택기 (WelcomePanel 서브탭 모드) -->
+        <local:WelcomePanel Grid.Row="1"
+                            x:Name="SubTabSelectorPanel"
+                            Visibility="Collapsed"/>
+
+        <!-- 서브탭이 없을 때 안내 -->
+        <StackPanel Grid.Row="1"
+                    x:Name="EmptyStatePanel"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Visibility="Collapsed">
+            <materialDesign:PackIcon Kind="TabPlus"
+                                     Width="48" Height="48"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
+                                     HorizontalAlignment="Center"/>
+            <TextBlock Text="서브탭을 추가하세요"
+                       FontSize="14"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       Margin="0,12,0,0"
+                       HorizontalAlignment="Center"/>
+            <Button Content="+ 터미널 추가"
+                    Command="{Binding AddSubTabCommand}"
+                    Margin="0,12,0,0"
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource MaterialDesignFlatButton}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

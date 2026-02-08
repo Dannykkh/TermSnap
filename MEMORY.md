@@ -8,6 +8,12 @@
 | SSH 서버 세션 (원격 연결, AI 명령어, SFTP) | ✅ 완성 |
 | 로컬 터미널 세션 (PowerShell, CMD, WSL, Git Bash) | ✅ 완성 |
 | GPU 가속 최적화 | 🔄 진행중 |
+| 세션 자동 복원 | ✅ 완성 |
+| 링크 클릭 팝업 (Warp 스타일) | ✅ 완성 |
+| 4분할 그리드 뷰 | ❌ 롤백 (불필요 판단) |
+| 프로젝트 서브탭 시스템 | ✅ 완성 |
+| 서브탭 추가 선택기 (쉘/CLI 선택) | ✅ 완성 |
+| 에디터 실행 (VS Code/Cursor) | ✅ 완성 |
 
 ---
 
@@ -18,9 +24,13 @@
 | wpf, dotnet, csharp | #architecture/core |
 | ssh, sftp, putty | #architecture/ssh |
 | terminal, conpty, powershell | #architecture/terminal |
+| session-restore, session-state | #architecture/session-restore |
+| link-popup, warp-style | #architecture/link-popup |
+| quad-split, split-view | #architecture/split-view |
 | ai, gemini, openai, claude | #architecture/ai |
 | gpu, rendering, drawingvisual | #gotchas/gpu-rendering |
 | memory, hook, skill | #tools/claude-code |
+| sub-tab, project-session, editor | #architecture/sub-tab |
 
 ---
 
@@ -58,6 +68,18 @@
 - AIProviderFactory로 다중 AI 제공자 지원
 - RAGService로 Q&A 벡터 검색 (토큰 절약)
 - 자연어 → Linux 명령어 변환
+
+### sub-tab
+`tags: sub-tab, project-session, editor, vscode, cursor`
+`date: 2026-02-07`
+
+- ProjectSessionViewModel: 서브탭 컨테이너 (ISessionViewModel 구현)
+- 로컬 터미널 생성 시 자동으로 ProjectSession으로 감싸기
+- 서브탭별 View 캐싱 (ProjectSessionView.xaml.cs)
+- 파일 탐색기: 프로젝트 레벨에 고정 (서브탭 전환해도 유지)
+- 에디터 실행: FileTreePanel 헤더에 VS Code/Cursor 버튼
+- 설치 감지: `where code` / `where cursor` (미설치시 숨김)
+- 세션 저장/복원: SubSessionState 리스트로 서브탭 구조 보존
 
 ---
 
@@ -128,4 +150,4 @@ dotnet run --project src/TermSnap/TermSnap.csproj
 - **프로젝트**: TermSnap (linuxserverai)
 - **유형**: WPF .NET 8.0 애플리케이션
 - **생성일**: 2026-02-02
-- **마지막 업데이트**: 2026-02-03
+- **마지막 업데이트**: 2026-02-07

@@ -29,11 +29,17 @@
             <views:LocalTerminalView DataContext="{Binding}"/>
         </DataTemplate>
 
+        <!-- 프로젝트 세션용 DataTemplate -->
+        <DataTemplate x:Key="ProjectSessionTemplate" DataType="{x:Type vm:ProjectSessionViewModel}">
+            <views:ProjectSessionView DataContext="{Binding}"/>
+        </DataTemplate>
+
         <!-- Session DataTemplate Selector -->
         <views:SessionDataTemplateSelector x:Key="SessionTemplateSelector"
                                            SelectorTemplate="{StaticResource SelectorTemplate}"
                                            SshSessionTemplate="{StaticResource SshSessionTemplate}"
-                                           LocalSessionTemplate="{StaticResource LocalSessionTemplate}"/>
+                                           LocalSessionTemplate="{StaticResource LocalSessionTemplate}"
+                                           ProjectSessionTemplate="{StaticResource ProjectSessionTemplate}"/>
         
         <!-- Warp 스타일 TabItem -->
         <Style x:Key="WarpTabItemStyle" TargetType="TabItem">
@@ -148,6 +154,11 @@
                                                         <Setter Property="Kind" Value="Git"/>
                                                         <Setter Property="Foreground" Value="#F05032"/>
                                                     </MultiDataTrigger>
+                                                    <!-- 프로젝트 세션 아이콘 -->
+                                                    <DataTrigger Binding="{Binding Type}" Value="Project">
+                                                        <Setter Property="Kind" Value="FolderOpen"/>
+                                                        <Setter Property="Foreground" Value="#4CAF50"/>
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </materialDesign:PackIcon.Style>
@@ -365,6 +376,7 @@
                                     Content="{Binding SecondarySession}"
                                     ContentTemplateSelector="{StaticResource SessionTemplateSelector}"/>
                 </Grid>
+
             </Grid>
 
             <!-- 스니펫 패널 (우측, 로컬 터미널 전용) -->
@@ -895,5 +907,10 @@
         <KeyBinding Key="D5" Modifiers="Control" Command="{Binding GoToTabCommand}" CommandParameter="4"/>
         <KeyBinding Key="OemComma" Modifiers="Control" Command="{Binding OpenSettingsCommand}"/>
         <KeyBinding Key="H" Modifiers="Control+Shift" Command="{Binding OpenHistoryCommand}"/>
+        <!-- 분할 단축키 -->
+        <KeyBinding Key="OemPipe" Modifiers="Control+Shift" Command="{Binding SplitHorizontalCommand}"/>
+        <KeyBinding Key="OemMinus" Modifiers="Control+Shift" Command="{Binding SplitVerticalCommand}"/>
+        <!-- 서브탭 단축키 -->
+        <KeyBinding Key="N" Modifiers="Control+Shift" Command="{Binding AddSubTabCommand}"/>
     </Window.InputBindings>
 </Window>

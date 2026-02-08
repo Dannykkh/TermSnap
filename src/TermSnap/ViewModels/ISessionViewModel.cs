@@ -134,5 +134,10 @@ public enum SessionType
     /// <summary>
     /// WSL (Windows Subsystem for Linux)
     /// </summary>
-    WSL
+    WSL,
+
+    /// <summary>
+    /// 프로젝트 세션 (서브탭 포함)
+    /// </summary>
+    Project
 }

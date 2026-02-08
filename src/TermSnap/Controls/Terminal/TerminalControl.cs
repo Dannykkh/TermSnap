@@ -737,16 +737,23 @@ public class TerminalControl : FrameworkElement
 
                 double cellRenderWidth = cell.IsWideChar ? _cellWidth * 2 : _cellWidth;
 
+                // Inverse(SGR 7) 셀: 전경/배경 교환
+                // CLI 도구(Claude Code, Gemini 등)가 SGR 7로 커서 위치를 표시함
+                Color renderBg = cell.Inverse ? cell.Foreground : cell.Background;
+                Color renderFg = cell.Inverse ? cell.Background : cell.Foreground;
+
                 // 배경색 렌더링 (기본 배경색이 아닌 경우)
                 // - diff 출력 등에서 줄 전체 배경색 필요 → 공백에도 배경색 적용
                 // - 단, 역상(Inverse) 상태의 공백은 커서 표시 잔상이므로 스킵
-                //   (Claude Code 등이 SGR 7로 커서 위치를 표시하고 이동 후 잔상 남는 문제 방지)
-                bool isInverseSpace = cell.Inverse && (cell.Character == ' ' || cell.Character == '\0');
-                if (cell.Background != TerminalColors.DefaultBackground &&
-                    cell.Background != Colors.Transparent &&
+                //   (CLI 도구가 SGR 7로 커서 위치를 표시하고 이동 후 잔상 남는 문제 방지)
+                // - 단, 현재 커서 위치의 역상 공백은 실제 커서이므로 배경색 렌더링 필요
+                bool isCursorPosition = (!isScrollback && dataRow == _buffer.CursorY && col == _buffer.CursorX);
+                bool isInverseSpace = cell.Inverse && (cell.Character == ' ' || cell.Character == '\0') && !isCursorPosition;
+                if (renderBg != TerminalColors.DefaultBackground &&
+                    renderBg != Colors.Transparent &&
                     !isInverseSpace)
                 {
-                    var cellBackgroundBrush = GetOrCreateBrush(cell.Background);
+                    var cellBackgroundBrush = GetOrCreateBrush(renderBg);
                     dc.DrawRectangle(
                         cellBackgroundBrush,
                         null,
@@ -763,7 +770,7 @@ public class TerminalControl : FrameworkElement
                 {
                     var textColor = isHoveredLink
                         ? Color.FromRgb(100, 149, 237)
-                        : cell.Foreground;
+                        : renderFg;
 
                     var formattedText = GetOrCreateGlyphText(cell.Character, textColor, cell.Bold, pixelsPerDip);
                     dc.DrawText(formattedText, new Point(x, 0));
@@ -773,7 +780,7 @@ public class TerminalControl : FrameworkElement
                     {
                         var underlineColor = isHoveredLink
                             ? Color.FromRgb(100, 149, 237)
-                            : cell.Foreground;
+                            : renderFg;
                         var underlinePen = GetOrCreatePen(underlineColor);
                         dc.DrawLine(
                             underlinePen,
@@ -1168,15 +1175,22 @@ public class TerminalControl : FrameworkElement
             return;
         }
 
-        // Ctrl+Click 링크 열기
-        if (Keyboard.Modifiers == ModifierKeys.Control)
+        // 링크 클릭 감지 (Ctrl+Click: 바로 열기, 일반 클릭: 팝업 표시)
         {
-            var link = GetLinkAtPosition(position);
-            if (link != null)
+            bool isCtrlHeld = Keyboard.Modifiers == ModifierKeys.Control;
+            // Ctrl 키를 누른 경우 또는 호버 중인 링크를 일반 클릭한 경우
+            if (isCtrlHeld || (_hoveredLinkValue != null && _hoveredLinkType != null))
             {
-                LinkClicked?.Invoke(link);
-                e.Handled = true;
-                return;
+                var link = GetLinkAtPosition(position);
+                if (link != null)
+                {
+                    // 마우스 위치와 Ctrl 상태를 포함한 이벤트 발생
+                    var screenPos = PointToScreen(position);
+                    var args = new LinkClickedEventArgs(link.LinkType, link.Value, screenPos, isCtrlHeld);
+                    LinkClicked?.Invoke(args);
+                    e.Handled = true;
+                    return;
+                }
             }
         }
 
@@ -1886,10 +1900,22 @@ public class LinkClickedEventArgs : EventArgs
     public LinkType LinkType { get; }
     public string Value { get; }
 
-    public LinkClickedEventArgs(LinkType linkType, string value)
+    /// <summary>
+    /// 마우스 클릭 위치 (팝업 표시용)
+    /// </summary>
+    public System.Windows.Point MousePosition { get; }
+
+    /// <summary>
+    /// Ctrl 키가 눌려있었는지 (바로 열기 vs 팝업)
+    /// </summary>
+    public bool IsCtrlHeld { get; }
+
+    public LinkClickedEventArgs(LinkType linkType, string value, System.Windows.Point mousePosition = default, bool isCtrlHeld = false)
     {
         LinkType = linkType;
         Value = value;
+        MousePosition = mousePosition;
+        IsCtrlHeld = isCtrlHeld;
     }
 }
 
